@@ -42,7 +42,7 @@ from ai_service.main import app as fastapi_app
 # - Django served at /
 application = Starlette(
     routes=[
-        Mount("/api", app=fastapi_app),
+        Mount("/ai-service", app=fastapi_app),
         Mount("/", app=django_app),
     ]
 )

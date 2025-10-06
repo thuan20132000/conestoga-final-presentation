@@ -5,34 +5,27 @@ from datetime import datetime
 from ai_service.config import settings
 from ai_service.services.booking_api import BookingAPI
 from receptionist.models import SystemLog
+import json
 
 # Create router
 router = APIRouter()
-
-
-@router.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    print("Health check endpoint")
-    system_log = SystemLog(
-        message="Health check endpoint",
-        level="info",
-        created_at=datetime.now()
-    )
-    system_log.save()
-    print("System log:: ", system_log)
-    return {
-        "status": "healthy",
-        "service": "ai-receptionist",
-        "version": "1.0.0",
-        "timestamp": datetime.now().isoformat()
-    }
 
 # get business information
 @router.get("/business-information")
 async def get_business_information():
     """Get business information."""
-    return await BookingAPI().fetch_business_information()
+   
+    business_services_sample = {
+        "name": "SnapsBooking Salon",
+        "phone": "(555) 123-4567",
+        "email": "info@snapsbooking.com",
+        "website": "www.snapsbooking.com",
+        "address": "123 Salon Lane, Creative District, City, State 12345",
+        "established": "2020"
+    }
+    print("Business services sample:: ", json.dumps(business_services_sample))
+    return business_services_sample
+    # return await BookingAPI().fetch_business_information()
   
 # get business services
 @router.get("/business-services")

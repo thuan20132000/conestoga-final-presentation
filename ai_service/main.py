@@ -4,9 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from fastapi.config import settings
-from fastapi.services.audio_service import AudioService
-from fastapi.routing.main import main_router
+from ai_service.config import settings
+from ai_service.services.audio_service import AudioService
+from ai_service.routing.main import main_router
 
 
 @asynccontextmanager

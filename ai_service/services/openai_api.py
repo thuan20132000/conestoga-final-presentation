@@ -1,5 +1,5 @@
 import openai
-from fastapi.config import settings
+from ai_service.config import settings
 from typing import List, Dict, Any
 import json
 

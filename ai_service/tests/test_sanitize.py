@@ -1,7 +1,7 @@
 import pytest
 import asyncio
 import json
-from fastapi.tools.receptionist import ReceptionistTools
+from ai_service.tools.receptionist import ReceptionistTools
 
 @pytest.mark.asyncio
 async def test_sanitize_data(monkeypatch):
@@ -11,7 +11,7 @@ async def test_sanitize_data(monkeypatch):
         return '{"service_id": 5, "date": "2024-06-01", "duration": 40}'
 
     # Patch the method in the OpenAIAPI class
-    from fastapi.services import openai_api
+    from ai_service.services import openai_api
 
     tools = ReceptionistTools()
     raw_data = "{'service_type': 'Pedicure, Manicure', 'date': 'tomorrow', 'time': '1 PM'}"
@@ -30,7 +30,7 @@ async def test_sanitize_data_no_date(monkeypatch):
         return '{"service_id": 5, "date": "2025-09-30", "duration": 40}'
 
     # Patch the method in the OpenAIAPI class
-    from fastapi.services import openai_api
+    from ai_service.services import openai_api
 
     tools = ReceptionistTools()
     raw_data = "{'service_type': 'Pedicure', 'time': '1 PM'}"

@@ -6,11 +6,11 @@ import base64
 from typing import Dict, Any
 import asyncio
 import websockets
-from fastapi.config import settings
+from ai_service.config import settings
 import os
 from dotenv import load_dotenv
-from fastapi.tools.receptionist import ReceptionistTools
-from fastapi.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
+from ai_service.tools.receptionist import ReceptionistTools
+from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
 
 load_dotenv()
 

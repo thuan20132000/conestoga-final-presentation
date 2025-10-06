@@ -35,7 +35,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
 django_app = get_asgi_application()
 
 # Import FastAPI app
-from fastapi.main import app as fastapi_app  # noqa: E402
+from ai_service.main import app as fastapi_app
 
 # Composite ASGI app:
 # - FastAPI served at /api

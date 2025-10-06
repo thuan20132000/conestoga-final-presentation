@@ -4,7 +4,7 @@ import openai
 import io
 import base64
 from typing import Optional, AsyncGenerator
-from fastapi.config import settings
+from ai_service.config import settings
 
 
 class AudioService:

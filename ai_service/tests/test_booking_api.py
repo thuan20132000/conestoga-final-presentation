@@ -1,6 +1,6 @@
 import pytest
 
-from fastapi.services.booking_api import BookingAPI
+from ai_service.services.booking_api import BookingAPI
 
 
 class _StubAsyncResponse:

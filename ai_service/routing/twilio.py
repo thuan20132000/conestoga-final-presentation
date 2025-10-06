@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
-from fastapi.config import settings
+from ai_service.config import settings
 
 # Create router
 router = APIRouter(tags=["twilio"])

@@ -3,6 +3,7 @@
 import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -11,7 +12,7 @@ class Settings(BaseSettings):
     # Server settings
     host: str = os.getenv("HOST", "0.0.0.0")
     port: int = int(os.getenv("PORT", "8001"))
-    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
+    debug: bool = False
     
     # API Keys
     openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
@@ -42,6 +43,23 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
         extra = "ignore"  # Ignore extra environment variables
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def _coerce_debug(cls, value):
+        if isinstance(value, bool):
+            return value
+        if value is None:
+            return False
+        s = str(value).strip().lower()
+        truthy = {"1", "true", "yes", "y", "on", "debug"}
+        falsy = {"0", "false", "no", "n", "off"}
+        if s in truthy:
+            return True
+        if s in falsy:
+            return False
+        # Fallback: any other string should not break; default to False
+        return False
 
 
 # Global settings instance

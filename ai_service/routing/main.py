@@ -1,7 +1,7 @@
 """Main router that combines all route modules."""
 
 from fastapi import APIRouter
-from fastapi.routing import health, twilio, websocket, booking
+from ai_service.routing import health, twilio, websocket, booking
 
 # Create main router
 main_router = APIRouter(tags=["main"])

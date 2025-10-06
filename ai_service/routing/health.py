@@ -2,15 +2,22 @@
 
 from fastapi import APIRouter
 from datetime import datetime
-from fastapi.config import settings
+from ai_service.config import settings
+from receptionist.models import SystemLog
 
 # Create router
 router = APIRouter()
 
 
 @router.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint."""
+    system_log = SystemLog.objects.create(
+        message="Health check endpoint",
+        level="info",
+        created_at=datetime.now()
+    )
+    
     return {
         "status": "healthy",
         "service": "ai-receptionist",

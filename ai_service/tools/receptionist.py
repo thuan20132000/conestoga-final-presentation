@@ -1,9 +1,9 @@
-from fastapi.tools.base import BaseTool
+from ai_service.tools.base import BaseTool
 from typing import Dict, Any
 import json
-from fastapi.services.booking_api import BookingAPI
-from fastapi.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
-from fastapi.services.openai_api import OpenAIAPI
+from ai_service.services.booking_api import BookingAPI
+from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
+from ai_service.services.openai_api import OpenAIAPI
 
 
 AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS

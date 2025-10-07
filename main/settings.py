@@ -49,6 +49,7 @@ INSTALLED_APPS += [
     'service',
     'staff',
     'notifications',
+    'appointment',
 ]
 
 

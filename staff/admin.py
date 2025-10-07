@@ -1,13 +1,22 @@
 from django.contrib import admin
-from .models import Staff, StaffService
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
 from django.contrib.auth.admin import UserAdmin
-
+from time import time
 
 class StaffServiceInline(admin.TabularInline):
     model = StaffService
     extra = 0
-    fields = ['is_primary']
+    fields = ['service', 'is_primary']
 
+class StaffWorkingHoursInline(admin.TabularInline):
+    model = StaffWorkingHours
+    extra = 0
+    fields = ['day_of_week', 'start_time', 'end_time']
+
+class StaffOffDayInline(admin.TabularInline):
+    model = StaffOffDay
+    extra = 0
+    fields = ['start_date', 'end_date', 'reason']
 
 @admin.register(Staff)
 class StaffAdmin(UserAdmin):
@@ -15,7 +24,6 @@ class StaffAdmin(UserAdmin):
 
     list_display = [
         "username",
-        "get_full_name",
         "role",
         "is_active",
         "hire_date",
@@ -30,7 +38,6 @@ class StaffAdmin(UserAdmin):
         "hire_date",
         "date_joined",
         "last_login",
-        "role",
         "business",
     ]
     search_fields = ["username", "first_name", "last_name", "email", "business", "role"]
@@ -39,7 +46,7 @@ class StaffAdmin(UserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name", "email", "phone", "bio")}),
-        ("Business Info", {"fields": ("role", "business", "hire_date", "bio", "photo")}),
+        ("Business Info", {"fields": ("role", "business", "hire_date", "photo")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )
@@ -67,7 +74,7 @@ class StaffAdmin(UserAdmin):
     )
 
     readonly_fields = ["date_joined", "last_login"]
-    inlines = [StaffServiceInline]
+    inlines = [StaffServiceInline, StaffWorkingHoursInline, StaffOffDayInline]
     
 @admin.register(StaffService)
 class StaffServiceAdmin(admin.ModelAdmin):

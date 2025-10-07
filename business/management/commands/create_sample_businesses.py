@@ -101,10 +101,10 @@ class Command(BaseCommand):
 
             # Create staff
             staff_members = [
-                {'first_name': 'Sarah', 'last_name': 'Johnson', 'role': 'stylist', 'email': 'sarah@stylestudio.com'},
-                {'first_name': 'Mike', 'last_name': 'Chen', 'role': 'stylist', 'email': 'mike@stylestudio.com'},
-                {'first_name': 'Emma', 'last_name': 'Williams', 'role': 'stylist', 'email': 'emma@stylestudio.com'},
-                {'first_name': 'Lisa', 'last_name': 'Brown', 'role': 'manager', 'email': 'lisa@stylestudio.com'},
+                {'first_name': 'Sarah', 'last_name': 'Johnson', 'email': 'sarah@stylestudio.com'},
+                {'first_name': 'Mike', 'last_name': 'Chen', 'email': 'mike@stylestudio.com'},
+                {'first_name': 'Emma', 'last_name': 'Williams', 'email': 'emma@stylestudio.com'},
+                {'first_name': 'Lisa', 'last_name': 'Brown', 'email': 'lisa@stylestudio.com'},
             ]
 
             for staff_data in staff_members:
@@ -112,7 +112,6 @@ class Command(BaseCommand):
                     business=business,
                     first_name=staff_data['first_name'],
                     last_name=staff_data['last_name'],
-                    role=staff_data['role'],
                     email=staff_data['email'],
                     phone='+1-555-0123'
                 )

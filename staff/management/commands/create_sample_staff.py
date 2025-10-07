@@ -47,7 +47,8 @@ class Command(BaseCommand):
                 if clear_existing:
                     self._clear_for_business(business)
                 self._ensure_roles(business)
-                created = self._create_staff_for_business(business, per_business)
+                created = self._create_staff_for_business(
+                    business, per_business)
                 if assign_services:
                     self._assign_services_for_business(business)
                 self.stdout.write(self.style.SUCCESS(
@@ -90,7 +91,7 @@ class Command(BaseCommand):
                     'first_name': first,
                     'last_name': last,
                     'phone': business.phone_number or '+1-555-0000',
-                    'role': role,
+                    'role_id': role.id,
                     'is_active': True,
                     'hire_date': timezone.now().date(),
                 }
@@ -125,14 +126,15 @@ class Command(BaseCommand):
             )
 
     def _assign_services_for_business(self, business):
-        services = list(Service.objects.filter(business=business).order_by('id'))
+        services = list(Service.objects.filter(
+            business=business).order_by('id'))
         if not services:
             return
         staff_members = list(Staff.objects.filter(business=business))
         if not staff_members:
             return
 
-        # Simple round-robin: assign 2 services per staff if available
+        # Use StaffService to assign services to staff in a round-robin fashion, 2 per staff
         for i, staff in enumerate(staff_members):
             assigned = 0
             for s in services[i::max(1, len(staff_members))]:
@@ -140,9 +142,9 @@ class Command(BaseCommand):
                 StaffService.objects.get_or_create(
                     staff=staff,
                     service=s,
-                    defaults={'is_primary': is_primary}
+                    defaults={'is_primary': is_primary, 'is_online_booking': True,
+                              'custom_price': None, 'custom_duration': None}
                 )
                 assigned += 1
                 if assigned >= 2:
                     break
-

@@ -58,8 +58,13 @@ class StaffService(models.Model):
     """Many-to-many relationship between staff and services they can provide"""
     staff = models.ForeignKey('staff.Staff', on_delete=models.CASCADE, related_name='staff_services')
     service = models.ForeignKey('service.Service', on_delete=models.CASCADE, related_name='staff_services')
+    custom_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    custom_duration = models.IntegerField(help_text="Duration in minutes", null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_online_booking = models.BooleanField(default=True)
     is_primary = models.BooleanField(default=False, help_text="Primary service for this staff member")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     
     class Meta:
         unique_together = ['staff', 'service']
@@ -89,5 +94,18 @@ class StaffWorkingHours(models.Model):
         unique_together = ['staff', 'day_of_week']
     
     def __str__(self):
-        return f"{self.staff.full_name} - {self.day_of_week}"
+        return f"{self.staff} - {self.day_of_week}"
 
+class StaffOffDay(models.Model):
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='staff_off_days')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.staff} - {self.start_date} to {self.end_date} - {self.reason}"
+    
+    class Meta:
+        unique_together = ['staff', 'start_date', 'end_date']

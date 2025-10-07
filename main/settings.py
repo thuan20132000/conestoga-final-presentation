@@ -45,6 +45,9 @@ INSTALLED_APPS = [
 
 INSTALLED_APPS += [
     'receptionist',
+    'business',
+    'service',
+    'staff',
 ]
 
 

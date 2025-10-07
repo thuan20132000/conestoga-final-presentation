@@ -1,0 +1,148 @@
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from django.db import transaction
+
+from business.models import Business
+from service.models import Service
+from staff.models import Staff, StaffRole, StaffService, StaffWorkingHours
+
+
+class Command(BaseCommand):
+    help = 'Create sample staff, roles, and working hours for existing businesses'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--business-id', type=int, help='Target a single business id'
+        )
+        parser.add_argument(
+            '--per-business', type=int, default=3,
+            help='Number of staff to create per business (default: 3)'
+        )
+        parser.add_argument(
+            '--assign-services', action='store_true',
+            help='Assign available services to staff (random primary)'
+        )
+        parser.add_argument(
+            '--clear-existing', action='store_true',
+            help='Remove existing Staff/StaffRole/StaffService/StaffWorkingHours for targeted businesses before creating'
+        )
+
+    def handle(self, *args, **options):
+        business_id = options.get('business_id')
+        per_business = options.get('per_business')
+        assign_services = options.get('assign_services')
+        clear_existing = options.get('clear_existing')
+
+        if business_id:
+            businesses = Business.objects.filter(id=business_id)
+        else:
+            businesses = Business.objects.all()
+
+        if not businesses.exists():
+            self.stdout.write(self.style.WARNING('No businesses found'))
+            return
+
+        for business in businesses:
+            with transaction.atomic():
+                if clear_existing:
+                    self._clear_for_business(business)
+                self._ensure_roles(business)
+                created = self._create_staff_for_business(business, per_business)
+                if assign_services:
+                    self._assign_services_for_business(business)
+                self.stdout.write(self.style.SUCCESS(
+                    f"Business '{business.name}': created {created} staff"
+                ))
+
+    def _clear_for_business(self, business):
+        StaffService.objects.filter(staff__business=business).delete()
+        StaffWorkingHours.objects.filter(staff__business=business).delete()
+        Staff.objects.filter(business=business).delete()
+        StaffRole.objects.filter(business=business).delete()
+
+    def _ensure_roles(self, business):
+        for role_value, _ in StaffRole.ROLE_CHOICES:
+            StaffRole.objects.get_or_create(business=business, name=role_value)
+
+    def _create_staff_for_business(self, business, per_business):
+        role_map = {
+            r.name: r for r in StaffRole.objects.filter(business=business)
+        }
+        sample_people = [
+            ('alex', 'Alex', 'Nguyen', 'stylist'),
+            ('bella', 'Bella', 'Tran', 'technician'),
+            ('chris', 'Chris', 'Pham', 'manager'),
+            ('diana', 'Diana', 'Le', 'assistant'),
+            ('eric', 'Eric', 'Vu', 'receptionist'),
+            ('fiona', 'Fiona', 'Do', 'stylist'),
+            ('george', 'George', 'Hoang', 'technician'),
+        ]
+
+        created_count = 0
+        for idx, (username, first, last, role_key) in enumerate(sample_people[:per_business]):
+            role = role_map.get(role_key)
+            email = f"{username}@{business.name.replace(' ', '').lower()}.com"
+            staff, created = Staff.objects.get_or_create(
+                business=business,
+                email=email,
+                defaults={
+                    'username': f"{username}-{business.id}",
+                    'first_name': first,
+                    'last_name': last,
+                    'phone': business.phone_number or '+1-555-0000',
+                    'role': role,
+                    'is_active': True,
+                    'hire_date': timezone.now().date(),
+                }
+            )
+            if created:
+                created_count += 1
+                self._create_default_working_hours(staff)
+        return created_count
+
+    def _create_default_working_hours(self, staff):
+        # Mon-Fri 09:00-17:00, Sat 10:00-16:00, Sun off
+        from datetime import time
+
+        defaults = {
+            0: (time(9, 0), time(17, 0)),
+            1: (time(9, 0), time(17, 0)),
+            2: (time(9, 0), time(17, 0)),
+            3: (time(9, 0), time(17, 0)),
+            4: (time(9, 0), time(17, 0)),
+            5: (time(10, 0), time(16, 0)),
+        }
+
+        for day in range(7):
+            start_end = defaults.get(day)
+            StaffWorkingHours.objects.get_or_create(
+                staff=staff,
+                day_of_week=day,
+                defaults={
+                    'start_time': start_end[0] if start_end else None,
+                    'end_time': start_end[1] if start_end else None,
+                }
+            )
+
+    def _assign_services_for_business(self, business):
+        services = list(Service.objects.filter(business=business).order_by('id'))
+        if not services:
+            return
+        staff_members = list(Staff.objects.filter(business=business))
+        if not staff_members:
+            return
+
+        # Simple round-robin: assign 2 services per staff if available
+        for i, staff in enumerate(staff_members):
+            assigned = 0
+            for s in services[i::max(1, len(staff_members))]:
+                is_primary = assigned == 0
+                StaffService.objects.get_or_create(
+                    staff=staff,
+                    service=s,
+                    defaults={'is_primary': is_primary}
+                )
+                assigned += 1
+                if assigned >= 2:
+                    break
+

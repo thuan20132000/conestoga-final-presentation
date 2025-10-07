@@ -212,3 +212,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3002",  # Frontend dev origin
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Notification provider settings (placeholders)
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@example.com")
+SMS_DEFAULT_SENDER = config("SMS_DEFAULT_SENDER", default="")
+PUSH_FCM_SERVER_KEY = config("PUSH_FCM_SERVER_KEY", default="")

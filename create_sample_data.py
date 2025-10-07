@@ -32,6 +32,8 @@ def main():
     call_command('create_sample_staff',
                  per_business=3,
                  assign_services=True)
+    # Notifications sample data
+    call_command('create_sample_notifications', per_business=10, push_devices_per_business=3)
 
     print("Sample data creation completed!")
     print("\nYou can now:")

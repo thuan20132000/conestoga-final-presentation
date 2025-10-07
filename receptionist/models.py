@@ -13,12 +13,21 @@ class AIConfiguration(models.Model):
         (AIConfigurationStatus.DELETED.value, "Deleted"),
         (AIConfigurationStatus.ARCHIVED.value, "Archived"),
     ]
+    
+    LANGUAGE_CHOICES = [
+        ("en-US", "English (US)"),
+        ("en-GB", "English (GB)"),
+        ("es-ES", "Spanish (ES)"),
+        ("fr-FR", "French (FR)"),
+        ("de-DE", "German (DE)"),
+        ("it-IT", "Italian (IT)"),
+    ]
     """Stores AI behavior and integration settings."""
     business = models.ForeignKey("business.Business", on_delete=models.CASCADE, related_name="ai_configs")
     ai_name = models.CharField(max_length=100, default="Receptionist AI")
     greeting_message = models.TextField(default="Hello! How can I help you today?")
     prompt = models.TextField(default="You are a professional AI receptionist for a Salon. Your role is to assist clients with appointments, provide business information, and answer questions about our services. Always be helpful, professional, and friendly. Use the available tools to provide accurate information from our knowledge base. If you need to book appointments, get customer information or access specific business data, use the appropriate tools.")
-    language = models.CharField(max_length=10, default="en")
+    language = models.CharField(max_length=10, default="en-US", choices=LANGUAGE_CHOICES)
     voice_provider = models.CharField(max_length=100, default="ElevenLabs")
     stt_provider = models.CharField(max_length=100, default="Whisper")
     model_name = models.CharField(max_length=100, default="gpt-5")

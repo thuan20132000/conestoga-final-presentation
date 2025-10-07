@@ -2,23 +2,11 @@ from rest_framework import serializers
 from django.utils import timezone
 from django.db.models import Q
 from datetime import datetime, timedelta
-from .models import Appointment, Client, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
+from .models import Appointment, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
+from client.models import Client
 from business.models import Business
 from service.models import Service
 from staff.models import Staff
-
-
-class ClientSerializer(serializers.ModelSerializer):
-    """Serializer for Client model"""
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-    
-    class Meta:
-        model = Client
-        fields = [
-            'id', 'first_name', 'last_name', 'full_name', 'email', 'phone',
-            'date_of_birth', 'notes', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class AppointmentStatusSerializer(serializers.ModelSerializer):

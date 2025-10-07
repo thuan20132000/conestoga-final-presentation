@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    Appointment, Client, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
+    Appointment, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
 )
 
 
@@ -29,28 +29,6 @@ class AppointmentServiceAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-
-@admin.register(Client)
-class ClientAdmin(admin.ModelAdmin):
-    list_display = ['get_full_name', 'email', 'phone', 'created_at']
-    list_filter = ['created_at']
-    search_fields = ['first_name', 'last_name', 'email', 'phone']
-    ordering = ['last_name', 'first_name']
-    
-    fieldsets = (
-        ('Personal Information', {
-            'fields': ('first_name', 'last_name', 'email', 'phone', 'date_of_birth')
-        }),
-        ('Additional Information', {
-            'fields': ('notes',),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    def get_full_name(self, obj):
-        return obj.get_full_name()
-    get_full_name.short_description = 'Full Name'
 
 
 @admin.register(AppointmentStatus)

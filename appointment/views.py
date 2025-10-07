@@ -8,35 +8,18 @@ from django.utils import timezone
 from datetime import datetime, timedelta, date
 from django.shortcuts import get_object_or_404
 
-from .models import Appointment, Client, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
+from .models import Appointment, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
 from .serializers import (
-    AppointmentSerializer, AppointmentListSerializer, ClientSerializer,
+    AppointmentSerializer, AppointmentListSerializer,
     AppointmentStatusSerializer, AppointmentAvailabilitySerializer,
     AppointmentReminderSerializer, AppointmentConflictSerializer, AppointmentStatsSerializer,
     AppointmentServiceSerializer
 )
+from client.models import Client
+from client.serializers import ClientSerializer
 from business.models import Business
 from service.models import Service
 from staff.models import Staff
-
-
-class ClientViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing clients"""
-    queryset = Client.objects.all()
-    serializer_class = ClientSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['email', 'phone']
-    search_fields = ['first_name', 'last_name', 'email', 'phone']
-    ordering_fields = ['first_name', 'last_name', 'created_at']
-    ordering = ['last_name', 'first_name']
-    
-    def get_queryset(self):
-        """Filter clients by business if specified"""
-        queryset = super().get_queryset()
-        business_id = self.request.query_params.get('business')
-        if business_id:
-            queryset = queryset.filter(appointments__business_id=business_id).distinct()
-        return queryset
 
 
 class AppointmentStatusViewSet(viewsets.ModelViewSet):

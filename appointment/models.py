@@ -3,29 +3,6 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-class Client(models.Model):
-    """Client information for appointments"""
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
-    email = models.EmailField(blank=True, null=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-    notes = models.TextField(blank=True, null=True,
-                             help_text="Special notes about the client")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['last_name', 'first_name']
-        unique_together = ['email', 'phone']
-
-    def __str__(self):
-        return f"{self.first_name} {self.last_name}"
-
-    def get_full_name(self):
-        return f"{self.first_name} {self.last_name}"
-
-
 class AppointmentStatus(models.Model):
     """Appointment status definitions"""
     STATUS_CHOICES = [
@@ -58,7 +35,7 @@ class Appointment(models.Model):
     business = models.ForeignKey(
         'business.Business', on_delete=models.CASCADE, related_name='appointments')
     client = models.ForeignKey(
-        Client, on_delete=models.CASCADE, related_name='appointments')
+        'client.Client', on_delete=models.CASCADE, related_name='appointments')
     service = models.ForeignKey(
         'service.Service', on_delete=models.CASCADE, related_name='appointments')
     staff = models.ForeignKey(

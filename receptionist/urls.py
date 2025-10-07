@@ -13,10 +13,10 @@ from . import views
 
 # Create a router and register our viewsets
 router = DefaultRouter()
-router.register(r'businesses', BusinessViewSet, basename='business')
+router.register(r'business', BusinessViewSet, basename='business')
 router.register(r'ai-configurations', AIConfigurationViewSet, basename='aiconfiguration')
 router.register(r'calls', CallSessionViewSet, basename='call')
-router.register(r'messages', ConversationMessageViewSet, basename='message')
+router.register(r'conversations', ConversationMessageViewSet, basename='message')
 router.register(r'intents', IntentViewSet, basename='intent')
 router.register(r'recordings', AudioRecordingViewSet, basename='recording')
 router.register(r'logs', SystemLogViewSet, basename='log')

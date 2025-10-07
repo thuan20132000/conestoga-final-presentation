@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from .enums import AIConfigurationStatus
 
 
 class Business(models.Model):
@@ -15,10 +16,19 @@ class Business(models.Model):
 
 
 class AIConfiguration(models.Model):
+    STATUS_CHOICES = [
+        (AIConfigurationStatus.ACTIVE.value, "Active"),
+        (AIConfigurationStatus.INACTIVE.value, "Inactive"),
+        (AIConfigurationStatus.PENDING.value, "Pending"),
+        (AIConfigurationStatus.ERROR.value, "Error"),
+        (AIConfigurationStatus.DELETED.value, "Deleted"),
+        (AIConfigurationStatus.ARCHIVED.value, "Archived"),
+    ]
     """Stores AI behavior and integration settings."""
-    business = models.OneToOneField(Business, on_delete=models.CASCADE, related_name="ai_config")
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="ai_configs")
     ai_name = models.CharField(max_length=100, default="Receptionist AI")
     greeting_message = models.TextField(default="Hello! How can I help you today?")
+    prompt = models.TextField(default="You are a professional AI receptionist for a Salon. Your role is to assist clients with appointments, provide business information, and answer questions about our services. Always be helpful, professional, and friendly. Use the available tools to provide accurate information from our knowledge base. If you need to book appointments, get customer information or access specific business data, use the appropriate tools.")
     language = models.CharField(max_length=10, default="en")
     voice_provider = models.CharField(max_length=100, default="ElevenLabs")
     stt_provider = models.CharField(max_length=100, default="Whisper")
@@ -28,6 +38,10 @@ class AIConfiguration(models.Model):
     webhook_url = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=AIConfigurationStatus.ACTIVE.value)
+    class Meta:
+        verbose_name = "AI Configuration"
+        verbose_name_plural = "AI Configurations"
 
     def __str__(self):
         return f"{self.business.name} AI Config"

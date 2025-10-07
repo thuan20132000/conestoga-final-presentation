@@ -108,13 +108,21 @@ class BusinessViewSet(BaseModelViewSet):
         serializer = BusinessStatisticsSerializer(analytics_data, many=True)
         return self.response_success(serializer.data)
 
-    @action(detail=True, methods=['get'], url_path='ai-config')
-    def ai_config(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path='ai-configs')
+    def ai_configs(self, request, pk=None):
         """Get health status."""
         object = self.get_object()
-        ai_configurations = object.ai_config
-        serializer = AIConfigurationSerializer(ai_configurations)
-        print("Serializer data:: ", serializer.data)
+        ai_configurations = object.ai_configs
+        serializer = AIConfigurationSerializer(ai_configurations, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='calls')
+    def calls(self, request, pk=None):
+        """Get all calls for a business."""
+        object = self.get_object()
+        business_calls = object.calls.all()
+        print("Business calls:: ", business_calls)
+        serializer = CallSessionSerializer(business_calls, many=True)
         return self.response_success(serializer.data)
 
 class AIConfigurationViewSet(BaseModelViewSet):
@@ -244,6 +252,37 @@ class CallSessionViewSet(BaseModelViewSet):
         serializer = self.get_serializer(active_calls, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'], url_path='conversation-messages')
+    def conversation_messages(self, request, pk=None):
+        """Get all conversation messages for a call session."""
+        call = self.get_object()
+        conversation_messages = call.messages.all()
+        serializer = ConversationMessageSerializer(conversation_messages, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='intents')
+    def intents(self, request, pk=None):
+        """Get all intents for a call session."""
+        call = self.get_object()
+        intents = call.intents.all()
+        serializer = IntentSerializer(intents, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='recordings')
+    def recordings(self, request, pk=None):
+        """Get all recordings for a call session."""
+        call = self.get_object()
+        recordings = call.recordings.all()
+        serializer = AudioRecordingSerializer(recordings, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='logs')
+    def logs(self, request, pk=None):
+        """Get all logs for a call session."""
+        call = self.get_object()
+        logs = call.logs.all()
+        serializer = SystemLogSerializer(logs, many=True)
+        return self.response_success(serializer.data)
 
 class ConversationMessageViewSet(BaseModelViewSet):
     """ViewSet for ConversationMessage model."""

@@ -306,7 +306,7 @@ class TwilioWebhookView(APIView):
 class ExportCallsView(APIView):
     """Export calls data as CSV."""
     
-    permission_classes = [ExportPermission]
+    # permission_classes = [ExportPermission]
     
     def get(self, request):
         """Export calls data."""

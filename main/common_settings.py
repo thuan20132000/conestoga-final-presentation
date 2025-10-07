@@ -205,8 +205,7 @@ SIMPLE_JWT = {
 # CORS and cookies
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Next.js dev origin
-    "http://127.0.0.1:3001",  # Frontend dev origin
-    "http://localhost:3001",  # Frontend dev origin
-    "https://master.dbqexjh3c5d5i.amplifyapp.com",
+    "http://127.0.0.1:3002",  # Frontend dev origin
+    "http://localhost:3002",  # Frontend dev origin
 ]
 CORS_ALLOW_CREDENTIALS = True

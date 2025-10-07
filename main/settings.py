@@ -51,6 +51,7 @@ INSTALLED_APPS += [
     'notifications',
     'appointment',
     'client',
+    'payment',
 ]
 
 

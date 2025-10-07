@@ -185,23 +185,6 @@ class Command(BaseCommand):
                     price=service_data['price']
                 )
 
-            # Create staff
-            staff_members = [
-                {'first_name': 'Jessica', 'last_name': 'Lee', 'role': 'technician', 'email': 'jessica@luxenails.com'},
-                {'first_name': 'Maria', 'last_name': 'Garcia', 'role': 'technician', 'email': 'maria@luxenails.com'},
-                {'first_name': 'Amy', 'last_name': 'Taylor', 'role': 'technician', 'email': 'amy@luxenails.com'},
-            ]
-
-            for staff_data in staff_members:
-                Staff.objects.create(
-                    business=business,
-                    first_name=staff_data['first_name'],
-                    last_name=staff_data['last_name'],
-                    role=staff_data['role'],
-                    email=staff_data['email'],
-                    phone='+1-555-0456'
-                )
-
             self.stdout.write(f'Created nail salon: {business.name}')
 
         return business

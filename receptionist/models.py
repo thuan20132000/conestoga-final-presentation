@@ -3,17 +3,6 @@ from django.utils import timezone
 from .enums import AIConfigurationStatus
 
 
-class Business(models.Model):
-    """Represents a salon or company using the AI receptionist."""
-    name = models.CharField(max_length=255)
-    phone_number = models.CharField(max_length=50, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
-    timezone = models.CharField(max_length=100, default="America/Toronto")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
 
 class AIConfiguration(models.Model):
     STATUS_CHOICES = [
@@ -25,7 +14,7 @@ class AIConfiguration(models.Model):
         (AIConfigurationStatus.ARCHIVED.value, "Archived"),
     ]
     """Stores AI behavior and integration settings."""
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="ai_configs")
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, related_name="ai_configs")
     ai_name = models.CharField(max_length=100, default="Receptionist AI")
     greeting_message = models.TextField(default="Hello! How can I help you today?")
     prompt = models.TextField(default="You are a professional AI receptionist for a Salon. Your role is to assist clients with appointments, provide business information, and answer questions about our services. Always be helpful, professional, and friendly. Use the available tools to provide accurate information from our knowledge base. If you need to book appointments, get customer information or access specific business data, use the appropriate tools.")
@@ -59,7 +48,7 @@ class CallSession(models.Model):
         ("failed", "Failed"),
     ]
 
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name="calls")
+    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, related_name="calls")
     direction = models.CharField(max_length=20, choices=CALL_DIRECTION_CHOICES, default="inbound")
     caller_number = models.CharField(max_length=50)
     receiver_number = models.CharField(max_length=50, blank=True, null=True)

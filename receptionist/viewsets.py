@@ -8,11 +8,11 @@ from django.db.models import Q, Count, Avg, Sum
 from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import (
-    Business, AIConfiguration, CallSession, ConversationMessage,
+    AIConfiguration, CallSession, ConversationMessage,
     Intent, AudioRecording, SystemLog
 )
 from .serializers import (
-    BusinessSerializer, BusinessDetailSerializer, AIConfigurationSerializer,
+    BusinessDetailSerializer, AIConfigurationSerializer,
     CallSessionSerializer, CallSessionDetailSerializer, ConversationMessageSerializer,
     IntentSerializer, AudioRecordingSerializer, SystemLogSerializer,
     CallStatisticsSerializer, BusinessStatisticsSerializer, IntentStatisticsSerializer,
@@ -23,107 +23,6 @@ from .filters import (
     SystemLogFilter, BusinessFilter
 )
 from main.viewsets import BaseModelViewSet
-
-
-class BusinessViewSet(BaseModelViewSet):
-    """ViewSet for Business model with CRUD operations."""
-
-    queryset = Business.objects.all()
-    serializer_class = BusinessSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    filter_backends = [DjangoFilterBackend,
-                       filters.SearchFilter, filters.OrderingFilter]
-    filterset_class = BusinessFilter
-    search_fields = ['name', 'phone_number', 'address']
-    ordering_fields = ['name', 'created_at']
-    ordering = ['-created_at']
-
-    def get_serializer_class(self):
-        """Return detailed serializer for retrieve action."""
-        if self.action == 'retrieve':
-            return BusinessDetailSerializer
-        return BusinessSerializer
-
-    @action(detail=True, methods=['get'])
-    def statistics(self, request, pk=None):
-        """Get statistics for a specific business."""
-        business = self.get_object()
-
-        # Get call statistics
-        calls = business.calls.all()
-        total_calls = calls.count()
-        completed_calls = calls.filter(status='completed').count()
-        failed_calls = calls.filter(status='failed').count()
-        in_progress_calls = calls.filter(status='in_progress').count()
-
-        # Calculate durations
-        completed_call_durations = calls.filter(
-            status='completed').values_list('duration_seconds', flat=True)
-        average_duration = sum(completed_call_durations) / \
-            len(completed_call_durations) if completed_call_durations else 0
-        total_duration = sum(completed_call_durations)
-
-        # Recent activity (last 7 days)
-        week_ago = timezone.now() - timedelta(days=7)
-        recent_calls = calls.filter(
-            started_at__gte=week_ago).order_by('-started_at')[:10]
-
-        stats_data = {
-            'business': business,
-            'total_calls': total_calls,
-            'completed_calls': completed_calls,
-            'failed_calls': failed_calls,
-            'average_duration': round(average_duration, 2),
-            'total_duration': total_duration,
-            'recent_activity': CallSessionSerializer(recent_calls, many=True).data
-        }
-
-        serializer = BusinessStatisticsSerializer(stats_data)
-        return self.response_success(serializer.data)
-
-    @action(detail=False, methods=['get'])
-    def analytics(self, request):
-        """Get analytics for all businesses."""
-        businesses = self.get_queryset()
-        analytics_data = []
-
-        for business in businesses:
-            calls = business.calls.all()
-            total_calls = calls.count()
-            completed_calls = calls.filter(status='completed').count()
-
-            # Calculate average duration
-            completed_call_durations = calls.filter(
-                status='completed').values_list('duration_seconds', flat=True)
-            average_duration = sum(completed_call_durations) / len(
-                completed_call_durations) if completed_call_durations else 0
-
-            analytics_data.append({
-                'business': business,
-                'total_calls': total_calls,
-                'completed_calls': completed_calls,
-                'average_duration': round(average_duration, 2)
-            })
-
-        serializer = BusinessStatisticsSerializer(analytics_data, many=True)
-        return self.response_success(serializer.data)
-
-    @action(detail=True, methods=['get'], url_path='ai-configs')
-    def ai_configs(self, request, pk=None):
-        """Get health status."""
-        object = self.get_object()
-        ai_configurations = object.ai_configs
-        serializer = AIConfigurationSerializer(ai_configurations, many=True)
-        return self.response_success(serializer.data)
-    
-    @action(detail=True, methods=['get'], url_path='calls')
-    def calls(self, request, pk=None):
-        """Get all calls for a business."""
-        object = self.get_object()
-        business_calls = object.calls.all()
-        print("Business calls:: ", business_calls)
-        serializer = CallSessionSerializer(business_calls, many=True)
-        return self.response_success(serializer.data)
 
 class AIConfigurationViewSet(BaseModelViewSet):
     """ViewSet for AIConfiguration model."""

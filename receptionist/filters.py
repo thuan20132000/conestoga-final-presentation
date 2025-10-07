@@ -2,9 +2,10 @@ import django_filters
 from django.db.models import Q
 from datetime import datetime, timedelta
 from .models import (
-    Business, CallSession, ConversationMessage, 
+    CallSession, ConversationMessage, 
     Intent, SystemLog
 )
+from business.models import Business
 
 
 class BusinessFilter(django_filters.FilterSet):
@@ -24,7 +25,7 @@ class BusinessFilter(django_filters.FilterSet):
 class CallSessionFilter(django_filters.FilterSet):
     """Filter for CallSession model."""
     
-    business = django_filters.ModelChoiceFilter(queryset=Business.objects.all())
+    business = django_filters.ModelChoiceFilter(queryset=Business.objects.all(), lookup_expr='exact')
     business_name = django_filters.CharFilter(field_name='business__name', lookup_expr='icontains')
     direction = django_filters.ChoiceFilter(choices=CallSession.CALL_DIRECTION_CHOICES)
     status = django_filters.ChoiceFilter(choices=CallSession.STATUS_CHOICES)
@@ -86,7 +87,7 @@ class CallSessionFilter(django_filters.FilterSet):
 class ConversationMessageFilter(django_filters.FilterSet):
     """Filter for ConversationMessage model."""
     
-    call = django_filters.ModelChoiceFilter(queryset=CallSession.objects.all())
+    call = django_filters.ModelChoiceFilter(queryset=CallSession.objects.all(), lookup_expr='exact')
     call_sid = django_filters.CharFilter(field_name='call__call_sid', lookup_expr='icontains')
     role = django_filters.ChoiceFilter(choices=ConversationMessage.ROLE_CHOICES)
     content = django_filters.CharFilter(lookup_expr='icontains')
@@ -110,7 +111,7 @@ class ConversationMessageFilter(django_filters.FilterSet):
 class IntentFilter(django_filters.FilterSet):
     """Filter for Intent model."""
     
-    call = django_filters.ModelChoiceFilter(queryset=CallSession.objects.all())
+    call = django_filters.ModelChoiceFilter(queryset=CallSession.objects.all(), lookup_expr='exact')
     call_sid = django_filters.CharFilter(field_name='call__call_sid', lookup_expr='icontains')
     name = django_filters.CharFilter(lookup_expr='icontains')
     
@@ -142,7 +143,7 @@ class IntentFilter(django_filters.FilterSet):
 class SystemLogFilter(django_filters.FilterSet):
     """Filter for SystemLog model."""
     
-    call = django_filters.ModelChoiceFilter(queryset=CallSession.objects.all())
+    call = django_filters.ModelChoiceFilter(queryset=CallSession.objects.all(), lookup_expr='exact')
     call_sid = django_filters.CharFilter(field_name='call__call_sid', lookup_expr='icontains')
     level = django_filters.ChoiceFilter(choices=[("info", "Info"), ("warning", "Warning"), ("error", "Error")])
     message = django_filters.CharFilter(lookup_expr='icontains')

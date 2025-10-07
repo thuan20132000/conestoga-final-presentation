@@ -12,13 +12,15 @@ import json
 import csv
 
 from .models import (
-    Business, CallSession, ConversationMessage, Intent, 
+    CallSession, ConversationMessage, Intent, 
     AudioRecording, SystemLog
 )
 from .serializers import (
-    BusinessSerializer, CallSessionSerializer, IntentSerializer,
+    CallSessionSerializer, IntentSerializer,
     APIResponseSerializer
 )
+from business.serializers import BusinessDetailSerializer
+from business.models import Business
 
 
 class DashboardView(APIView):
@@ -30,7 +32,7 @@ class DashboardView(APIView):
         """Get dashboard statistics."""
         try:
             # Get basic counts
-            total_businesses = Business.objects.count()
+            total_businesses = Business.objects.all().count()
             total_calls = CallSession.objects.count()
             active_calls = CallSession.objects.filter(status='in_progress').count()
             completed_calls = CallSession.objects.filter(status='completed').count()
@@ -40,7 +42,7 @@ class DashboardView(APIView):
             recent_calls = CallSession.objects.filter(started_at__gte=yesterday).count()
             
             # Top businesses by call volume
-            top_businesses = Business.objects.annotate(
+            top_businesses = Business.objects.all().annotate(
                 call_count=Count('calls')
             ).order_by('-call_count')[:5]
             
@@ -60,7 +62,7 @@ class DashboardView(APIView):
                     'completed_calls': completed_calls,
                     'recent_calls_24h': recent_calls
                 },
-                'top_businesses': BusinessSerializer(top_businesses, many=True).data,
+                'top_businesses': BusinessDetailSerializer(top_businesses, many=True).data,
                 'recent_calls': CallSessionSerializer(recent_call_sessions, many=True).data,
                 'top_intents': list(intent_stats)
             }
@@ -119,7 +121,7 @@ class AnalyticsView(APIView):
                 calls_by_day[day_start.strftime('%Y-%m-%d')] = day_calls
             
             # Business performance
-            business_stats = Business.objects.annotate(
+            business_stats = Business.objects.all().annotate(
                 total_calls=Count('calls', filter=Q(calls__started_at__gte=start_date)),
                 completed_calls=Count('calls', filter=Q(
                     calls__started_at__gte=start_date,
@@ -193,7 +195,7 @@ class HealthCheckView(APIView):
         """Get system health status."""
         try:
             # Basic health checks
-            business_count = Business.objects.count()
+            business_count = Business.objects.all().count()
             call_count = CallSession.objects.count()
             
             # Check for recent errors
@@ -408,13 +410,13 @@ class ExportStatisticsView(APIView):
                 'businesses': [
                     {
                         'name': business.name,
-                        'total_calls': business.calls.filter(started_at__gte=start_date).count(),
+                        'total_calls': business.calls.all().filter(started_at__gte=start_date).count(),
                         'completed_calls': business.calls.filter(
                             started_at__gte=start_date,
                             status='completed'
                         ).count()
                     }
-                    for business in Business.objects.all()
+                    for business in Business.objects.all().count()
                 ]
             }
             

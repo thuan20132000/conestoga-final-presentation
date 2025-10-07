@@ -1,6 +1,5 @@
 from django.contrib import admin
 from .models import (
-    Business,
     AIConfiguration,
     CallSession,
     ConversationMessage,
@@ -8,14 +7,6 @@ from .models import (
     AudioRecording,
     SystemLog,
 )
-
-
-@admin.register(Business)
-class BusinessAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone_number", "timezone", "created_at")
-    search_fields = ("name", "phone_number")
-    list_filter = ("timezone",)
-
 
 @admin.register(AIConfiguration)
 class AIConfigurationAdmin(admin.ModelAdmin):

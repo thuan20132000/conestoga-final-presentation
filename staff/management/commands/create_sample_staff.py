@@ -32,7 +32,7 @@ class Command(BaseCommand):
         per_business = options.get('per_business')
         assign_services = options.get('assign_services')
         clear_existing = options.get('clear_existing')
-
+        
         if business_id:
             businesses = Business.objects.filter(id=business_id)
         else:
@@ -148,3 +148,4 @@ class Command(BaseCommand):
                 assigned += 1
                 if assigned >= 2:
                     break
+    

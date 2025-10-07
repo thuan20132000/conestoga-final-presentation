@@ -1,21 +1,9 @@
 from rest_framework import serializers
 from .models import (
-    Business, AIConfiguration, CallSession, ConversationMessage, 
+    AIConfiguration, CallSession, ConversationMessage, 
     Intent, AudioRecording, SystemLog
 )
-
-
-class BusinessSerializer(serializers.ModelSerializer):
-    """Serializer for Business model."""
-    
-    class Meta:
-        model = Business
-        fields = [
-            'id', 'name', 'phone_number', 'address', 'timezone', 
-            'created_at'
-        ]
-        read_only_fields = ['id', 'created_at']
-
+from business.serializers import BusinessListSerializer, BusinessDetailSerializer
 
 class AIConfigurationSerializer(serializers.ModelSerializer):
     """Serializer for AIConfiguration model."""
@@ -121,15 +109,15 @@ class CallSessionDetailSerializer(CallSessionSerializer):
         ]
 
 
-class BusinessDetailSerializer(BusinessSerializer):
+class BusinessDetailSerializer(BusinessDetailSerializer):
     """Detailed serializer for Business with AI config and calls."""
     ai_config = AIConfigurationSerializer(read_only=True)
     calls = CallSessionSerializer(many=True, read_only=True)
     calls_count = serializers.SerializerMethodField()
     recent_calls = serializers.SerializerMethodField()
     
-    class Meta(BusinessSerializer.Meta):
-        fields = BusinessSerializer.Meta.fields + [
+    class Meta(BusinessDetailSerializer.Meta):
+        fields = BusinessDetailSerializer.Meta.fields + [
             'ai_config', 'calls', 'calls_count', 'recent_calls'
         ]
     
@@ -158,7 +146,7 @@ class CallStatisticsSerializer(serializers.Serializer):
 
 class BusinessStatisticsSerializer(serializers.Serializer):
     """Serializer for business statistics."""
-    business = BusinessSerializer()
+    business = BusinessDetailSerializer()
     total_calls = serializers.IntegerField()
     completed_calls = serializers.IntegerField()
     failed_calls = serializers.IntegerField()

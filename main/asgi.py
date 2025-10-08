@@ -38,7 +38,7 @@ django_app = get_asgi_application()
 from ai_service.main import app as fastapi_app
 
 # Composite ASGI app:
-# - FastAPI served at /api
+# - FastAPI served at /ai-service
 # - Django served at /
 application = Starlette(
     routes=[

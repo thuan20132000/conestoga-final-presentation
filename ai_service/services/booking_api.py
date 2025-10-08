@@ -138,11 +138,12 @@ class BookingAPI:
         print("Customer created Data:: ", data.get("data"))
         return data.get("data")
 
-    async def get_next_appointments(self, phone_number: str):
+    async def find_my_appointments(self, phone_number: str, date: str):
         """Get next appointments."""
-        url = f"{self._api_url}/find-appointment/"
+        url = f"{self._api_url}/find-my-appointments/"
         params = {
             "phone_number": phone_number,
+            "salon_id": self._salon_id
         }
         headers = {
             "x-api-key": "BPgAVDVmpU3xjtnpSTQx_BNJ6KWu",
@@ -151,5 +152,21 @@ class BookingAPI:
         }
         response = await self._client.get(url, headers=headers, params=params)
         data = response.json()
-        print("Next appointments Data:: ", data.get("data"))
         return data.get("data")
+
+    async def cancel_appointment(self, appointment_id: int, phone_number: str):
+        """Cancel appointment."""
+        url = f"{self._api_url}/cancel-my-appointment/"
+        body = {
+            "booking_id": appointment_id,
+            "salon_id": self._salon_id,
+            "phone_number": phone_number
+        }
+        headers = {
+            "x-api-key": "BPgAVDVmpU3xjtnpSTQx_BNJ6KWu",
+            "x-signature": "328f864442b52357916ad899757cc8df38aac0fc089fec9e20b6fc1bb283ace2",
+            "x-timestamp": "1759177322"
+        }
+        response = await self._client.patch(url, headers=headers, json=body)
+        data = response.json()
+        return data

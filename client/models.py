@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import AbstractUser
 from business.models import Business
+from simple_history.models import HistoricalRecords
 
 
 class Client(models.Model):
@@ -57,6 +58,7 @@ class Client(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    history = HistoricalRecords()
     class Meta:
         ordering = ['last_name', 'first_name']
         unique_together = ['email', 'phone']
@@ -115,6 +117,7 @@ class ClientHistory(models.Model):
     changed_by = models.ForeignKey('staff.Staff', on_delete=models.SET_NULL, null=True, blank=True)
     changed_at = models.DateTimeField(auto_now_add=True)
 
+    history = HistoricalRecords()
     class Meta:
         ordering = ['-changed_at']
         verbose_name = 'Client History'
@@ -142,6 +145,7 @@ class ClientPreference(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    history = HistoricalRecords()
     class Meta:
         unique_together = ['client', 'preference_type', 'preference_key']
         verbose_name = 'Client Preference'

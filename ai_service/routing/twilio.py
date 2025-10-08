@@ -84,6 +84,7 @@ async def twilio_test_endpoint():
 @router.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
+    print("Incoming call received")
     response = VoiceResponse()
     response.say(
         "Hello! Thank you for calling SnapsBooking Salon.",
@@ -95,7 +96,7 @@ async def handle_incoming_call(request: Request):
         voice="Google.en-US-Chirp3-HD-Aoede"
     )
     host = request.url.hostname
-    wss_url = f"wss://{host}/ws/media-stream"
+    wss_url = f"wss://{host}/ai-service/ws/media-stream"
     print("WSS URL:: ", wss_url)
     connect = Connect()
     connect.stream(url=wss_url)

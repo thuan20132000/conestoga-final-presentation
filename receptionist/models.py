@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from .enums import AIConfigurationStatus
+from simple_history.models import HistoricalRecords
 
 
 
@@ -37,6 +38,9 @@ class AIConfiguration(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=AIConfigurationStatus.ACTIVE.value)
+    
+    history = HistoricalRecords()
+    
     class Meta:
         verbose_name = "AI Configuration"
         verbose_name_plural = "AI Configurations"
@@ -68,6 +72,7 @@ class CallSession(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="in_progress")
     transcript_summary = models.TextField(blank=True, null=True)
 
+    history = HistoricalRecords()
     def __str__(self):
         return f"Call {self.call_sid} - {self.caller_number}"
 
@@ -86,6 +91,7 @@ class ConversationMessage(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     confidence_score = models.FloatField(blank=True, null=True)
 
+    history = HistoricalRecords()
     def __str__(self):
         return f"{self.role}: {self.content[:50]}"
 
@@ -98,6 +104,7 @@ class Intent(models.Model):
     extracted_data = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    history = HistoricalRecords()
     def __str__(self):
         return f"{self.name} ({self.confidence:.2f})"
 
@@ -110,6 +117,7 @@ class AudioRecording(models.Model):
     transcription_text = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    history = HistoricalRecords()
     def __str__(self):
         return f"Recording for {self.call.call_sid}"
 

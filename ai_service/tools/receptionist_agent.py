@@ -137,5 +137,55 @@ RECEPTIONIST_AGENT_TOOLS = [
             },
             "required": ["service_type", "date", "time", "name", "phone_number", "service_ids", "available_time_slot"]
         }
+    },
+    {
+        "type": "function",
+        "name": "look_up_appointment",
+        "description": "Get next appointments for a specific client",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "phone_number": {
+                    "type": "string",
+                    "description": "Phone number of the client to look up appointment for, format: 0912345678",
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Date of the appointment to look up for, format: 2025-01-01"
+                }
+            },
+            "required": ["phone_number", "date"]
+        }
+    },
+    {
+        "type": "function",
+        "name": "cancel_appointment",
+        "description": "Cancel an appointment for a specific service",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "phone_number": {
+                    "type": "string",
+                    "description": "Phone number of the client"
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Date of the appointment to cancel"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of the client"
+                },
+                "service_name": {
+                    "type": "string",
+                    "description": "Service name to cancel"
+                },
+                "appointment_id": {
+                    "type": "integer",
+                    "description": "Appointment id to cancel"
+                }
+            },
+            "required": ["phone_number", "date"]
+        }
     }
 ]

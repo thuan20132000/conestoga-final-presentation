@@ -4,6 +4,8 @@ import json
 from ai_service.services.booking_api import BookingAPI
 from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
 from ai_service.services.openai_api import OpenAIAPI
+from receptionist.models import SystemLog
+from asgiref.sync import sync_to_async
 
 
 AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS
@@ -19,11 +21,26 @@ class ReceptionistTools(BaseTool):
         self._booking_api = BookingAPI()
         self._openai_api = OpenAIAPI()
         super().__init__()
+        
+    async def create_system_log(self, level: str, call: None, message: str, metadata: Dict[str, Any]):
+        """Create a system log."""
+        await sync_to_async(SystemLog.objects.create)(
+            level=level,
+            call=call,
+            message=message,
+            metadata=metadata
+        )
 
     async def execute_function_call(self, function_name: str, arguments: Dict[str, Any]) -> str:
         """Execute function calls and return results."""
         print("Executing function call:: ", function_name)
         print("Arguments:: ", arguments)
+        await self.create_system_log(
+            level="info",
+            call=None,
+            message=f"Executing function call:: {function_name}",
+            metadata={"arguments": arguments}
+        )
         data = None
         try:
             if function_name == "get_business_information":
@@ -43,6 +60,7 @@ class ReceptionistTools(BaseTool):
                 data = await self._booking_api.fetch_customer_information(phone_number)
                 if not data:
                     data = await self._booking_api.create_customer(customer_name, phone_number)
+                    
             elif function_name == "book_appointment":
 
                 phone_number = arguments.get("phone_number")
@@ -50,8 +68,6 @@ class ReceptionistTools(BaseTool):
                 customer = await self._booking_api.fetch_customer_information(arguments.get("phone_number"))
                 if not customer:
                     customer = await self._booking_api.create_customer(full_name, phone_number)
-
-                print("Customer:: ", customer)
 
                 services_ids = arguments.get("service_ids")
                 booking_services = list()
@@ -77,21 +93,50 @@ class ReceptionistTools(BaseTool):
 
                 return json.dumps(booking_data)
             
+            elif function_name == "look_up_appointment":
+                print("====================Looking up appointment...====================")
+                phone_number = arguments.get("phone_number")
+                print("Phone number:: ", phone_number)
+                date = arguments.get("date")
+                print("Date:: ", date)
+                data = await self._booking_api.find_my_appointments(phone_number, date)
+                print("Look up appointment data:: ", data)
+                await self.create_system_log(
+                    level="info",
+                    call=None,
+                    message=f"Look up appointment data:: {data}",
+                    metadata={"arguments": arguments}
+                )
+                return json.dumps(data)
+            
             elif function_name == "cancel_appointment":
                 phone_number = arguments.get("phone_number")
                 name = arguments.get("name")
                 service_name = arguments.get("service_name")
                 date = arguments.get("date")
                 time = arguments.get("time")
+                appointment_id = arguments.get("appointment_id")
+                print("====================Cancelling appointment...====================")
+                print("Phone number:: ", phone_number)
+                print("Name:: ", name)
+                print("Service name:: ", service_name)
+                print("Date:: ", date)
+                print("Time:: ", time)
+                print("Appointment id:: ", appointment_id)
+            
                 
-                customer_appointments = await self._booking_api.get_next_appointments(
-                    date,
-                    phone_number,
+                canceled_data = await self._booking_api.cancel_appointment(
+                    appointment_id,
+                    phone_number
                 )
-                print("Customer appointments data:: ", customer_appointments)
-                
-                
-                return json.dumps(data)
+                await self.create_system_log(
+                    level="info",
+                    call=None,
+                    message=f"Canceled data:: {canceled_data}",
+                    metadata={"arguments": arguments}
+                )
+                print("Canceled data:: ", canceled_data)
+                return json.dumps(canceled_data)
             
             else:
                 return f"Unknown function: {function_name}"

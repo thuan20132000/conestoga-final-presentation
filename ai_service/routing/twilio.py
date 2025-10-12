@@ -4,6 +4,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from ai_service.config import settings
+from receptionist.models import CallSession
+from asgiref.sync import sync_to_async
+from urllib.parse import urlencode
 
 # Create router
 router = APIRouter(tags=["twilio"])
@@ -18,26 +21,27 @@ async def twilio_voice_webhook(request: Request):
         call_sid = form_data.get("CallSid")
         from_number = form_data.get("From")
         to_number = form_data.get("To")
-        
-        print(f"📞 Incoming call from {from_number} to {to_number}, CallSid: {call_sid}")
-        
+
+        print(
+            f"📞 Incoming call from {from_number} to {to_number}, CallSid: {call_sid}")
+
         # Create TwiML response to connect to WebSocket
         response = VoiceResponse()
         connect = Connect()
-        
+
         # Build WebSocket URL
         host = request.url.hostname
         ws_url = f"wss://{host}/ws/twilio-media"
         print(f"🔗 Connecting to WebSocket: {ws_url}")
         stream = Stream(url=ws_url)
-        
+
         connect.append(stream)
         response.append(connect)
-        
+
         print(f"🔗 Connecting to WebSocket: {ws_url}")
-        
+
         return HTMLResponse(content=str(response), media_type="application/xml")
-        
+
     except Exception as e:
         print(f"❌ Error in Twilio webhook: {e}")
         return JSONResponse(
@@ -54,11 +58,12 @@ async def twilio_status_webhook(request: Request):
         call_sid = form_data.get("CallSid")
         call_status = form_data.get("CallStatus")
         call_duration = form_data.get("CallDuration")
-        
-        print(f"📊 Call status update - SID: {call_sid}, Status: {call_status}, Duration: {call_duration}")
-        
+
+        print(
+            f"📊 Call status update - SID: {call_sid}, Status: {call_status}, Duration: {call_duration}")
+
         return JSONResponse(content={"status": "received"})
-        
+
     except Exception as e:
         print(f"❌ Error in Twilio status webhook: {e}")
         return JSONResponse(
@@ -85,20 +90,49 @@ async def twilio_test_endpoint():
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     print("Incoming call received")
+    call_data = await request.form()
+    print("Call data:: ", call_data)
+    
+    data = dict(call_data)
+    call_from = data.get("From")
+    print("Call from:: ", call_from)
+    call_to = data.get("To")
+    print("Call to:: ", call_to)
+    call_sid = data.get("CallSid")
+    print("Call SID:: ", call_sid)
+    
+    call_session = await CallSession.objects.acreate(
+        call_sid=call_sid,
+        caller_number=call_from,
+        receiver_number=call_to,
+        direction="inbound",    
+        status="in_progress",
+    )
+    
+    print("Call session created:: ", call_session)
+
     response = VoiceResponse()
     response.say(
-        "Hello! Thank you for calling SnapsBooking Salon.",
+        "Hello! SnapsBooking Salon. How can I help you today?",
         voice="Google.en-US-Chirp3-HD-Aoede"
     )
-    response.pause(length=1)
-    response.say(
-        "You can now start speaking!",
-        voice="Google.en-US-Chirp3-HD-Aoede"
-    )
+    # response.pause(length=1)
     host = request.url.hostname
-    wss_url = f"wss://{host}/ai-service/ws/media-stream"
+    params = {
+        "call_sid": call_sid,
+        "call_from": call_from,
+        "call_to": call_to
+    }
+    query_string = urlencode(params)
+    wss_url = f"wss://{host}/ai-service/ws/media-stream/{call_sid}"
     print("WSS URL:: ", wss_url)
     connect = Connect()
     connect.stream(url=wss_url)
+    
     response.append(connect)
+    
+    
+    
+    
+    print("Response:: ", response)
     return HTMLResponse(content=str(response), media_type="application/xml")

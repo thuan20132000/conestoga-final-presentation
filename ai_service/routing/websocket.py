@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 from ai_service.tools.receptionist import ReceptionistTools
 from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
+from datetime import datetime
 
 load_dotenv()
 
@@ -42,6 +43,7 @@ LOG_EVENT_TYPES = [
     'rate_limits.updated',
     'response.done',
     'input_audio_buffer.committed',
+    'input_audio_buffer.transcript.done',
     'input_audio_buffer.speech_stopped',
     'input_audio_buffer.speech_started',
     'input_audio_buffer.speech_ended',
@@ -52,12 +54,15 @@ LOG_EVENT_TYPES = [
 SHOW_TIMING_MATH = False
 
 
-@router.websocket("/media-stream")
-async def handle_media_stream(websocket: WebSocket):
+@router.websocket("/media-stream/{call_sid}")
+async def handle_media_stream(websocket: WebSocket, call_sid: str):
     """Handle WebSocket connections between Twilio and OpenAI."""
     print("Client connected")
     receptionist_tools = ReceptionistTools()
     await websocket.accept()
+    
+    print("Call SID:: ", call_sid)
+    # parse_qs returns lists, so we need to get the first element
 
     async with websockets.connect(
         f"wss://api.openai.com/v1/realtime?model=gpt-realtime&temperature={TEMPERATURE}",
@@ -74,6 +79,7 @@ async def handle_media_stream(websocket: WebSocket):
         last_assistant_item = None
         mark_queue = []
         response_start_timestamp_twilio = None
+        conversation_transcript = []  # Store conversation transcript
 
         async def receive_from_twilio():
             """Receive audio data from Twilio and send it to the OpenAI Realtime API."""
@@ -98,6 +104,17 @@ async def handle_media_stream(websocket: WebSocket):
                         }
                         await openai_ws.send(json.dumps(audio_append))
 
+                    if data['event'] == 'stop':
+                        print("Incoming stream has stopped")
+                        print(f"Conversation transcript: {conversation_transcript}")
+                        
+                        
+                        await receptionist_tools.update_call_session(
+                            call_sid=call_sid, 
+                            status="completed", 
+                        )
+                
+                        
             except WebSocketDisconnect:
                 print("Client disconnected.")
                 if openai_ws.state.name == 'OPEN':
@@ -113,9 +130,21 @@ async def handle_media_stream(websocket: WebSocket):
                     if response['type'] in LOG_EVENT_TYPES:
                         print(f"Received event: {response['type']}", response)
 
-                    if response['type'] == 'session.updated':
-                        print(f"Session updated: {response}")
+                    if response['type'] == 'response.done':
+                        print(f"Response done: {response}")
+                        # Remove the transcript extraction from here
 
+                    if response['type'] == 'response.content.done':
+                        if 'content' in response and 'transcript' in response['content']:
+                            assistant_transcript = response['content']['transcript']
+                            print(f"Assistant said: {assistant_transcript}")
+                            conversation_transcript.append({
+                                "speaker": "assistant",
+                                "content": assistant_transcript,
+                                "timestamp": datetime.now().isoformat()
+                            })
+                            print(f"Conversation transcript: {conversation_transcript}")
+                        
                     # receive audio from OpenAI and send it to Twilio
                     if response['type'] == 'response.output_audio.delta' and 'delta' in response:
                             # print(f"Received audio from OpenAI: {response}")
@@ -176,6 +205,12 @@ async def handle_media_stream(websocket: WebSocket):
                                 f"Interrupting response with id: {last_assistant_item}")
                             await handle_speech_started_event()
 
+                    if response['type'] == 'input_audio_buffer.speech_stopped':
+                        print(f"Input audio buffer speech stopped: {response}")
+                        await openai_ws.send(json.dumps({
+                            "type": "input_audio_buffer.commit",
+                        }))
+                        
             except Exception as e:
                 print(f"Error in send_to_twilio: {e}")
 

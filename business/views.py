@@ -13,14 +13,15 @@ from .models import (
 )
 from .serializers import (
     BusinessTypeSerializer, BusinessListSerializer, BusinessDetailSerializer,
-    BusinessCreateUpdateSerializer, OperatingHoursSerializer, BusinessSettingsSerializer
+    BusinessCreateUpdateSerializer, OperatingHoursSerializer, BusinessSettingsSerializer, BusinessSerializer
 )
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
+from main.viewsets import BaseModelViewSet
 
 
-class BusinessTypeViewSet(viewsets.ReadOnlyModelViewSet):
+class BusinessTypeViewSet(BaseModelViewSet):
     """ViewSet for BusinessType - read-only since these are predefined"""
     queryset = BusinessType.objects.all()
     serializer_class = BusinessTypeSerializer
@@ -31,20 +32,14 @@ class BusinessTypeViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ['name']
 
 
-class BusinessViewSet(viewsets.ModelViewSet):
+class BusinessViewSet(BaseModelViewSet):
     """ViewSet for Business management"""
-    queryset = Business.objects.select_related('business_type').prefetch_related(
-        'operating_hours', 'settings'
-    )
+    queryset = Business.objects.all()
     permission_classes = [AllowAny]  # Adjust based on your authentication needs
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['business_type', 'status', 'city', 'state_province', 'country']
-    search_fields = ['name', 'description', 'address', 'city']
-    ordering_fields = ['name', 'created_at', 'updated_at']
-    ordering = ['name']
-    
+    # serializer_class = BusinessSerializer
     def get_serializer_class(self):
         if self.action == 'list':
+            print("List action:: ")
             return BusinessListSerializer
         elif self.action in ['create', 'update', 'partial_update']:
             return BusinessCreateUpdateSerializer
@@ -78,26 +73,6 @@ class BusinessViewSet(viewsets.ModelViewSet):
         serializer = OperatingHoursSerializer(hours, many=True)
         return Response(serializer.data)
     
-    @action(detail=True, methods=['get', 'put', 'patch'])
-    def settings(self, request, pk=None):
-        """Get or update business settings"""
-        business = self.get_object()
-        
-        if request.method == 'GET':
-            settings, created = BusinessSettings.objects.get_or_create(business=business)
-            serializer = BusinessSettingsSerializer(settings)
-            return Response(serializer.data)
-        
-        elif request.method in ['PUT', 'PATCH']:
-            settings, created = BusinessSettings.objects.get_or_create(business=business)
-            serializer = BusinessSettingsSerializer(
-                settings, data=request.data, partial=request.method == 'PATCH'
-            )
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """Get statistics for a specific business."""
@@ -166,6 +141,7 @@ class BusinessViewSet(viewsets.ModelViewSet):
     def ai_configs(self, request, pk=None):
         """Get health status."""
         object = self.get_object()
+        print("Object:: ", object)
         ai_configurations = object.ai_configs
         serializer = AIConfigurationSerializer(ai_configurations, many=True)
         return self.response_success(serializer.data)
@@ -181,7 +157,7 @@ class BusinessViewSet(viewsets.ModelViewSet):
 
 
 
-class OperatingHoursViewSet(viewsets.ModelViewSet):
+class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""
     queryset = OperatingHours.objects.select_related('business')
     serializer_class = OperatingHoursSerializer

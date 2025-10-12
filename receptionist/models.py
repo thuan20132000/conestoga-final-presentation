@@ -61,7 +61,13 @@ class CallSession(models.Model):
         ("failed", "Failed"),
     ]
 
-    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, related_name="calls")
+    business = models.ForeignKey(
+        "business.Business", 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="calls"
+    )
     direction = models.CharField(max_length=20, choices=CALL_DIRECTION_CHOICES, default="inbound")
     caller_number = models.CharField(max_length=50)
     receiver_number = models.CharField(max_length=50, blank=True, null=True)
@@ -75,6 +81,7 @@ class CallSession(models.Model):
     history = HistoricalRecords()
     def __str__(self):
         return f"Call {self.call_sid} - {self.caller_number}"
+    
 
 
 class ConversationMessage(models.Model):

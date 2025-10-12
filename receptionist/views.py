@@ -442,7 +442,7 @@ def api_root(request):
             'refresh': '/api/auth/refresh/'
         },
         'resources': {
-            'businesses': '/api/businesses/',
+            'business': '/api/business/',
             'ai_configurations': '/api/ai-configurations/',
             'calls': '/api/calls/',
             'messages': '/api/messages/',

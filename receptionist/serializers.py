@@ -24,23 +24,29 @@ class CallSessionSerializer(serializers.ModelSerializer):
     """Serializer for CallSession model."""
     business_name = serializers.CharField(source='business.name', read_only=True)
     duration_formatted = serializers.SerializerMethodField()
-    
+    duration_in_seconds = serializers.SerializerMethodField();
     class Meta:
         model = CallSession
         fields = [
             'id', 'business', 'business_name', 'direction', 'caller_number',
             'receiver_number', 'call_sid', 'started_at', 'ended_at',
-            'duration_seconds', 'duration_formatted', 'status', 'transcript_summary'
+            'duration_seconds', 'duration_formatted', 'duration_in_seconds', 'status', 'transcript_summary'
         ]
         read_only_fields = ['id', 'duration_formatted']
     
     def get_duration_formatted(self, obj):
         """Format duration in MM:SS format."""
-        if obj.duration_seconds:
-            minutes = obj.duration_seconds // 60
-            seconds = obj.duration_seconds % 60
-            return f"{minutes:02d}:{seconds:02d}"
+        duration = obj.duration_seconds
         return "00:00"
+    
+    def get_duration_in_seconds(self, obj):
+        """Get duration in seconds."""
+        if obj.ended_at and obj.started_at:
+            duration = obj.ended_at - obj.started_at
+            if duration:
+                return duration.total_seconds()
+            return 0
+        return 0
 
 
 class ConversationMessageSerializer(serializers.ModelSerializer):

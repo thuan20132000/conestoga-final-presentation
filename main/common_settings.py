@@ -208,8 +208,8 @@ SIMPLE_JWT = {
 # CORS and cookies
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Next.js dev origin
-    "http://127.0.0.1:3002",  # Frontend dev origin
-    "http://localhost:3002",  # Frontend dev origin
+    "http://127.0.0.1:3000",  # Frontend dev origin
+    "http://localhost:3000",  # Frontend dev origin
 ]
 CORS_ALLOW_CREDENTIALS = True
 

@@ -42,6 +42,13 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
+class BusinessSerializer(serializers.ModelSerializer):
+    """Serializer for Business model"""
+    
+    class Meta:
+        model = Business
+        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'timezone', 'status', 'description', 'logo', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class BusinessListSerializer(serializers.ModelSerializer):

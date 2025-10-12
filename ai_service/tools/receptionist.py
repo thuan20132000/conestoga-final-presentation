@@ -1,12 +1,12 @@
 from ai_service.tools.base import BaseTool
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 import json
 from ai_service.services.booking_api import BookingAPI
 from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
 from ai_service.services.openai_api import OpenAIAPI
-from receptionist.models import SystemLog
+from receptionist.models import SystemLog, CallSession
 from asgiref.sync import sync_to_async
-
+from django.utils import timezone
 
 AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS
 
@@ -24,23 +24,23 @@ class ReceptionistTools(BaseTool):
         
     async def create_system_log(self, level: str, call: None, message: str, metadata: Dict[str, Any]):
         """Create a system log."""
-        await sync_to_async(SystemLog.objects.create)(
+        await SystemLog.objects.acreate(
             level=level,
             call=call,
             message=message,
             metadata=metadata
         )
+        
+    async def update_call_session(self, call_sid: str, **kwargs):
+        """Update call session."""
+        ended_at = timezone.now()
+        kwargs["ended_at"] = ended_at
+        await CallSession.objects.filter(call_sid=call_sid).aupdate(**kwargs)
 
     async def execute_function_call(self, function_name: str, arguments: Dict[str, Any]) -> str:
         """Execute function calls and return results."""
         print("Executing function call:: ", function_name)
         print("Arguments:: ", arguments)
-        await self.create_system_log(
-            level="info",
-            call=None,
-            message=f"Executing function call:: {function_name}",
-            metadata={"arguments": arguments}
-        )
         data = None
         try:
             if function_name == "get_business_information":
@@ -101,12 +101,6 @@ class ReceptionistTools(BaseTool):
                 print("Date:: ", date)
                 data = await self._booking_api.find_my_appointments(phone_number, date)
                 print("Look up appointment data:: ", data)
-                await self.create_system_log(
-                    level="info",
-                    call=None,
-                    message=f"Look up appointment data:: {data}",
-                    metadata={"arguments": arguments}
-                )
                 return json.dumps(data)
             
             elif function_name == "cancel_appointment":
@@ -128,12 +122,6 @@ class ReceptionistTools(BaseTool):
                 canceled_data = await self._booking_api.cancel_appointment(
                     appointment_id,
                     phone_number
-                )
-                await self.create_system_log(
-                    level="info",
-                    call=None,
-                    message=f"Canceled data:: {canceled_data}",
-                    metadata={"arguments": arguments}
                 )
                 print("Canceled data:: ", canceled_data)
                 return json.dumps(canceled_data)

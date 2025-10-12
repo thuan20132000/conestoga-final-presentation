@@ -17,10 +17,34 @@ class AIConfigurationAdmin(admin.ModelAdmin):
 
 @admin.register(CallSession)
 class CallSessionAdmin(admin.ModelAdmin):
-    list_display = ("call_sid", "business", "direction", "caller_number", "receiver_number", "status", "started_at", "ended_at", "duration_seconds")
+    list_display = ("call_sid", "business", "direction", "caller_number", "receiver_number", "status", "started_at_with_seconds", "ended_at_with_seconds", "duration_in_seconds")
     search_fields = ("call_sid", "caller_number", "receiver_number", "business__name")
     list_filter = ("direction", "status", "business")
     date_hierarchy = "started_at"
+
+    def started_at_with_seconds(self, obj):
+        if obj.started_at:
+            return obj.started_at.strftime("%Y-%m-%d %H:%M:%S")
+        return "-"
+    
+    def ended_at_with_seconds(self, obj):
+        if obj.ended_at:
+            return obj.ended_at.strftime("%Y-%m-%d %H:%M:%S")
+        return "-"
+
+    def duration_in_seconds(self, obj):
+        if obj.started_at and obj.ended_at:
+                return int((obj.ended_at - obj.started_at).total_seconds())
+        return "-"
+    
+    ended_at_with_seconds.short_description = "Ended At"
+    ended_at_with_seconds.admin_order_field = "ended_at"
+
+    started_at_with_seconds.short_description = "Started At"
+    started_at_with_seconds.admin_order_field = "started_at"
+    
+    duration_in_seconds.short_description = "Duration in Seconds"
+    duration_in_seconds.admin_order_field = "duration_seconds"
 
 
 @admin.register(ConversationMessage)

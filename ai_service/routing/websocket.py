@@ -25,18 +25,8 @@ AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS
 # Create router
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
-# Enhanced system message for receptionist AI
-SYSTEM_MESSAGE = (
-    "You are a professional AI receptionist for SnapsBooking Salon. "
-    "Your role is to assist clients with appointments, provide business information, "
-    "and answer questions about our services. Always be helpful, professional, and friendly. "
-    "Use the available tools to provide accurate information from our knowledge base. "
-    "If you need to book appointments, get customer information or access specific business data, use the appropriate tools."
-    "Ask the client for their phone number and name to register them if they don't provide it before making any appointments."
-    
-)
-
-VOICE = 'alloy'
+VOICE = 'verse'
+MODEL = 'gpt-realtime-mini'
 LOG_EVENT_TYPES = [
     'error',
     'response.content.done',
@@ -49,23 +39,53 @@ LOG_EVENT_TYPES = [
     'input_audio_buffer.speech_ended',
     'session.created',
     'session.updated',
-    'response.function_call_arguments.done'
+    'response.function_call_arguments.done',
 ]
 SHOW_TIMING_MATH = False
 
 
-@router.websocket("/media-stream/{call_sid}")
-async def handle_media_stream(websocket: WebSocket, call_sid: str):
+@router.websocket("/media-stream/{call_sid}/call_to/{call_to}")
+async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str):
     """Handle WebSocket connections between Twilio and OpenAI."""
     print("Client connected")
     receptionist_tools = ReceptionistTools()
+    ai_configuration = await receptionist_tools.ai_configuration(call_to)
+    print("AI configuration:: ", ai_configuration)
+    
+    
     await websocket.accept()
     
     print("Call SID:: ", call_sid)
-    # parse_qs returns lists, so we need to get the first element
+    print("Call to:: ", call_to)
+    
+    
+    async def send_session_update(openai_ws):
+        """Send session update to OpenAI."""
+        session_update = {
+            "type": "session.update",
+            "session": {
+                "type": "realtime",
+                "model": ai_configuration.model_name,
+                "output_modalities": ["audio"],
+                "audio": {
+                    "input": {
+                        "format": {"type": "audio/pcmu"},
+                        "turn_detection": {"type": "server_vad"}
+                    },
+                    "output": {
+                        "format": {"type": "audio/pcmu"},
+                        "voice": ai_configuration.voice_provider
+                    }
+                },
+                "instructions": ai_configuration.prompt,
+                "tools": AGENT_TOOLS
+            }
+        }
+        await openai_ws.send(json.dumps(session_update))
+
 
     async with websockets.connect(
-        f"wss://api.openai.com/v1/realtime?model=gpt-realtime&temperature={TEMPERATURE}",
+        f"wss://api.openai.com/v1/realtime?model={ai_configuration.model_name}&temperature={ai_configuration.temperature}",
         additional_headers={
             "Authorization": f"Bearer {OPENAI_API_KEY}"
         }
@@ -96,6 +116,7 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str):
                         print(f"Incoming stream has started {stream_sid}")
 
                     elif data['event'] == 'media' and openai_ws.state.name == 'OPEN':
+                        
                         latest_media_timestamp = int(
                             data['media']['timestamp'])
                         audio_append = {
@@ -126,7 +147,8 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str):
             try:
                 async for openai_message in openai_ws:
                     response = json.loads(openai_message)
-
+                    print(f"Response: {response['type']}")
+                    
                     if response['type'] in LOG_EVENT_TYPES:
                         print(f"Received event: {response['type']}", response)
 
@@ -207,9 +229,32 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str):
 
                     if response['type'] == 'input_audio_buffer.speech_stopped':
                         print(f"Input audio buffer speech stopped: {response}")
+                        
+                        # Check if audio was appended before committing
+                        if latest_media_timestamp > 1000:
+                            await openai_ws.send(json.dumps({
+                                "type": "input_audio_buffer.commit",
+                            }))
+                            print(f"Committing input audio buffer to openai")
+                        else:
+
+                            print(f"No audio was appended before committing")
+                    
+                    if response.get('type') == 'input_audio_buffer.transcript.done':
+                        print(f"Input audio buffer transcript done: {response}")
+                        transcript = response.get('transcript')
+                        print(f"Input audio buffer transcript: {transcript}")
                         await openai_ws.send(json.dumps({
                             "type": "input_audio_buffer.commit",
                         }))
+                        print(f"Input audio buffer transcript: {response['transcript']}")
+                        # conversation_transcript.append({
+                        #     "speaker": "caller",
+                        #     "content": response['content']['transcript'],
+                        #     "timestamp": datetime.now().isoformat()
+                        # })
+                        # print(f"Conversation transcript: {conversation_transcript}")
+                        
                         
             except Exception as e:
                 print(f"Error in send_to_twilio: {e}")
@@ -259,27 +304,3 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str):
         await asyncio.gather(receive_from_twilio(), send_to_twilio())
 
 
-async def send_session_update(openai_ws):
-    """Send session update to OpenAI."""
-    session_update = {
-        "type": "session.update",
-        "session": {
-            "type": "realtime",
-            "model": "gpt-realtime",
-            "output_modalities": ["audio"],
-            "audio": {
-                "input": {
-                    "format": {"type": "audio/pcmu"},
-                    "turn_detection": {"type": "server_vad"}
-                },
-                "output": {
-                    "format": {"type": "audio/pcmu"},
-                    "voice": VOICE
-                }
-            },
-            "instructions": SYSTEM_MESSAGE,
-            "tools": AGENT_TOOLS
-        }
-    }
-    print('Sending session update:', json.dumps(session_update))
-    await openai_ws.send(json.dumps(session_update))

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from ai_service.config import settings
-from receptionist.models import CallSession
+from receptionist.models import AIConfiguration, CallSession, AIConfigurationStatus
 from asgiref.sync import sync_to_async
 from urllib.parse import urlencode
 
@@ -90,9 +90,9 @@ async def twilio_test_endpoint():
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
     print("Incoming call received")
+    print("Request:: ", request)
     call_data = await request.form()
     print("Call data:: ", call_data)
-    
     data = dict(call_data)
     call_from = data.get("From")
     print("Call from:: ", call_from)
@@ -101,38 +101,34 @@ async def handle_incoming_call(request: Request):
     call_sid = data.get("CallSid")
     print("Call SID:: ", call_sid)
     
+    business_ai_config = await AIConfiguration.objects.aget(business__phone_number=call_to, status=AIConfigurationStatus.ACTIVE.value)
+    
+    print("Business AI config:: ", business_ai_config.__dict__)
+    
     call_session = await CallSession.objects.acreate(
         call_sid=call_sid,
         caller_number=call_from,
         receiver_number=call_to,
         direction="inbound",    
         status="in_progress",
+        business_id=business_ai_config.business_id
     )
     
     print("Call session created:: ", call_session)
 
     response = VoiceResponse()
     response.say(
-        "Hello! SnapsBooking Salon. How can I help you today?",
+        business_ai_config.greeting_message,
         voice="Google.en-US-Chirp3-HD-Aoede"
     )
     # response.pause(length=1)
     host = request.url.hostname
-    params = {
-        "call_sid": call_sid,
-        "call_from": call_from,
-        "call_to": call_to
-    }
-    query_string = urlencode(params)
-    wss_url = f"wss://{host}/ai-service/ws/media-stream/{call_sid}"
-    print("WSS URL:: ", wss_url)
+
+    wss_url = f"wss://{host}/ai-service/ws/media-stream/{call_sid}/call_to/{call_to}"
     connect = Connect()
     connect.stream(url=wss_url)
     
     response.append(connect)
-    
-    
-    
     
     print("Response:: ", response)
     return HTMLResponse(content=str(response), media_type="application/xml")

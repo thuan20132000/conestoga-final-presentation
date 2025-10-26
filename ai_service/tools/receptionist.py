@@ -4,11 +4,20 @@ import json
 from ai_service.services.booking_api import BookingAPI
 from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
 from ai_service.services.openai_api import OpenAIAPI
-from receptionist.models import SystemLog, CallSession
+from receptionist.models import SystemLog, CallSession, AIConfiguration, AIConfigurationStatus
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
 AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS
+
+SYSTEM_MESSAGE = (
+    "You are a professional AI receptionist for SnapsBooking Salon. "
+    "Your role is to assist clients with appointments, provide business information, "
+    "and answer questions about our services. Always be helpful, professional, and friendly. "
+    "Use the available tools to provide accurate information from our knowledge base. "
+    "If you need to book appointments, get customer information or access specific business data, use the appropriate tools."
+    "Ask the client for their phone number and name to register them if they don't provide it before making any appointments."
+)
 
 
 class ReceptionistTools(BaseTool):
@@ -49,11 +58,14 @@ class ReceptionistTools(BaseTool):
                 data = await self._booking_api.fetch_business_services(arguments.get("service_type", "all_services"))
                 # return await self.get_service_information(arguments.get("service_type", "all_services"))
             elif function_name == "check_availability":
+                print("====================Checking availability...====================")
+                print("Arguments:: ", arguments)
                 data = await self.check_availability(
                     arguments.get("date"),
                     arguments.get("time", "any"),
                     arguments.get("service_type")
                 )
+                print("Check availability data:: ", data)
             elif function_name == "get_customer_information":
                 phone_number = arguments.get("customer_phone")
                 customer_name = arguments.get("customer_name", "Unknown")
@@ -62,8 +74,10 @@ class ReceptionistTools(BaseTool):
                     data = await self._booking_api.create_customer(customer_name, phone_number)
                     
             elif function_name == "book_appointment":
-
+                print("====================Booking appointment...====================")
+                print("Arguments:: ", arguments)
                 phone_number = arguments.get("phone_number")
+                print("Phone number:: ", phone_number)
                 full_name = arguments.get("name")
                 customer = await self._booking_api.fetch_customer_information(arguments.get("phone_number"))
                 if not customer:
@@ -158,3 +172,8 @@ class ReceptionistTools(BaseTool):
 
         return json.dumps(data)
 
+
+    async def  ai_configuration(self, call_to: str) -> AIConfiguration:
+        """Get AI configuration."""
+        ai_configuration = await AIConfiguration.objects.aget(business__phone_number=call_to, status=AIConfigurationStatus.ACTIVE.value)
+        return ai_configuration

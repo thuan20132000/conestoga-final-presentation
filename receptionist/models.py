@@ -46,7 +46,7 @@ class AIConfiguration(models.Model):
         verbose_name_plural = "AI Configurations"
 
     def __str__(self):
-        return f"{self.business.name} AI Config"
+        return f"{self.ai_name} AI Config"
 
 
 class CallSession(models.Model):

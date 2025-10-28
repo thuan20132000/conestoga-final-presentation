@@ -2,6 +2,8 @@ import openai
 from ai_service.config import settings
 from typing import List, Dict, Any
 import json
+import io
+import base64
 
 class OpenAIAPI:
     """OpenAI API for the receptionist."""
@@ -154,4 +156,37 @@ class OpenAIAPI:
         response = json.loads(response)
         print("Sanitized data response:: ", response)
         return response
+    
+    async def analyze_conversation(self, conversation: List[Dict[str, Any]]) -> str:
+        """Analyze a conversation."""
+        # conversation = [
+        #     {"role": "user", "content": "Hello, how are you?"},
+        #     {"role": "assistant", "content": "I'm good, thank you!"},
+        # ]
+        openai_api = OpenAIAPI()
+        prompt = f"""
+            You have the following conversation:
+            {conversation}
+            
+            Analyze the conversation and return the outcome, sentiment and summary. 
+            If the conversation is not clear, return unknown. If the conversation is positive, return positive. If the conversation is negative, return negative. If the conversation is neutral, return neutral.
+            If the conversation is not clear, return unknown. If the conversation is positive, return positive. If the conversation is negative, return negative. If the conversation is neutral, return neutral.
+            
+            Return outcome, sentiment and summary as a JSON object containing:
+            - outcome (successful, unsuccessful, unknown)
+            - sentiment (positive, negative, neutral)
+            - summary (summary of the conversation)
+            Return only JSON.
+            
+            Example:
+                outcome: successful,
+                sentiment: positive
+        """
+        messages = [
+            {"role": "user", "content": prompt}
+        ]
         
+        response = await openai_api.generate_response(messages)
+        response = json.loads(response)
+        print("Analyzed conversation response:: ", response)
+        return response

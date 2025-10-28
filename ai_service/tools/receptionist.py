@@ -30,7 +30,7 @@ class ReceptionistTools(BaseTool):
         self._booking_api = BookingAPI()
         self._openai_api = OpenAIAPI()
         super().__init__()
-        
+    
     async def create_system_log(self, level: str, call: None, message: str, metadata: Dict[str, Any]):
         """Create a system log."""
         await SystemLog.objects.acreate(
@@ -44,6 +44,12 @@ class ReceptionistTools(BaseTool):
         """Update call session."""
         ended_at = timezone.now()
         kwargs["ended_at"] = ended_at
+        conversation_transcript = kwargs.get("conversation_transcript")
+        if conversation_transcript:
+            outcome = await self._openai_api.analyze_conversation(conversation_transcript)
+            kwargs["outcome"] = outcome.get("outcome", "unknown")
+            kwargs["sentiment"] = outcome.get("sentiment", "neutral")
+            kwargs["transcript_summary"] = outcome.get("summary", "Unknown")
         await CallSession.objects.filter(call_sid=call_sid).aupdate(**kwargs)
 
     async def execute_function_call(self, function_name: str, arguments: Dict[str, Any]) -> str:

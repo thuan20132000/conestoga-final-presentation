@@ -70,7 +70,12 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcmu"},
-                        "turn_detection": {"type": "server_vad"}
+                        "turn_detection": {"type": "server_vad"},
+                        "transcription": {
+                            "model": "whisper-1",
+                            "language": "en",
+                            "prompt": "Transcribe the audio into text."
+                        }
                     },
                     "output": {
                         "format": {"type": "audio/pcmu"},
@@ -78,7 +83,7 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
                     }
                 },
                 "instructions": ai_configuration.prompt,
-                "tools": AGENT_TOOLS
+                "tools": AGENT_TOOLS,
             }
         }
         await openai_ws.send(json.dumps(session_update))
@@ -123,6 +128,7 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
                             "type": "input_audio_buffer.append",
                             "audio": data['media']['payload'],
                         }
+                        
                         await openai_ws.send(json.dumps(audio_append))
 
                     if data['event'] == 'stop':
@@ -133,6 +139,7 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
                         await receptionist_tools.update_call_session(
                             call_sid=call_sid, 
                             status="completed", 
+                            conversation_transcript=conversation_transcript
                         )
                 
                         
@@ -156,17 +163,31 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
                         print(f"Response done: {response}")
                         # Remove the transcript extraction from here
 
-                    if response['type'] == 'response.content.done':
-                        if 'content' in response and 'transcript' in response['content']:
-                            assistant_transcript = response['content']['transcript']
-                            print(f"Assistant said: {assistant_transcript}")
-                            conversation_transcript.append({
-                                "speaker": "assistant",
-                                "content": assistant_transcript,
-                                "timestamp": datetime.now().isoformat()
-                            })
-                            print(f"Conversation transcript: {conversation_transcript}")
+                    # caller transcription completed
+                    if response['type'] == 'conversation.item.input_audio_transcription.completed':
+                        print(f"Caller audio transcription completed: {response}")
+                        transcription = response['transcript']
+                        print(f"Caller audio transcription: {transcription}")
+                        conversation_transcript.append({
+                            "speaker": "caller",
+                            "content": transcription,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                        print(f"Conversation transcript: {conversation_transcript}")
+                    
+                    # assistant transcription completed
+                    if response['type'] == 'response.output_audio_transcript.done':
+                        print(f"Assistant audio transcription done: {response}")
+                        transcription = response['transcript']
+                        print(f"Assistant audio transcription: {transcription}")
                         
+                        conversation_transcript.append({
+                            "speaker": "assistant",
+                            "content": transcription,
+                            "timestamp": datetime.now().isoformat()
+                        })
+                    
+                    
                     # receive audio from OpenAI and send it to Twilio
                     if response['type'] == 'response.output_audio.delta' and 'delta' in response:
                             # print(f"Received audio from OpenAI: {response}")

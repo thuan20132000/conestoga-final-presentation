@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from .enums import AIConfigurationStatus
 from simple_history.models import HistoricalRecords
-
+from ai_service.services.openai_api import OpenAIAPI
 
 
 class AIConfiguration(models.Model):
@@ -60,6 +60,18 @@ class CallSession(models.Model):
         ("completed", "Completed"),
         ("failed", "Failed"),
     ]
+    
+    OUTCOME_CHOICES = [
+        ("successful", "Successful"),
+        ("unsuccessful", "Unsuccessful"),
+        ("unknown", "Unknown"),
+    ]
+    
+    SENTIMENT_CHOICES = [
+        ("positive", "Positive"),
+        ("negative", "Negative"),
+        ("neutral", "Neutral"),
+    ]
 
     business = models.ForeignKey(
         "business.Business", 
@@ -77,12 +89,18 @@ class CallSession(models.Model):
     duration_seconds = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="in_progress")
     transcript_summary = models.TextField(blank=True, null=True)
+    conversation_transcript = models.JSONField(blank=True, null=True)
+    outcome = models.CharField(max_length=20, choices=OUTCOME_CHOICES, default="unknown")
+    sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, default="neutral")
 
     history = HistoricalRecords()
     def __str__(self):
         return f"Call {self.call_sid} - {self.caller_number}"
     
-
+    class Meta:
+        verbose_name = "Call Session"
+        verbose_name_plural = "Call Sessions"
+        ordering = ['-started_at']
 
 class ConversationMessage(models.Model):
     """Stores each message exchanged during the call."""

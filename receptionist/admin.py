@@ -1,4 +1,8 @@
 from django.contrib import admin
+import json
+from django_json_widget.widgets import JSONEditorWidget
+from django.db import models
+
 from .models import (
     AIConfiguration,
     CallSession,
@@ -7,6 +11,7 @@ from .models import (
     AudioRecording,
     SystemLog,
 )
+
 
 @admin.register(AIConfiguration)
 class AIConfigurationAdmin(admin.ModelAdmin):
@@ -17,11 +22,16 @@ class AIConfigurationAdmin(admin.ModelAdmin):
 
 @admin.register(CallSession)
 class CallSessionAdmin(admin.ModelAdmin):
+    formfield_overrides = {
+        models.JSONField: {'widget': JSONEditorWidget},
+    }
+    
     list_display = ("call_sid", "business", "direction", "caller_number", "receiver_number", "status", "started_at_with_seconds", "ended_at_with_seconds", "duration_in_seconds")
     search_fields = ("call_sid", "caller_number", "receiver_number", "business__name")
     list_filter = ("direction", "status", "business")
     date_hierarchy = "started_at"
-
+    
+    # readonly_fields = ("conversation_transcript",)
     def started_at_with_seconds(self, obj):
         if obj.started_at:
             return obj.started_at.strftime("%Y-%m-%d %H:%M:%S")

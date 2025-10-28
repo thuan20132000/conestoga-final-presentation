@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
     'simple_history',
+    'django_json_widget',
 ]
 
 INSTALLED_APPS += [

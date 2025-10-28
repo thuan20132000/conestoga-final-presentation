@@ -25,12 +25,17 @@ class CallSessionSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source='business.name', read_only=True)
     duration_formatted = serializers.SerializerMethodField()
     duration_in_seconds = serializers.SerializerMethodField();
+    outcome = serializers.CharField(read_only=True)
+    sentiment = serializers.CharField(read_only=True)
     class Meta:
         model = CallSession
         fields = [
             'id', 'business', 'business_name', 'direction', 'caller_number',
             'receiver_number', 'call_sid', 'started_at', 'ended_at',
-            'duration_seconds', 'duration_formatted', 'duration_in_seconds', 'status', 'transcript_summary'
+            'duration_seconds', 'duration_formatted', 'duration_in_seconds', 'status', 'transcript_summary',
+            'conversation_transcript',
+            'outcome',
+            'sentiment'
         ]
         read_only_fields = ['id', 'duration_formatted']
     

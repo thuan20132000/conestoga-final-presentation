@@ -1,8 +1,8 @@
 from rest_framework import serializers
+from django.db.models import Sum
 from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings
 )
-
 
 class BusinessTypeSerializer(serializers.ModelSerializer):
     """Serializer for BusinessType model"""
@@ -144,3 +144,51 @@ class BusinessCreateUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
+class ReceptionistStatisticsSerializer(serializers.Serializer):
+    """Serializer for business receptionist statistics"""
+    total_calls = serializers.SerializerMethodField()
+    unsuccessful_calls = serializers.SerializerMethodField()
+    negative_sentiment_calls = serializers.SerializerMethodField()
+    total_cost = serializers.SerializerMethodField()
+    average_cost = serializers.SerializerMethodField()
+    recent_calls = serializers.SerializerMethodField()
+    
+    
+    def get_total_calls(self, business_calls):
+        return business_calls.count()
+    
+    def get_unsuccessful_calls(self, business_calls):
+        return business_calls.filter(outcome='unsuccessful').count()
+    
+    def get_negative_sentiment_calls(self, business_calls):
+        return business_calls.filter(sentiment='negative').count()
+    
+    def get_total_cost(self, business_calls):
+        total_cost = business_calls.aggregate(total_cost=Sum('cost'))['total_cost'] or 0.0
+        return round(total_cost, 2)
+    
+    def get_average_cost(self, business_calls):
+        total_cost = self.get_total_cost(business_calls)
+        total_calls = self.get_total_calls(business_calls)
+        if total_calls > 0:
+            return round(total_cost / total_calls, 4)
+        return 0.0
+
+    def get_recent_calls(self, business_calls):
+        recent_calls = business_calls.order_by('-started_at')[:15]
+        return recent_calls.values(
+            'id', 
+            'started_at', 
+            'ended_at', 
+            'duration_seconds', 
+            'cost', 
+            'outcome', 
+            'sentiment',
+            'direction', 
+            'caller_number', 
+            'receiver_number', 
+            'call_sid', 
+            'status', 
+            'transcript_summary',
+            'conversation_transcript'
+        )

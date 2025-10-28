@@ -304,3 +304,22 @@ class SystemLogViewSet(BaseModelViewSet):
         error_logs = self.get_queryset().filter(level='error')
         serializer = self.get_serializer(error_logs, many=True)
         return Response(serializer.data)
+
+class ReceptionistStatisticsViewSet(BaseModelViewSet):
+    """ViewSet for Receptionist Overview statistics."""
+
+    def get(self, request):
+        """Get receptionist overview statistics."""
+        try:
+            total_calls = CallSession.objects.count()
+            completed_calls = CallSession.objects.filter(status='completed').count()
+            failed_calls = CallSession.objects.filter(status='failed').count()
+            in_progress_calls = CallSession.objects.filter(status='in_progress').count()
+            return self.response_success({
+                'total_calls': total_calls,
+                'completed_calls': completed_calls,
+                'failed_calls': failed_calls,
+                'in_progress_calls': in_progress_calls
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

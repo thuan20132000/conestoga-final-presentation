@@ -13,7 +13,7 @@ from .models import (
 )
 from .serializers import (
     BusinessTypeSerializer, BusinessListSerializer, BusinessDetailSerializer,
-    BusinessCreateUpdateSerializer, OperatingHoursSerializer, BusinessSettingsSerializer, BusinessSerializer
+    BusinessCreateUpdateSerializer, OperatingHoursSerializer, ReceptionistStatisticsSerializer
 )
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
@@ -35,8 +35,10 @@ class BusinessTypeViewSet(BaseModelViewSet):
 class BusinessViewSet(BaseModelViewSet):
     """ViewSet for Business management"""
     queryset = Business.objects.all()
-    permission_classes = [AllowAny]  # Adjust based on your authentication needs
+    # Adjust based on your authentication needs
+    permission_classes = [AllowAny]
     # serializer_class = BusinessSerializer
+
     def get_serializer_class(self):
         if self.action == 'list':
             print("List action:: ")
@@ -44,27 +46,27 @@ class BusinessViewSet(BaseModelViewSet):
         elif self.action in ['create', 'update', 'partial_update']:
             return BusinessCreateUpdateSerializer
         return BusinessDetailSerializer
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
         # Filter by business type if specified
         business_type = self.request.query_params.get('business_type')
         if business_type:
-            queryset = queryset.filter(business_type__name__icontains=business_type)
-        
+            queryset = queryset.filter(
+                business_type__name__icontains=business_type)
+
         # Filter by location
         location = self.request.query_params.get('location')
         if location:
             queryset = queryset.filter(
-                Q(city__icontains=location) | 
+                Q(city__icontains=location) |
                 Q(state_province__icontains=location) |
                 Q(address__icontains=location)
             )
-        
+
         return queryset
-    
-    
+
     @action(detail=True, methods=['get'])
     def operating_hours(self, request, pk=None):
         """Get operating hours for a specific business"""
@@ -72,7 +74,7 @@ class BusinessViewSet(BaseModelViewSet):
         hours = business.operating_hours.all()
         serializer = OperatingHoursSerializer(hours, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """Get statistics for a specific business."""
@@ -145,16 +147,41 @@ class BusinessViewSet(BaseModelViewSet):
         ai_configurations = object.ai_configs
         serializer = AIConfigurationSerializer(ai_configurations, many=True)
         return self.response_success(serializer.data)
-    
+
     @action(detail=True, methods=['get'], url_path='calls')
     def calls(self, request, pk=None):
         """Get all calls for a business."""
         object = self.get_object()
-        business_calls = object.calls.all()
-        print("Business calls:: ", business_calls)
+        params = request.query_params
+        from_date = params.get('started_at_from')
+        to_date = params.get('started_at_to')
+        if from_date and to_date:
+            business_calls = object.calls.filter(
+                started_at__range=(from_date, to_date)
+            )
+        else:
+            business_calls = object.calls.all()
         serializer = CallSessionSerializer(business_calls, many=True)
         return self.response_success(serializer.data)
 
+    @action(detail=True, methods=['get'], url_path='receptionist-statistics')
+    def receptionist_statistics(self, request, pk=None):
+        """Get receptionist statistics for a business."""
+        try:
+            params = request.query_params
+            object = self.get_object()
+            from_date = params.get('started_at_from')
+            to_date = params.get('started_at_to')
+            if from_date and to_date:
+                business_calls = object.calls.filter(
+                    started_at__range=(from_date, to_date)
+                )
+            else:
+                business_calls = object.calls.all()
+            serializer = ReceptionistStatisticsSerializer(business_calls)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class OperatingHoursViewSet(BaseModelViewSet):
@@ -166,13 +193,13 @@ class OperatingHoursViewSet(BaseModelViewSet):
     filterset_fields = ['business', 'day_of_week', 'is_open']
     ordering_fields = ['day_of_week']
     ordering = ['day_of_week']
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
-        
+
         # Filter by business if specified
         business_id = self.request.query_params.get('business')
         if business_id:
             queryset = queryset.filter(business_id=business_id)
-        
+
         return queryset

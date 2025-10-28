@@ -35,7 +35,8 @@ class CallSessionSerializer(serializers.ModelSerializer):
             'duration_seconds', 'duration_formatted', 'duration_in_seconds', 'status', 'transcript_summary',
             'conversation_transcript',
             'outcome',
-            'sentiment'
+            'sentiment',
+            'cost'
         ]
         read_only_fields = ['id', 'duration_formatted']
     

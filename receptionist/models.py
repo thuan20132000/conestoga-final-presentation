@@ -3,7 +3,7 @@ from django.utils import timezone
 from .enums import AIConfigurationStatus
 from simple_history.models import HistoricalRecords
 from ai_service.services.openai_api import OpenAIAPI
-
+from decimal import Decimal
 
 class AIConfiguration(models.Model):
     STATUS_CHOICES = [
@@ -92,6 +92,9 @@ class CallSession(models.Model):
     conversation_transcript = models.JSONField(blank=True, null=True)
     outcome = models.CharField(max_length=20, choices=OUTCOME_CHOICES, default="unknown")
     sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, default="neutral")
+    input_tokens = models.IntegerField(default=0)
+    output_tokens = models.IntegerField(default=0)
+    cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     history = HistoricalRecords()
     def __str__(self):
@@ -101,6 +104,19 @@ class CallSession(models.Model):
         verbose_name = "Call Session"
         verbose_name_plural = "Call Sessions"
         ordering = ['-started_at']
+    
+    def calculate_cost(self):
+        """Calculate the cost of the call."""
+        total_seconds = (self.ended_at - self.started_at).total_seconds() if self.ended_at and self.started_at else 0
+        minutes = Decimal(total_seconds)/60 if total_seconds else 0
+        cost = minutes * Decimal(self.business.cost_per_minute)
+        self.cost = cost
+        return cost
+    
+    def save(self, *args, **kwargs):
+        """Save the call session."""
+        self.calculate_cost()
+        super().save(*args, **kwargs)
 
 class ConversationMessage(models.Model):
     """Stores each message exchanged during the call."""

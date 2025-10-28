@@ -27,6 +27,24 @@ class Business(models.Model):
         ('pending', 'Pending Approval'),
     ]
     
+    CURRENCY_CHOICES = [
+        ('USD', 'USD'),
+        ('CAD', 'CAD'),
+        ('EUR', 'EUR'),
+        ('GBP', 'GBP'),
+        ('JPY', 'JPY'),
+        ('AUD', 'AUD'),
+        ('NZD', 'NZD'),
+    ]
+    
+    TIMEZONE_CHOICES = [
+        ('America/Toronto', 'America/Toronto'),
+        ('America/New_York', 'America/New_York'),
+        ('America/Los_Angeles', 'America/Los_Angeles'),
+        ('America/Chicago', 'America/Chicago'),
+    ]
+    
+    
     name = models.CharField(max_length=255)
     business_type = models.ForeignKey(BusinessType, on_delete=models.PROTECT, related_name='businesses')
     phone_number = models.CharField(max_length=50, blank=True, null=True)
@@ -37,7 +55,9 @@ class Business(models.Model):
     state_province = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     country = models.CharField(max_length=100, default="Canada")
-    timezone = models.CharField(max_length=100, default="America/Toronto")
+    timezone = models.CharField(max_length=100, choices=TIMEZONE_CHOICES, default="America/Toronto")
+    currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default="USD")
+    cost_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=0.5)
     status = models.CharField(max_length=20, choices=BUSINESS_STATUS_CHOICES, default='active')
     description = models.TextField(blank=True, null=True)
     logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)

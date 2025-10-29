@@ -17,7 +17,8 @@ from .serializers import (
     OperatingHoursSerializer, 
     ReceptionistStatisticsSerializer, 
     BusinessDashboardSerializer,
-    BusinessSerializer
+    BusinessSerializer,
+    BusinessSettingsSerializer
 )
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
@@ -75,6 +76,17 @@ class BusinessViewSet(BaseModelViewSet):
         hours = business.operating_hours.all()
         serializer = OperatingHoursSerializer(hours, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='business-settings')
+    def business_settings(self, request, pk=None):
+        """Get settings for a specific business"""
+        try:
+            business = self.get_object()
+            settings = business.settings
+            serializer = BusinessSettingsSerializer(settings)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
@@ -184,6 +196,7 @@ class BusinessViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
     @action(detail=True, methods=['get'], url_path='dashboard')
     def dashboard(self, request, pk=None):
         """Get dashboard data for a business."""
@@ -213,6 +226,16 @@ class OperatingHoursViewSet(BaseModelViewSet):
             queryset = queryset.filter(business_id=business_id)
 
         return queryset
+
+    def perform_update(self, serializer):
+        serializer.save(business=self.get_object().business)
+        return super().perform_update(serializer)
+
+class BusinessSettingsViewSet(BaseModelViewSet):
+    """ViewSet for BusinessSettings management"""
+    queryset = BusinessSettings.objects.all()
+    serializer_class = BusinessSettingsSerializer
+    permission_classes = [AllowAny]
 
     def perform_update(self, serializer):
         serializer.save(business=self.get_object().business)

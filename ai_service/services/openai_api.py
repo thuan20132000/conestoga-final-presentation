@@ -5,6 +5,7 @@ import json
 import io
 import base64
 
+
 class OpenAIAPI:
     """OpenAI API for the receptionist."""
     _client: openai.OpenAI
@@ -16,7 +17,7 @@ class OpenAIAPI:
         self._client = openai.OpenAI(api_key=settings.openai_api_key)
         self._model = "gpt-5-mini"
         self._temperature = settings.openai_temperature
-        
+
     async def generate_response(self, messages: List[Dict[str, Any]]):
         """Generate a response using the openai api."""
         response = self._client.chat.completions.create(
@@ -24,9 +25,9 @@ class OpenAIAPI:
             messages=messages,
         )
         print("Response:: ", response.choices[0].message.content)
-        
+
         return response.choices[0].message.content
-    
+
     async def sanitize_booking_services_data(self, raw_data: str) -> str:
         """Clean data."""
         print("Sanitizing data...")
@@ -35,61 +36,93 @@ class OpenAIAPI:
 
         business_services_data = [
             {
-                "id": 2,
-                "name": "Fill",
-                "description": None,
-                "price": "52.00",
-                "duration": 50,
-                "created_at": "2025-08-21T12:48:15.184012Z",
-                "updated_at": "2025-08-21T12:48:15.184033Z",
-                "salon": 1,
-                "category": 2
-            },
-            {
-                "id": 3,
+                "id": 10,
                 "name": "Shellac Manicure",
-                "description": None,
-                "price": "52.00",
-                "duration": 45,
-                "created_at": "2025-08-21T12:48:39.435517Z",
-                "updated_at": "2025-08-22T03:31:39.390118Z",
+                "description": "",
+                "price": "40.00",
+                "duration": 35,
+                "created_at": "2025-06-03T01:27:08.814693Z",
+                "updated_at": "2025-06-03T01:27:08.814705Z",
                 "salon": 1,
-                "category": 1
+                "category": 4
             },
             {
-                "id": 1,
-                "name": "Fullset",
-                "description": None,
+                "id": 63,
+                "name": "Volume Full Set / Full Wispy Volume",
+                "description": "",
                 "price": "60.00",
                 "duration": 60,
-                "created_at": "2025-08-21T12:48:05.572800Z",
-                "updated_at": "2025-08-22T03:06:22.157975Z",
+                "created_at": "2025-07-10T03:39:04.703056Z",
+                "updated_at": "2025-07-10T03:39:04.703071Z",
                 "salon": 1,
-                "category": 2
+                "category": 4
             },
             {
-                "id": 5,
+                "id": 57,
+                "name": "Fullset",
+                "description": "",
+                "price": "57.00",
+                "duration": 60,
+                "created_at": "2025-06-26T05:01:05.264745Z",
+                "updated_at": "2025-06-26T05:01:05.264761Z",
+                "salon": 1,
+                "category": 5
+            },
+            {
+                "id": 65,
+                "name": "Pedicure With Shellac",
+                "description": "",
+                "price": "50.00",
+                "duration": 50,
+                "created_at": "2025-07-15T04:39:24.598273Z",
+                "updated_at": "2025-07-15T04:39:24.598287Z",
+                "salon": 1,
+                "category": 4
+            },
+            {
+                "id": 66,
+                "name": "Take off Shellac",
+                "description": "",
+                "price": "10.00",
+                "duration": 10,
+                "created_at": "2025-07-15T04:39:42.919079Z",
+                "updated_at": "2025-07-15T04:39:42.919093Z",
+                "salon": 1,
+                "category": 4
+            },
+            {
+                "id": 9,
+                "name": "Manicure 2",
+                "description": "",
+                "price": "37.00",
+                "duration": 30,
+                "created_at": "2025-06-03T01:26:44.778188Z",
+                "updated_at": "2025-07-16T20:33:32.403595Z",
+                "salon": 1,
+                "category": 4
+            },
+            {
+                "id": 64,
                 "name": "Pedicure",
-                "description": None,
-                "price": "40.00",
-                "duration": 40,
-                "created_at": "2025-08-22T03:32:04.947134Z",
-                "updated_at": "2025-08-22T03:32:04.947175Z",
+                "description": "",
+                "price": "50.00",
+                "duration": 50,
+                "created_at": "2025-07-15T04:39:12.838167Z",
+                "updated_at": "2025-07-15T04:39:12.838181Z",
                 "salon": 1,
-                "category": 1
+                "category": 4
             },
             {
-                "id": 4,
-                "name": "Manicure",
-                "description": None,
-                "price": "40.00",
-                "duration": 40,
-                "created_at": "2025-08-21T12:48:52.460952Z",
-                "updated_at": "2025-08-22T03:31:00.424502Z",
+                "id": 67,
+                "name": "Take off Shellac with service",
+                "description": "",
+                "price": "10.00",
+                "duration": 15,
+                "created_at": "2025-07-15T04:39:58.409178Z",
+                "updated_at": "2025-08-22T04:05:34.657732Z",
                 "salon": 1,
-                "category": 1
-            }
-        ]
+                "category": 4
+            },]
 
         openai_api = OpenAIAPI()
         prompt = f"""
@@ -114,12 +147,12 @@ class OpenAIAPI:
         response = json.loads(response)
         print("Sanitized data response:: ", response)
         return response
-    
+
     async def sanitize_cancel_appointment_data(
-        self, 
-        customer_appointments: str, 
-        service_name: str, 
-        date: str, 
+        self,
+        customer_appointments: str,
+        service_name: str,
+        date: str,
         time: str
     ) -> str:
         """Clean data."""
@@ -129,7 +162,7 @@ class OpenAIAPI:
         print("Date:: ", date)
         print("Time:: ", time)
         # raw_data = "{'service_type': 'Pedicure', 'date': 'tomorrow', 'time': '1 PM'}"
-        
+
         openai_api = OpenAIAPI()
         prompt = f"""
             You have  a list of a customer's appointments:
@@ -156,7 +189,7 @@ class OpenAIAPI:
         response = json.loads(response)
         print("Sanitized data response:: ", response)
         return response
-    
+
     async def analyze_conversation(self, conversation: List[Dict[str, Any]]) -> str:
         """Analyze a conversation."""
         # conversation = [
@@ -185,7 +218,7 @@ class OpenAIAPI:
         messages = [
             {"role": "user", "content": prompt}
         ]
-        
+
         response = await openai_api.generate_response(messages)
         response = json.loads(response)
         print("Analyzed conversation response:: ", response)

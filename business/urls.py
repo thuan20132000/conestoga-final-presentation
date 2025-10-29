@@ -8,6 +8,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'business', BusinessViewSet, basename='business')
 router.register(r'business-type', BusinessTypeViewSet, basename='business-type')
+router.register(r'operating-hours', OperatingHoursViewSet, basename='operating-hours')
 # The API URLs are now determined automatically by the router
 urlpatterns = [
     path('', include(router.urls)),

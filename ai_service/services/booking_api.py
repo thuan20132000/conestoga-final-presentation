@@ -8,7 +8,7 @@ class BookingAPI:
 
     def __init__(self):
         """Initialize the booking API."""
-        self._api_url = f"http://192.168.2.241:8000/api/salon-bookings"
+        self._api_url = f"http://3.17.232.108:8002/api/salon-bookings"
         self._client = httpx.AsyncClient()
         self._salon_id = 1
 

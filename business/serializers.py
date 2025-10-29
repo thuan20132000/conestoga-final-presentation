@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from django.db.models import Sum
+from django.db.models import Sum, Avg
 from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings
 )
@@ -21,9 +21,10 @@ class OperatingHoursSerializer(serializers.ModelSerializer):
         model = OperatingHours
         fields = [
             'id', 'day_of_week', 'day_name', 'is_open', 'open_time', 
-            'close_time', 'is_break_time', 'break_start_time', 'break_end_time'
+            'close_time', 'is_break_time', 'break_start_time', 'break_end_time',
+            'business'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'business']
 
 
 class BusinessSettingsSerializer(serializers.ModelSerializer):
@@ -192,3 +193,10 @@ class ReceptionistStatisticsSerializer(serializers.Serializer):
             'transcript_summary',
             'conversation_transcript'
         )
+
+class BusinessDashboardSerializer(BusinessDetailSerializer):
+    """Serializer for business dashboard"""
+    
+    class Meta(BusinessDetailSerializer.Meta):
+        fields = BusinessDetailSerializer.Meta.fields 
+        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields

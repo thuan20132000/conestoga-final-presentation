@@ -12,8 +12,12 @@ from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings
 )
 from .serializers import (
-    BusinessTypeSerializer, BusinessListSerializer, BusinessDetailSerializer,
-    BusinessCreateUpdateSerializer, OperatingHoursSerializer, ReceptionistStatisticsSerializer
+    BusinessTypeSerializer, 
+    BusinessListSerializer, 
+    OperatingHoursSerializer, 
+    ReceptionistStatisticsSerializer, 
+    BusinessDashboardSerializer,
+    BusinessSerializer
 )
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
@@ -41,11 +45,8 @@ class BusinessViewSet(BaseModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'list':
-            print("List action:: ")
             return BusinessListSerializer
-        elif self.action in ['create', 'update', 'partial_update']:
-            return BusinessCreateUpdateSerializer
-        return BusinessDetailSerializer
+        return BusinessSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -67,7 +68,7 @@ class BusinessViewSet(BaseModelViewSet):
 
         return queryset
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get'], url_path='operating-hours')
     def operating_hours(self, request, pk=None):
         """Get operating hours for a specific business"""
         business = self.get_object()
@@ -183,6 +184,15 @@ class BusinessViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['get'], url_path='dashboard')
+    def dashboard(self, request, pk=None):
+        """Get dashboard data for a business."""
+        try:
+            object = self.get_object()
+            serializer = BusinessDashboardSerializer(object)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""
@@ -203,3 +213,7 @@ class OperatingHoursViewSet(BaseModelViewSet):
             queryset = queryset.filter(business_id=business_id)
 
         return queryset
+
+    def perform_update(self, serializer):
+        serializer.save(business=self.get_object().business)
+        return super().perform_update(serializer)

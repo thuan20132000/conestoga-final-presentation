@@ -26,7 +26,8 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'category_name', 'name', 'description', 
             'duration_minutes', 'price', 'is_active', 'requires_staff', 
-            'max_capacity', 'is_online_booking', 'created_at', 'updated_at'
+            'max_capacity', 'is_online_booking', 'created_at', 'updated_at',
+            'sort_order'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

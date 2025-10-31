@@ -8,6 +8,7 @@ class ServiceCategory(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     sort_order = models.PositiveIntegerField(default=0)
+    is_online_booking = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -29,6 +30,7 @@ class Service(models.Model):
     duration_minutes = models.PositiveIntegerField(help_text="Duration in minutes")
     price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Price in local currency")
     is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
     requires_staff = models.BooleanField(default=True)
     max_capacity = models.PositiveIntegerField(default=1, help_text="Maximum number of clients for this service")
     is_online_booking = models.BooleanField(default=True)
@@ -36,7 +38,7 @@ class Service(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['category__sort_order', 'category__name', 'name']
+        ordering = ['sort_order', 'name']
         unique_together = ['business', 'name']
     
     def __str__(self):

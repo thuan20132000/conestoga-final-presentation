@@ -10,54 +10,29 @@ from .serializers import (
     ServiceCategorySerializer, ServiceSerializer, ServiceCreateUpdateSerializer
 )
 from business.models import Business
+from main.viewsets import BaseModelViewSet
 
 
-class ServiceCategoryViewSet(viewsets.ModelViewSet):
+class ServiceCategoryViewSet(BaseModelViewSet):
     """ViewSet for ServiceCategory management"""
+    queryset = ServiceCategory.objects.select_related('business')
     serializer_class = ServiceCategorySerializer
     permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['business', 'is_active']
-    search_fields = ['name', 'description']
-    ordering_fields = ['sort_order', 'name', 'created_at']
-    ordering = ['sort_order', 'name']
-    
-    def get_queryset(self):
-        queryset = ServiceCategory.objects.select_related('business')
-        
-        # Filter by business if specified
-        business_id = self.request.query_params.get('business')
-        if business_id:
-            queryset = queryset.filter(business_id=business_id)
-        
-        return queryset
 
+    @action(detail=True, methods=['get'], url_path='services')
+    def services(self, request, pk=None):
+        """Get services for a category"""
+        category = self.get_object()
+        services = category.services.all()
+        serializer = ServiceSerializer(services, many=True)
+        return self.response_success(serializer.data, message="Services retrieved successfully")
 
-class ServiceViewSet(viewsets.ModelViewSet):
+class ServiceViewSet(BaseModelViewSet):
     """ViewSet for Service management"""
     queryset = Service.objects.select_related('business', 'category')
+    serializer_class = ServiceSerializer
     permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['business', 'category', 'is_active', 'requires_staff']
-    search_fields = ['name', 'description']
-    ordering_fields = ['name', 'price', 'duration_minutes', 'created_at']
-    ordering = ['category__sort_order', 'name']
-    
-    def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return ServiceCreateUpdateSerializer
-        return ServiceSerializer
-    
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        # Add business context for validation
-        business_id = self.request.query_params.get('business')
-        if business_id:
-            try:
-                context['business'] = Business.objects.get(id=business_id)
-            except Business.DoesNotExist:
-                pass
-        return context
+
     
     @action(detail=False, methods=['get'])
     def by_category(self, request):

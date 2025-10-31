@@ -31,6 +31,7 @@ class Service(models.Model):
     is_active = models.BooleanField(default=True)
     requires_staff = models.BooleanField(default=True)
     max_capacity = models.PositiveIntegerField(default=1, help_text="Maximum number of clients for this service")
+    is_online_booking = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

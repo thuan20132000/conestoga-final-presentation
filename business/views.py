@@ -24,6 +24,7 @@ from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
 from main.viewsets import BaseModelViewSet
+from service.serializers import ServiceCategorySerializer, ServiceSerializer, ServiceCategoryWithServicesSerializer
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -206,6 +207,32 @@ class BusinessViewSet(BaseModelViewSet):
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    
+    @action(detail=True, methods=['get'], url_path='service-categories')
+    def service_categories(self, request, pk=None):
+        """Get services categories for a business."""
+        object = self.get_object()
+        categories = object.service_categories.all()
+        serializer = ServiceCategorySerializer(categories, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='services')
+    def services(self, request, pk=None):
+        """Get services for a business."""
+        object = self.get_object()
+        services = object.services.all()
+        serializer = ServiceSerializer(services, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='categories-services')
+    def categories_services(self, request, pk=None):
+        """Get services for all categories of a business."""
+        object = self.get_object()
+        categories = object.service_categories.all()
+        serializer = ServiceCategoryWithServicesSerializer(categories, many=True)
+        return self.response_success(serializer.data)
+    
 
 class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""

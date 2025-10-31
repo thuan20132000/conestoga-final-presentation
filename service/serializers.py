@@ -5,12 +5,16 @@ from .models import ServiceCategory, Service
 class ServiceCategorySerializer(serializers.ModelSerializer):
     """Serializer for ServiceCategory model"""
     
+    total_services = serializers.SerializerMethodField()
     class Meta:
         model = ServiceCategory
         fields = [
-            'id', 'name', 'description', 'sort_order', 'is_active', 'created_at'
+            'id', 'name', 'description', 'sort_order', 'is_active', 'created_at', 'total_services'
         ]
         read_only_fields = ['id', 'created_at']
+
+    def get_total_services(self, obj):
+        return obj.services.count()
 
 
 class ServiceSerializer(serializers.ModelSerializer):
@@ -22,10 +26,23 @@ class ServiceSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'category_name', 'name', 'description', 
             'duration_minutes', 'price', 'is_active', 'requires_staff', 
-            'max_capacity', 'created_at', 'updated_at'
+            'max_capacity', 'is_online_booking', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+class ServiceCategoryWithServicesSerializer(serializers.ModelSerializer):
+    """Serializer for ServiceCategory model with services"""
+    services = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ServiceCategory
+        fields = [
+            'id', 'name', 'description', 'sort_order', 'is_active', 'is_online_booking', 'created_at', 'services'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_services(self, obj):
+        return ServiceSerializer(obj.services.all(), many=True).data
 
 class ServiceCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating services"""

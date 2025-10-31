@@ -12,6 +12,11 @@ class ServiceCategory(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    color_code = models.CharField(max_length=10, blank=True, null=True)
+    icon = models.CharField(max_length=100, blank=True, null=True)
+    image = models.ImageField(upload_to='service_categories/', blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
         ordering = ['sort_order', 'name']
         unique_together = ['business', 'name']
@@ -36,6 +41,10 @@ class Service(models.Model):
     is_online_booking = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    color_code = models.CharField(max_length=10, blank=True, null=True)
+    icon = models.CharField(max_length=100, blank=True, null=True)
+    image = models.ImageField(upload_to='services/', blank=True, null=True)
     
     class Meta:
         ordering = ['sort_order', 'name']

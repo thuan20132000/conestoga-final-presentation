@@ -9,7 +9,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceCategory
         fields = [
-            'id', 'name', 'description', 'sort_order', 'is_active', 'created_at', 'total_services'
+            'id', 'name', 'description', 'sort_order', 'is_active', 'created_at', 'total_services', 'color_code', 'icon', 'image'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -27,7 +27,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             'id', 'category', 'category_name', 'name', 'description', 
             'duration_minutes', 'price', 'is_active', 'requires_staff', 
             'max_capacity', 'is_online_booking', 'created_at', 'updated_at',
-            'sort_order'
+            'sort_order', 'color_code', 'icon', 'image'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -38,7 +38,7 @@ class ServiceCategoryWithServicesSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceCategory
         fields = [
-            'id', 'name', 'description', 'sort_order', 'is_active', 'is_online_booking', 'created_at', 'services'
+            'id', 'name', 'description', 'sort_order', 'is_active', 'is_online_booking', 'created_at', 'services', 'color_code', 'icon', 'image'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -52,7 +52,7 @@ class ServiceCreateUpdateSerializer(serializers.ModelSerializer):
         model = Service
         fields = [
             'category', 'name', 'description', 'duration_minutes', 'price',
-            'is_active', 'requires_staff', 'max_capacity'
+            'is_active', 'requires_staff', 'max_capacity', 'color_code', 'icon', 'image'
         ]
     
     def validate(self, data):

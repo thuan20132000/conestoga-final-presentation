@@ -35,6 +35,8 @@ class Staff(AbstractUser):
     phone = models.CharField(max_length=50, blank=True, null=True)
     role = models.ForeignKey('staff.StaffRole', null=True, blank=True, on_delete=models.CASCADE, related_name='staff')
     is_active = models.BooleanField(default=True)
+    is_online_booking_allowed = models.BooleanField(default=True)
+    is_payment_processing_allowed = models.BooleanField(default=True)
     hire_date = models.DateField(default=timezone.now)
     bio = models.TextField(blank=True, null=True)
     photo = models.ImageField(upload_to='staff_photos/', blank=True, null=True)
@@ -53,6 +55,24 @@ class Staff(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()} ({self.business})"
 
+class StaffSalarySettings(models.Model):
+    """Staff salary settings"""
+    BONUS_TYPE_CHOICES = [
+        ('percentage', 'Percentage'),
+        ('fixed', 'Fixed'),
+    ]
+    staff = models.OneToOneField('staff.Staff', on_delete=models.CASCADE, related_name='staff_salary_settings')
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    commission_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bonus_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bonus_threshold = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bonus_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    bonus_type = models.CharField(max_length=100, choices=BONUS_TYPE_CHOICES, default='percentage')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['staff']
 
 class StaffService(models.Model):
     """Many-to-many relationship between staff and services they can provide"""

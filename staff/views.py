@@ -6,7 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Staff, StaffService
 from .serializers import (
-    StaffSerializer, StaffCreateUpdateSerializer, StaffServiceSerializer
+    StaffSerializer, StaffCreateUpdateSerializer, StaffServiceSerializer, StaffRoleSerializer
 )
 from business.models import Business
 

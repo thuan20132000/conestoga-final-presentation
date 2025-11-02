@@ -25,6 +25,7 @@ from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
 from main.viewsets import BaseModelViewSet
 from service.serializers import ServiceCategorySerializer, ServiceSerializer, ServiceCategoryWithServicesSerializer
+from staff.serializers import StaffSerializer, StaffRoleSerializer
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -232,7 +233,22 @@ class BusinessViewSet(BaseModelViewSet):
         categories = object.service_categories.all()
         serializer = ServiceCategoryWithServicesSerializer(categories, many=True)
         return self.response_success(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='staff')
+    def staff(self, request, pk=None):
+        """Get staff for a business."""
+        object = self.get_object()
+        staff = object.staff.all()
+        serializer = StaffSerializer(staff, many=True)
+        return self.response_success(serializer.data)
     
+    @action(detail=True, methods=['get'], url_path='roles')
+    def roles(self, request, pk=None):
+        """Get roles for a business."""
+        object = self.get_object()
+        roles = object.staff_roles.all()
+        serializer = StaffRoleSerializer(roles, many=True)
+        return self.response_success(serializer.data)
 
 class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""

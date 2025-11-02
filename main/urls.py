@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/', include('business.urls')),
     path('api/', include('receptionist.urls')),
     path('api/', include('service.urls')),
+    path('api/', include('staff.urls')),
     # path('api/service/', include('service.urls')),
     # path('api/staff/', include('staff.urls')),
     # path('api/notifications/', include('notifications.urls')),

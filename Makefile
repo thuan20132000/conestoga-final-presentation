@@ -45,11 +45,11 @@ makemigrations: ## Create new Django migrations
 createsuperuser: ## Create Django superuser
 	python manage.py createsuperuser
 
-sample-data: ## Create sample data for testing
-	python manage.py create_sample_data
+fake-data: ## Create sample data for testing
+	python manage.py create_sample_clients --count 50 --business-id 1
 
 clear-data: ## Clear all sample data
-	python manage.py create_sample_data --clear-existing
+	python manage.py create_sample_clients --clear-existing --business-id 1
 
 # Development servers
 run: run-django ## Run Django development server (default)

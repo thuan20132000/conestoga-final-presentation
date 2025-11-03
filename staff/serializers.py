@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Staff, StaffService, StaffRole
+from .models import Staff, StaffService, StaffRole, StaffWorkingHours, StaffOffDay
 
 
 class StaffRoleSerializer(serializers.ModelSerializer):
@@ -58,7 +58,8 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
             'is_active',
             'is_online_booking_allowed',
             'is_payment_processing_allowed',
-            'hire_date', 'bio', 'photo'
+            'hire_date', 'bio', 'photo',
+            'business',
         ]
     
     def validate_email(self, value):
@@ -71,3 +72,28 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
                     "A staff member with this email already exists for this business."
                 )
         return value
+
+class StaffWorkingHoursSerializer(serializers.ModelSerializer):
+    """Serializer for StaffWorkingHours model"""
+    day_name = serializers.CharField(source='get_day_of_week_display', read_only=True)
+    class Meta:
+        model = StaffWorkingHours
+        fields = '__all__'
+
+class StaffWorkingHoursCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating staff working hours"""
+    class Meta:
+        model = StaffWorkingHours
+        fields = ['day_of_week', 'start_time', 'end_time', 'is_working']
+
+class StaffOffDaySerializer(serializers.ModelSerializer):
+    """Serializer for StaffOffDay model"""
+    class Meta:
+        model = StaffOffDay
+        fields = '__all__'
+
+class StaffOffDayCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating staff off days"""
+    class Meta:
+        model = StaffOffDay
+        fields = ['start_date', 'end_date', 'reason', 'staff']

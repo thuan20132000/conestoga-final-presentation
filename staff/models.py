@@ -54,6 +54,11 @@ class Staff(AbstractUser):
     
     def __str__(self):
         return f"{self.get_full_name()} ({self.business})"
+    
+    def save(self, *args, **kwargs):
+        if not self.username:
+            self.username = self.email
+        super().save(*args, **kwargs)
 
 class StaffSalarySettings(models.Model):
     """Staff salary settings"""
@@ -107,6 +112,7 @@ class StaffWorkingHours(models.Model):
     day_of_week = models.IntegerField(choices=DAY_CHOICES)
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
+    is_working = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

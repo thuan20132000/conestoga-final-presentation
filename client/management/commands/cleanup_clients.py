@@ -3,7 +3,7 @@ from django.db.models import Q, Count
 from django.utils import timezone
 from datetime import timedelta
 
-from client.models import Client, ClientHistory, ClientPreference
+from client.models import Client
 
 
 class Command(BaseCommand):
@@ -48,8 +48,6 @@ class Command(BaseCommand):
         remove_duplicates = options['remove_duplicates']
         remove_inactive = options['remove_inactive']
         inactive_days = options['inactive_days']
-        clean_history = options['clean_history']
-        history_days = options['history_days']
         
         self.stdout.write(self.style.SUCCESS('=== CLIENT CLEANUP ===\n'))
         
@@ -69,11 +67,6 @@ class Command(BaseCommand):
             removed = self._remove_inactive_clients(dry_run, inactive_days)
             total_removed += removed
             self.stdout.write(f'Removed {removed} inactive clients\n')
-        
-        # Clean history
-        if clean_history:
-            removed = self._clean_history(dry_run, history_days)
-            self.stdout.write(f'Removed {removed} old history entries\n')
         
         if dry_run:
             self.stdout.write(self.style.WARNING(f'Would remove {total_removed} items total'))
@@ -146,17 +139,3 @@ class Command(BaseCommand):
         
         return removed_count
 
-    def _clean_history(self, dry_run, history_days):
-        """Clean up old history entries"""
-        cutoff_date = timezone.now() - timedelta(days=history_days)
-        
-        old_history = ClientHistory.objects.filter(changed_at__lt=cutoff_date)
-        
-        removed_count = 0
-        for history in old_history:
-            if not dry_run:
-                history.delete()
-            removed_count += 1
-            self.stdout.write(f'  Removing old history: {history.client.get_full_name()} - {history.action} ({history.changed_at})')
-        
-        return removed_count

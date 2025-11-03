@@ -4,14 +4,22 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Staff, StaffService
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
 from .serializers import (
-    StaffSerializer, StaffCreateUpdateSerializer, StaffServiceSerializer, StaffRoleSerializer
+    StaffSerializer,
+    StaffCreateUpdateSerializer,
+    StaffServiceSerializer,
+    StaffRoleSerializer,
+    StaffWorkingHoursSerializer,
+    StaffWorkingHoursCreateUpdateSerializer,
+    StaffOffDaySerializer,
+    StaffOffDayCreateUpdateSerializer,
 )
 from business.models import Business
+from main.viewsets import BaseModelViewSet
 
 
-class StaffViewSet(viewsets.ModelViewSet):
+class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
     queryset = Staff.objects.select_related('business')
     permission_classes = [AllowAny]
@@ -26,16 +34,31 @@ class StaffViewSet(viewsets.ModelViewSet):
             return StaffCreateUpdateSerializer
         return StaffSerializer
     
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        # Add business context for validation
-        business_id = self.request.query_params.get('business')
-        if business_id:
-            try:
-                context['business'] = Business.objects.get(id=business_id)
-            except Business.DoesNotExist:
-                pass
-        return context
+    @action(detail=True, methods=['get'])
+    def roles(self, request, pk=None):
+        """Get staff roles"""
+        staff = self.get_object()
+        roles = staff.roles.all()
+        serializer = StaffRoleSerializer(roles, many=True)
+        return self.response_success(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='working-hours')
+    def working_hours(self, request, pk=None):
+        """Get staff working hours"""
+        staff = self.get_object()
+        print("staff", staff)
+        working_hours = staff.working_hours.all()
+        print("working_hours", working_hours)
+        serializer = StaffWorkingHoursSerializer(working_hours, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='off-days')
+    def off_days(self, request, pk=None):
+        """Get staff off days"""
+        staff = self.get_object()
+        off_days = staff.staff_off_days.all()
+        serializer = StaffOffDaySerializer(off_days, many=True)
+        return self.response_success(serializer.data)
     
     @action(detail=True, methods=['get', 'post', 'delete'])
     def services(self, request, pk=None):
@@ -95,3 +118,23 @@ class StaffViewSet(viewsets.ModelViewSet):
                     {'error': 'Staff service not found'}, 
                     status=status.HTTP_404_NOT_FOUND
                 )
+                
+class StaffWorkingHoursViewSet(BaseModelViewSet):
+    """ViewSet for Staff working hours"""
+    queryset = StaffWorkingHours.objects.all()
+    permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return StaffWorkingHoursCreateUpdateSerializer
+        return StaffWorkingHoursSerializer
+    
+class StaffOffDayViewSet(BaseModelViewSet):
+    """ViewSet for Staff off days"""
+    queryset = StaffOffDay.objects.all()
+    permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return StaffOffDayCreateUpdateSerializer
+        return StaffOffDaySerializer

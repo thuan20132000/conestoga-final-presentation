@@ -3,8 +3,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
 
-from client.models import Client, ClientPreference, ClientHistory
-from business.models import Business
+from client.models import Client, ClientPreference
 
 
 class Command(BaseCommand):
@@ -147,18 +146,5 @@ class Command(BaseCommand):
                 percentage = (count / total_clients * 100) if total_clients > 0 else 0
                 self.stdout.write(f'  {age_range}: {count} ({percentage:.1f}%)')
             self.stdout.write('')
-        
-        # History statistics
-        if detailed:
-            total_history_entries = ClientHistory.objects.filter(client__in=clients).count()
-            recent_history = ClientHistory.objects.filter(
-                client__in=clients,
-                changed_at__gte=last_30_days
-            ).count()
-            
-            self.stdout.write('History Statistics:')
-            self.stdout.write(f'  Total history entries: {total_history_entries}')
-            self.stdout.write(f'  Recent entries (30 days): {recent_history}')
-            self.stdout.write('')
-        
+
         self.stdout.write(self.style.SUCCESS('Statistics completed!'))

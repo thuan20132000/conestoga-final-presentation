@@ -52,3 +52,9 @@ class Service(models.Model):
     
     def __str__(self):
         return f"{self.business.name} - {self.name}"
+    
+    def save(self, *args, **kwargs):
+        """Save the service and update the sort order"""
+        if self.color_code is None:
+            self.color_code = self.category.color_code
+        super().save(*args, **kwargs)

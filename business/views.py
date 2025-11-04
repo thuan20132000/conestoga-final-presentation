@@ -20,6 +20,7 @@ from .serializers import (
     BusinessSerializer,
     BusinessSettingsSerializer
 )
+from appointment.serializers import AppointmentDetailSerializer, AppointmentListSerializer
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
@@ -257,6 +258,14 @@ class BusinessViewSet(BaseModelViewSet):
         object = self.get_object()
         clients = object.primary_clients.filter(is_active=True).order_by('-created_at')
         serializer = ClientSerializer(clients, many=True)
+        return self.response_success(serializer.data)
+
+    @action(detail=True, methods=['get'], url_path='appointments')
+    def appointments(self, request, pk=None):   
+        """Get appointments for a business."""
+        object = self.get_object()
+        appointments = object.appointments.all()
+        serializer = AppointmentDetailSerializer(appointments, many=True)
         return self.response_success(serializer.data)
 
 class OperatingHoursViewSet(BaseModelViewSet):

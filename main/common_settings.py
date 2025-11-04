@@ -24,6 +24,7 @@ MIDDLEWARE = [
     "simple_history.middleware.HistoryRequestMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "main.middleware.TimezoneMiddleware",
 ]
 
 ROOT_URLCONF = "main.urls"
@@ -90,7 +91,7 @@ AUTH_USER_MODEL = "staff.Staff"
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "America/Toronto"
 
 USE_I18N = True
 
@@ -213,6 +214,10 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
+# Allow custom headers
+CORS_ALLOW_HEADERS = [
+    "X-Timezone",
+]
 # Notification provider settings (placeholders)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@example.com")
 SMS_DEFAULT_SENDER = config("SMS_DEFAULT_SENDER", default="")

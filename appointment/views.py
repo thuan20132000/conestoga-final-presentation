@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -7,85 +7,123 @@ from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from datetime import datetime, timedelta, date
 from django.shortcuts import get_object_or_404
+from django_filters import rest_framework as filters
 
-from .models import Appointment, AppointmentStatus, AppointmentReminder, AppointmentConflict, AppointmentService
+
+from .models import Appointment, AppointmentService
 from .serializers import (
-    AppointmentSerializer, AppointmentListSerializer,
-    AppointmentStatusSerializer, AppointmentAvailabilitySerializer,
-    AppointmentReminderSerializer, AppointmentConflictSerializer, AppointmentStatsSerializer,
+    AppointmentSerializer,
+    AppointmentAvailabilitySerializer,
+    AppointmentStatsSerializer,
+    AppointmentCreateSerializer,
+    AppointmentDetailSerializer,
+    AppointmentUpdateSerializer,
+    AppointmentListSerializer,
     AppointmentServiceSerializer
 )
-from client.models import Client
-from client.serializers import ClientSerializer
-from business.models import Business
-from service.models import Service
-from staff.models import Staff
+from main.viewsets import BaseModelViewSet
 
 
-class AppointmentStatusViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing appointment statuses"""
-    queryset = AppointmentStatus.objects.all()
-    serializer_class = AppointmentStatusSerializer
-    ordering = ['sort_order', 'name']
+class AppointmentFilter(filters.FilterSet):
+    business_id = filters.NumberFilter(field_name='business_id')
+    appointment_date = filters.DateFilter(field_name='appointment_date')
+    status = filters.CharFilter(field_name='status')
+    booked_by = filters.NumberFilter(field_name='booked_by')
+    booking_source = filters.CharFilter(field_name='booking_source')
+    class Meta:
+        model = Appointment
+        fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source']
 
-
-class AppointmentViewSet(viewsets.ModelViewSet):
+class AppointmentViewSet(BaseModelViewSet):
     """ViewSet for managing appointments"""
-    queryset = Appointment.objects.select_related(
-        'client', 'service', 'staff', 'status', 'business'
-    ).all()
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = [
-        'business', 'client', 'service', 'staff', 'status', 'appointment_date',
-        'is_paid', 'booking_source', 'is_recurring'
-    ]
+    queryset = Appointment.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = AppointmentFilter
+    ordering_fields = ['appointment_date', 'created_at']
+    ordering = ['-appointment_date', '-created_at']
     search_fields = [
-        'client__first_name', 'client__last_name', 'service__name',
-        'staff__first_name', 'staff__last_name', 'notes'
+        'client__first_name', 
+        'client__last_name', 
+        'client__email', 
+        'client__phone', 
+        'booked_by__first_name', 
+        'booked_by__last_name', 
+        'booked_by__email', 
+        'booked_by__phone',
+        'business__name'
     ]
-    ordering_fields = [
-        'appointment_date', 'start_time', 'created_at', 'total_price'
-    ]
-    ordering = ['appointment_date', 'start_time']
+    
     
     def get_serializer_class(self):
-        """Return appropriate serializer based on action"""
-        if self.action == 'list':
-            return AppointmentListSerializer
+        if self.action in ['update', 'partial_update']:
+            return AppointmentUpdateSerializer
+        if self.action == 'create':
+            return AppointmentCreateSerializer
+        if self.action == 'retrieve':
+            return AppointmentDetailSerializer
         return AppointmentSerializer
-    
+
     def get_queryset(self):
-        """Filter appointments based on query parameters"""
+        """Get queryset for appointments"""
         queryset = super().get_queryset()
-        
-        # Filter by date range
-        start_date = self.request.query_params.get('start_date')
-        end_date = self.request.query_params.get('end_date')
-        
-        if start_date:
-            queryset = queryset.filter(appointment_date__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(appointment_date__lte=end_date)
-        
-        # Filter by status
-        status_filter = self.request.query_params.get('status')
-        if status_filter:
-            queryset = queryset.filter(status__name=status_filter)
-        
-        # Filter by business
-        business_id = self.request.query_params.get('business')
-        if business_id:
-            queryset = queryset.filter(business_id=business_id)
-        
+        queryset = queryset.filter(
+            is_active=True
+        )
         return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """List appointments"""
+        appointments = self.get_queryset()
+        appointments = self.filter_queryset(appointments)
+        serializer = AppointmentDetailSerializer(appointments, many=True)
+        return self.response_success(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve an appointment"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return self.response_success(serializer.data)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update an appointment"""
+        try:
+            instance = self.get_object()   
+            serializer = AppointmentUpdateSerializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            updated_appointment = serializer.update(instance, serializer.validated_data)
+            return self.response_success(updated_appointment)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            created_appointment = serializer.create(serializer.validated_data)
+            return self.response_success(created_appointment)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    def destroy(self, request, *args, **kwargs):
+        """Destroy an appointment"""
+        try:
+            instance = self.get_object()
+            instance.is_active = False
+            instance.save()
+            print("instance", instance)
+            print("AppointmentSerializer(instance).data", AppointmentSerializer(instance).data)
+            return self.response_success(AppointmentSerializer(instance).data)
+        except Exception as e:
+            return self.response_error(str(e))
     
     @action(detail=False, methods=['get'])
     def today(self, request):
         """Get today's appointments"""
-        today = timezone.now().date()
-        appointments = self.get_queryset().filter(appointment_date=today)
-        serializer = self.get_serializer(appointments, many=True)
-        return Response(serializer.data)
+        today = timezone.localtime(timezone.now()).date()
+        business_id = request.query_params.get('business_id')
+        appointments = self.get_queryset().filter(appointment_date=today, business_id=business_id)
+        serializer = AppointmentListSerializer(appointments, many=True)
+        return self.response_success(serializer.data)
     
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
@@ -96,35 +134,35 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             status__name__in=['scheduled', 'confirmed']
         )
         serializer = self.get_serializer(appointments, many=True)
-        return Response(serializer.data)
+        return self.response_success(serializer.data)
     
     @action(detail=False, methods=['get'])
     def by_staff(self, request):
         """Get appointments by staff member"""
         staff_id = request.query_params.get('staff_id')
         if not staff_id:
-            return Response(
+            return self.response_error(
                 {'error': 'staff_id parameter is required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         appointments = self.get_queryset().filter(staff_id=staff_id)
         serializer = self.get_serializer(appointments, many=True)
-        return Response(serializer.data)
+        return self.response_success(serializer.data)
     
     @action(detail=False, methods=['get'])
     def by_client(self, request):
         """Get appointments by client"""
         client_id = request.query_params.get('client_id')
         if not client_id:
-            return Response(
+            return self.response_error(
                 {'error': 'client_id parameter is required'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         appointments = self.get_queryset().filter(client_id=client_id)
         serializer = self.get_serializer(appointments, many=True)
-        return Response(serializer.data)
+        return self.response_success(serializer.data)
     
     @action(detail=False, methods=['post'])
     def check_availability(self, request):
@@ -141,12 +179,12 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 business, service, appointment_date, staff
             )
             
-            return Response({
+            return self.response_success({
                 'available_slots': available_slots,
                 'business_hours': self._get_business_hours(business, appointment_date)
             })
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return self.response_error(serializer.errors)
     
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
@@ -154,7 +192,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
         
         if appointment.status.name != 'scheduled':
-            return Response(
+            return self.response_error(
                 {'error': 'Only scheduled appointments can be confirmed'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -166,9 +204,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.save()
             
             serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
+            return self.response_success(serializer.data)
         
-        return Response(
+        return self.response_error(
             {'error': 'Confirmed status not found'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -179,7 +217,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
         
         if appointment.status.name in ['completed', 'cancelled']:
-            return Response(
+            return self.response_error(
                 {'error': 'Cannot cancel completed or already cancelled appointments'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -191,9 +229,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.save()
             
             serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
+            return self.response_success(serializer.data)
         
-        return Response(
+        return self.response_error(
             {'error': 'Cancelled status not found'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -204,7 +242,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         appointment = self.get_object()
         
         if appointment.status.name in ['completed', 'cancelled']:
-            return Response(
+            return self.response_error(
                 {'error': 'Cannot complete already completed or cancelled appointments'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
@@ -216,9 +254,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             appointment.save()
             
             serializer = self.get_serializer(appointment)
-            return Response(serializer.data)
+            return self.response_success(serializer.data)
         
-        return Response(
+        return self.response_error(
             {'error': 'Completed status not found'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -275,7 +313,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         }
         
         serializer = AppointmentStatsSerializer(stats_data)
-        return Response(serializer.data)
+        return self.response_success(serializer.data)
     
     def _get_available_time_slots(self, business, service, appointment_date, staff=None):
         """Get available time slots for a given date"""
@@ -371,40 +409,62 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         return {'is_open': False}
 
 
-class AppointmentReminderViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing appointment reminders"""
-    queryset = AppointmentReminder.objects.all()
-    serializer_class = AppointmentReminderSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['appointment', 'reminder_type', 'is_sent', 'is_delivered']
-
-
-class AppointmentServiceViewSet(viewsets.ModelViewSet):
+class AppointmentServiceViewSet(BaseModelViewSet):
     """ViewSet for managing appointment services"""
     queryset = AppointmentService.objects.all()
     serializer_class = AppointmentServiceSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['appointment', 'service', 'staff', 'is_requested', 'is_active']
-    search_fields = ['service__name', 'staff__first_name', 'staff__last_name']
-    ordering_fields = ['created_at', 'custom_price', 'custom_duration']
-    ordering = ['appointment', 'service__name']
-
-
-class AppointmentConflictViewSet(viewsets.ModelViewSet):
-    """ViewSet for managing appointment conflicts"""
-    queryset = AppointmentConflict.objects.all()
-    serializer_class = AppointmentConflictSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['appointment', 'conflict_type', 'is_resolved']
     
-    @action(detail=True, methods=['post'])
-    def resolve(self, request, pk=None):
-        """Resolve a conflict"""
-        conflict = self.get_object()
-        conflict.is_resolved = True
-        conflict.resolved_at = timezone.now()
-        conflict.resolved_by = request.user if hasattr(request, 'user') else None
-        conflict.save()
+    def list(self, request, *args, **kwargs):
+        """List appointment services"""
+        appointment_id = request.query_params.get('appointment_id')
+        if not appointment_id:
+            return self.response_error(
+                {'error': 'appointment_id parameter is required'}, 
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        appointment_services = self.get_queryset().filter(appointment_id=appointment_id)
+        serializer = self.get_serializer(appointment_services, many=True)
+        return self.response_success(serializer.data)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve an appointment service"""
+        appointment_service = self.get_object()
+        serializer = self.get_serializer(appointment_service)
+        return self.response_success(serializer.data)
+    
+    def create(self, request, *args, **kwargs):
+        """Create an appointment service"""
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            created_appointment_service = serializer.create(serializer.validated_data)
+            return self.response_success(AppointmentServiceSerializer(created_appointment_service).data)
+        except Exception as e:
+            return self.response_error(str(e))
         
-        serializer = self.get_serializer(conflict)
-        return Response(serializer.data)
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update an appointment service"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    def destroy(self, request, *args, **kwargs):
+        """Destroy an appointment service"""
+        try:
+            instance = self.get_object()
+            instance.delete()
+            return self.response_success(
+                data=None,
+                message="Appointment service deleted successfully"
+            )
+        except Exception as e:
+            return self.response_error(
+                data=str(e),
+                message="Failed to delete appointment service"
+            )
+    

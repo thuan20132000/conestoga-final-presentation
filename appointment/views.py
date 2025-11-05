@@ -27,7 +27,7 @@ from staff.models import Staff
 from service.models import Service
 from service.serializers import ServiceSerializer
 
-
+import json
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -142,6 +142,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 print("appointment_services", appointment_services)
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
+                        id=appointment_service['id'],
                         appointment=appointment,
                         service_id=appointment_service['service'],
                         staff_id=appointment_service['staff'],
@@ -170,16 +171,33 @@ class AppointmentViewSet(BaseModelViewSet):
                 # update appointment services
                 appointment_services = request.data['appointment_services']
                 for appointment_service in appointment_services:
-                    AppointmentService.objects.update_or_create(
-                        appointment=appointment,
-                        service_id=appointment_service['service'],
-                        defaults={
-                            'staff_id': appointment_service['staff'],
-                            'is_staff_request': appointment_service['is_staff_request'],
-                            'start_at': appointment_service['start_at'],
-                            'end_at': appointment_service['end_at'],
-                        }
-                    )
+                    service_id = appointment_service['service']
+                    staff_id = appointment_service['staff']
+                    is_staff_request = appointment_service['is_staff_request']
+                    start_at = appointment_service['start_at']
+                    end_at = appointment_service['end_at']
+                    id = appointment_service['id']
+                    try:
+                        appointment_service_obj = AppointmentService.objects.get(id=id)
+                    except AppointmentService.DoesNotExist:
+                        appointment_service_obj = None
+                    if appointment_service_obj:
+                        appointment_service_obj.staff_id = staff_id
+                        appointment_service_obj.start_at = start_at
+                        appointment_service_obj.end_at = end_at
+                        appointment_service_obj.service_id = service_id
+                        appointment_service_obj.is_staff_request = is_staff_request
+                        appointment_service_obj.save()
+                    else:
+                        AppointmentService.objects.create(
+                            id=id,
+                            appointment=appointment,
+                            service_id=service_id,
+                            staff_id=staff_id,
+                            is_staff_request=is_staff_request,
+                            start_at=start_at,
+                            end_at=end_at,
+                        )
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
             return self.response_error(str(e))

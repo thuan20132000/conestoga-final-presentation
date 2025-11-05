@@ -19,10 +19,10 @@ class ServiceAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('business', 'category', 'name', 'description')
+            'fields': ('business', 'category', 'name', 'description', 'is_online_booking','color_code','icon','image')
         }),
         ('Service Details', {
-            'fields': ('duration_minutes', 'price', 'max_capacity', 'requires_staff')
+            'fields': ('duration_minutes', 'price', 'max_capacity', 'requires_staff', 'sort_order')
         }),
         ('Status', {
             'fields': ('is_active',)

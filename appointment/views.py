@@ -152,7 +152,38 @@ class AppointmentViewSet(BaseModelViewSet):
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
             return self.response_error(str(e))
-
+    
+    # update appointment with appointment services
+    @action(detail=True, methods=['PATCH'], url_path='appointment-services')
+    def update_appointment_services(self, request, pk=None):
+        """Update appointment with appointment services"""
+        try:
+            with transaction.atomic():
+                appointment = self.get_object()
+                
+                # update appointment
+                appointment.client_id = request.data.get('client', appointment.client)
+                appointment.notes = request.data.get('notes', appointment.notes)
+                appointment.internal_notes = request.data.get('internal_notes', appointment.internal_notes)
+                appointment.save()
+                
+                # update appointment services
+                appointment_services = request.data['appointment_services']
+                for appointment_service in appointment_services:
+                    AppointmentService.objects.update_or_create(
+                        appointment=appointment,
+                        service_id=appointment_service['service'],
+                        defaults={
+                            'staff_id': appointment_service['staff'],
+                            'is_staff_request': appointment_service['is_staff_request'],
+                            'start_at': appointment_service['start_at'],
+                            'end_at': appointment_service['end_at'],
+                        }
+                    )
+                return self.response_success(AppointmentDetailSerializer(appointment).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
     @action(detail=False, methods=['get'], url_path='calendar-staffs')
     def calendar_staffs(self, request):
         """Get calendar staffs"""

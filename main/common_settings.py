@@ -217,6 +217,16 @@ CORS_ALLOW_CREDENTIALS = True
 # Allow custom headers
 CORS_ALLOW_HEADERS = [
     "X-Timezone",
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "X-Requested-With",
+    "X-CSRFToken",
+    "X-Forwarded-For",
+    "X-Forwarded-Host",
+    "X-Forwarded-Server",
+    "X-Forwarded-Port",
+    "X-Forwarded-Proto",
 ]
 # Notification provider settings (placeholders)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@example.com")

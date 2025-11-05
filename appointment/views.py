@@ -8,9 +8,9 @@ from django.utils import timezone
 from datetime import datetime, timedelta, date
 from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
-
-
+from django.db import transaction
 from .models import Appointment, AppointmentService
+
 from .serializers import (
     AppointmentSerializer,
     AppointmentAvailabilitySerializer,
@@ -22,6 +22,10 @@ from .serializers import (
     AppointmentServiceSerializer
 )
 from main.viewsets import BaseModelViewSet
+from staff.serializers import StaffCalendarSerializer
+from staff.models import Staff
+from service.models import Service
+from service.serializers import ServiceSerializer
 
 
 class AppointmentFilter(filters.FilterSet):
@@ -66,9 +70,13 @@ class AppointmentViewSet(BaseModelViewSet):
     def get_queryset(self):
         """Get queryset for appointments"""
         queryset = super().get_queryset()
-        queryset = queryset.filter(
-            is_active=True
-        )
+        queryset = queryset.filter(is_active=True)
+        return queryset
+    
+    def get_filtered_queryset(self):
+        """Get queryset for appointments"""
+        queryset = self.get_queryset()
+        queryset = self.filter_queryset(queryset)
         return queryset
     
     def list(self, request, *args, **kwargs):
@@ -116,14 +124,103 @@ class AppointmentViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
     
-    @action(detail=False, methods=['get'])
-    def today(self, request):
+    # create appointment with appointment services
+    @action(detail=False, methods=['post'], url_path='appointment-services')
+    def create_appointment_services(self, request):
+        """Create appointment with appointment services"""
+        try:
+            with transaction.atomic():
+                appointment = Appointment.objects.create(
+                    business_id=request.data['business'],
+                    client_id=request.data['client'],
+                    appointment_date=request.data['appointment_date'],
+                    notes=request.data['notes'],
+                    internal_notes=request.data['internal_notes'],
+                    booking_source=request.data['booking_source'],
+                )
+                appointment_services = request.data['appointment_services']
+                print("appointment_services", appointment_services)
+                for appointment_service in appointment_services:
+                    AppointmentService.objects.create(
+                        appointment=appointment,
+                        service_id=appointment_service['service'],
+                        staff_id=appointment_service['staff'],
+                        is_staff_request=appointment_service['is_staff_request'],
+                        start_at=appointment_service['start_at'],
+                        end_at=appointment_service['end_at'],
+                    )
+                return self.response_success(AppointmentDetailSerializer(appointment).data)
+        except Exception as e:
+            return self.response_error(str(e))
+
+    @action(detail=False, methods=['get'], url_path='calendar-staffs')
+    def calendar_staffs(self, request):
+        """Get calendar staffs"""
+        try:
+            business_id = request.query_params.get('business_id')
+            appointment_date = request.query_params.get('appointment_date')
+            if not business_id or not appointment_date:
+                return self.response_error(
+                    {'error': 'business_id and appointment_date parameters are required'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            weekday = datetime.strptime(appointment_date, '%Y-%m-%d').weekday()
+            
+            # Get staff who are working on the appointment date
+            business_staffs = Staff.objects.filter(
+                business_id=business_id,
+                is_active=True,
+                is_online_booking_allowed=True,
+                working_hours__is_working=True,
+                working_hours__day_of_week=weekday,
+            )
+            
+            # Get staff who have an off day on the appointment date
+            business_day_off_staffs = business_staffs.filter(
+                staff_off_days__start_date__lte=appointment_date,
+                staff_off_days__end_date__gte=appointment_date,
+            )
+            
+            # Get staff who are available for the appointment date
+            available_staffs = business_staffs.exclude(id__in=business_day_off_staffs.values_list('id', flat=True))
+            serializer = StaffCalendarSerializer(
+                available_staffs, 
+                many=True, 
+                context={
+                    'appointment_date': appointment_date, 
+                    'weekday': weekday,
+                }
+            )
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    def _get_appointments_statistics(self, appointments_queryset) -> dict:
+        """Get appointments statistics"""
+        total_appointments = appointments_queryset.count()
+        total_completed_appointments = appointments_queryset.filter(status='completed').count()
+        total_cancelled_appointments = appointments_queryset.filter(status='cancelled').count()
+
+        statistics_data = {
+            'total_appointments': total_appointments,
+            'total_completed_appointments': total_completed_appointments,
+            'total_cancelled_appointments': total_cancelled_appointments,
+            
+        }
+        return statistics_data
+    
+    @action(detail=False, methods=['get'], url_path='calendar-appointments')
+    def calendar_appointments(self, request):
         """Get today's appointments"""
-        today = timezone.localtime(timezone.now()).date()
-        business_id = request.query_params.get('business_id')
-        appointments = self.get_queryset().filter(appointment_date=today, business_id=business_id)
-        serializer = AppointmentListSerializer(appointments, many=True)
-        return self.response_success(serializer.data)
+        try:
+            all_appointments = self.get_filtered_queryset()
+            appointments_statistics = self._get_appointments_statistics(all_appointments)
+            appointments_data = AppointmentDetailSerializer(all_appointments, many=True).data
+            return self.response_success(appointments_data, metadata=appointments_statistics)
+        
+        except Exception as e:
+            return self.response_error(str(e))
     
     @action(detail=False, methods=['get'])
     def upcoming(self, request):

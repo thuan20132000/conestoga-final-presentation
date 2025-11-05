@@ -51,8 +51,13 @@ class Appointment(models.Model):
     internal_notes = models.TextField(blank=True, null=True, help_text="Internal notes (not visible to client)")
 
     # Booking tracking
-    booked_by = models.ForeignKey('staff.Staff', on_delete=models.SET_NULL, null=True, blank=True,
-                                  related_name='booked_appointments')
+    booked_by = models.ForeignKey(
+        'staff.Staff', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='booked_appointments'
+    )
     booking_source = models.CharField(max_length=50, choices=BOOKING_SOURCE_CHOICES, default='online')
 
     # Timestamps
@@ -68,7 +73,7 @@ class Appointment(models.Model):
         ordering = ['appointment_date','created_at']
 
     def __str__(self):
-        return f"{self.client.get_full_name()} - {self.appointment_date}"
+        return f"{self.client} - {self.appointment_date}"
 
     @property
     def is_past(self):
@@ -89,6 +94,7 @@ class Appointment(models.Model):
         """Get the color for status display"""
         return self.status
 
+    
 
 class AppointmentService(models.Model):
     """Appointment service model"""

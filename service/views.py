@@ -1,17 +1,20 @@
-from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
-from django.shortcuts import get_object_or_404
-
+from django_filters import rest_framework as filters
 from .models import ServiceCategory, Service
 from .serializers import (
-    ServiceCategorySerializer, ServiceSerializer, ServiceCreateUpdateSerializer
+    ServiceCategorySerializer, ServiceSerializer, CalendarServiceCategorySerializer
 )
-from business.models import Business
 from main.viewsets import BaseModelViewSet
 
+
+class ServiceCategoryFilter(filters.FilterSet):
+    is_active = filters.BooleanFilter(field_name='is_active')
+    business_id = filters.NumberFilter(field_name='business_id')
+    class Meta:
+        model = ServiceCategory
+        fields = ['is_active', 'business_id']
 
 class ServiceCategoryViewSet(BaseModelViewSet):
     """ViewSet for ServiceCategory management"""
@@ -26,39 +29,38 @@ class ServiceCategoryViewSet(BaseModelViewSet):
         services = category.services.all()
         serializer = ServiceSerializer(services, many=True)
         return self.response_success(serializer.data, message="Services retrieved successfully")
+    
+    @action(detail=False, methods=['get'], url_path='calendar-services')
+    def calendar_services(self, request):
+        """Get calendar services"""
+        try:
+            queryset = ServiceCategory.objects.filter(is_active=True).order_by('sort_order')
+            serializer = CalendarServiceCategorySerializer(queryset, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+
+class ServiceFilter(filters.FilterSet):
+    business_id = filters.NumberFilter(field_name='business_id')
+    category_id = filters.NumberFilter(field_name='category_id')
+    name = filters.CharFilter(field_name='name', lookup_expr='icontains')
+    description = filters.CharFilter(field_name='description', lookup_expr='icontains')
+    is_active = filters.BooleanFilter(field_name='is_active')
+    class Meta:
+        model = Service
+        fields = ['business_id', 'category_id', 'name', 'description', 'is_active']
 
 class ServiceViewSet(BaseModelViewSet):
     """ViewSet for Service management"""
     queryset = Service.objects.select_related('business', 'category')
     serializer_class = ServiceSerializer
     permission_classes = [AllowAny]
-
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ServiceFilter
     
-    @action(detail=False, methods=['get'])
-    def by_category(self, request):
-        """Get services grouped by category"""
-        business_id = request.query_params.get('business')
-        if not business_id:
-            return Response(
-                {'error': 'business parameter is required'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            business = Business.objects.get(id=business_id)
-        except Business.DoesNotExist:
-            return Response(
-                {'error': 'Business not found'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        categories = business.service_categories.filter(is_active=True).prefetch_related('services')
-        result = []
-        
-        for category in categories:
-            services = category.services.filter(is_active=True)
-            category_data = ServiceCategorySerializer(category).data
-            category_data['services'] = ServiceSerializer(services, many=True).data
-            result.append(category_data)
-        
-        return Response(result)
+    def get_queryset(self):
+        """Get queryset for services"""
+        queryset = super().get_queryset()
+        return queryset
+    

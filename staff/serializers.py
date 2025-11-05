@@ -97,3 +97,20 @@ class StaffOffDayCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = StaffOffDay
         fields = ['start_date', 'end_date', 'reason', 'staff']
+
+
+class StaffCalendarSerializer(StaffSerializer):
+    """Serializer for staff calendar"""
+    working_hours = serializers.SerializerMethodField()
+    class Meta:
+        model = Staff
+        fields = StaffSerializer.Meta.fields + ['working_hours']
+        
+    def get_working_hours(self, obj):
+        """Get working hours for staff"""
+        try:    
+            weekday = self.context.get('weekday')
+            working_hours = obj.working_hours.filter(day_of_week=weekday).first()
+            return StaffWorkingHoursSerializer(working_hours).data
+        except Exception as e:
+            return None

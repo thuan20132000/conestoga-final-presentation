@@ -65,3 +65,17 @@ class ServiceCreateUpdateSerializer(serializers.ModelSerializer):
                     "Service category must belong to the same business."
                 )
         return data
+
+class CalendarServiceCategorySerializer(ServiceCategorySerializer):
+    """Serializer for calendar services"""
+    services = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ServiceCategory
+        fields = [
+            'id', 'name', 'description', 'sort_order', 'is_active', 'is_online_booking', 'created_at', 'color_code', 'icon', 'image', 'services'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_services(self, obj):
+        return ServiceSerializer(obj.services.all(), many=True).data

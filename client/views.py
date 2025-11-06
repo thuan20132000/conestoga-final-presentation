@@ -9,12 +9,28 @@ from .serializers import (
     ClientUpdateSerializer,
 )
 from main.viewsets import BaseModelViewSet
+from appointment.serializers import AppointmentDetailSerializer
+from appointment.models import Appointment
+from django_filters import rest_framework as filters
 
+
+class ClientFilter(filters.FilterSet):
+    business_id = filters.NumberFilter(field_name='primary_business_id', required=True)
+    class Meta:
+        model = Client
+        fields = ['business_id']
 
 class ClientViewSet(BaseModelViewSet):
     """ViewSet for managing clients"""
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    
+    filterset_class = ClientFilter
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = self.filter_queryset(queryset)
+        return queryset
     
     def create(self, request, *args, **kwargs):
         try:
@@ -60,3 +76,12 @@ class ClientViewSet(BaseModelViewSet):
         serializer = ClientListSerializer(queryset, many=True)
         return Response(serializer.data)
 
+
+    # Get booking history for a client
+    @action(detail=True, methods=['get'], url_path='booking-history')
+    def booking_history(self, request, pk=None):
+        """Get booking history for a client."""
+        client = self.get_object()
+        clients_appointments = Appointment.objects.filter(client=client).order_by('-appointment_date')
+        serializer = AppointmentDetailSerializer(clients_appointments, many=True)
+        return self.response_success(serializer.data)

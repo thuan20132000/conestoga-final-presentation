@@ -166,6 +166,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 appointment.client_id = request.data.get('client', appointment.client)
                 appointment.notes = request.data.get('notes', appointment.notes)
                 appointment.internal_notes = request.data.get('internal_notes', appointment.internal_notes)
+                appointment.status = request.data.get('status', appointment.status)
                 appointment.save()
                 
                 # update appointment services

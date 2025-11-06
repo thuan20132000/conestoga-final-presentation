@@ -13,6 +13,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     """Serializer for Appointment model"""
     client_name = serializers.CharField(source='client.get_full_name', read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
+    client_email = serializers.EmailField(source='client.email', read_only=True)
+    client_phone = serializers.CharField(source='client.phone', read_only=True)
     
     class Meta:
         model = Appointment
@@ -22,6 +24,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'business_name', 
             'client', 
             'client_name', 
+            'client_email',
+            'client_phone',
             'appointment_date', 
             'status', 
             'notes', 
@@ -191,31 +195,12 @@ class AppointmentStatsSerializer(serializers.Serializer):
 class AppointmentDetailSerializer(AppointmentSerializer):
     """Serializer for detail view of appointment"""
     appointment_services = AppointmentServiceSerializer(many=True, read_only=True)
-    client_name = serializers.CharField(source='client.get_full_name', read_only=True)
     start_at = serializers.DateTimeField(source='appointment_services.first.start_at', read_only=True)
-    class Meta:
-        model = Appointment
-        fields = [
-            'id', 
-            'business', 
-            'client', 
-            'client_name',
-            'appointment_date', 
-            'status', 
-            'notes', 
-            'internal_notes', 
-            'booked_by', 
-            'booking_source', 
-            'created_at', 
-            'updated_at', 
-            'confirmed_at', 
-            'completed_at', 
-            'cancelled_at',
+    class Meta(AppointmentSerializer.Meta):
+        
+        fields = AppointmentSerializer.Meta.fields + [
             'start_at',
             'appointment_services',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'confirmed_at', 'completed_at', 'cancelled_at']
-        extra_kwargs = {
-            'appointment_services': {'read_only': True},
-        }
+        read_only_fields = AppointmentSerializer.Meta.read_only_fields + ['start_at']
 

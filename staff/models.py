@@ -55,10 +55,20 @@ class Staff(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()} ({self.business})"
     
+    def create_default_working_hours(self):
+        from datetime import time
+        for day in range(7):
+            StaffWorkingHours.objects.create(staff=self, day_of_week=day, start_time=time(9, 30), end_time=time(17, 30))
+        return self
+    
     def save(self, *args, **kwargs):
         if not self.username:
             self.username = self.email
+            
         super().save(*args, **kwargs)
+        
+        if not self.working_hours.all():
+            self.create_default_working_hours()
 
 class StaffSalarySettings(models.Model):
     """Staff salary settings"""

@@ -4,7 +4,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from .models import ServiceCategory, Service
 from .serializers import (
-    ServiceCategorySerializer, ServiceSerializer, CalendarServiceCategorySerializer
+    ServiceCategorySerializer, 
+    ServiceSerializer, 
+    CalendarServiceCategorySerializer, 
+    ServiceCreateUpdateSerializer,
+    ServiceCategoryCreateUpdateSerializer,
 )
 from main.viewsets import BaseModelViewSet
 
@@ -18,10 +22,26 @@ class ServiceCategoryFilter(filters.FilterSet):
 
 class ServiceCategoryViewSet(BaseModelViewSet):
     """ViewSet for ServiceCategory management"""
-    queryset = ServiceCategory.objects.select_related('business')
+    queryset = ServiceCategory.objects.all()
     serializer_class = ServiceCategorySerializer
     permission_classes = [AllowAny]
-
+    
+    def get_queryset(self):
+        """Get queryset for service categories"""
+        queryset = super().get_queryset()
+        return queryset
+    
+    def create(self, request, *args, **kwargs):
+        """Create a service category"""
+        try:
+            print("request.data", request.data)
+            serializer = ServiceCategoryCreateUpdateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            created_service_category = serializer.save()
+            return self.response_success(ServiceCategorySerializer(created_service_category).data)
+        except Exception as e:
+            return self.response_error(str(e))
+        
     @action(detail=True, methods=['get'], url_path='services')
     def services(self, request, pk=None):
         """Get services for a category"""
@@ -53,10 +73,9 @@ class ServiceFilter(filters.FilterSet):
 
 class ServiceViewSet(BaseModelViewSet):
     """ViewSet for Service management"""
-    queryset = Service.objects.select_related('business', 'category')
+    queryset = Service.objects.all()
     serializer_class = ServiceSerializer
     permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend]
     filterset_class = ServiceFilter
     
     def get_queryset(self):
@@ -64,3 +83,15 @@ class ServiceViewSet(BaseModelViewSet):
         queryset = super().get_queryset()
         return queryset
     
+    def create(self, request, *args, **kwargs):
+        """Create a service"""
+        try:
+            print("request.data", request.data)
+            business_id = request.query_params.get('business_id')
+            print("business_id", business_id)
+            serializer = ServiceCreateUpdateSerializer(data=request.data, context={'business_id': business_id}) 
+            serializer.is_valid(raise_exception=True)
+            created_service = serializer.save()
+            return self.response_success(ServiceSerializer(created_service).data)
+        except Exception as e:
+            return self.response_error(str(e))

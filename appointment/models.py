@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from simple_history.models import HistoricalRecords
 
 
 class Appointment(models.Model):
@@ -67,12 +68,14 @@ class Appointment(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     
     is_active = models.BooleanField(default=True)
+    
+    history = HistoricalRecords()
 
     class Meta:
         ordering = ['appointment_date','created_at']
 
     def __str__(self):
-        return f"{self.client} - {self.appointment_date}"
+        return f"{self.id} - {self.appointment_date}"
 
     @property
     def is_past(self):
@@ -146,6 +149,8 @@ class AppointmentService(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    history = HistoricalRecords()
     
     class Meta:
         ordering = ['start_at']

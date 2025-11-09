@@ -9,13 +9,37 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ServiceCategory
         fields = [
-            'id', 'name', 'description', 'sort_order', 'is_active', 'created_at', 'total_services', 'color_code', 'icon', 'image'
+            'id', 'name', 'description', 'sort_order', 'is_active', 'created_at', 'total_services', 'color_code', 'icon', 'image', 'business'
         ]
         read_only_fields = ['id', 'created_at']
 
     def get_total_services(self, obj):
         return obj.services.count()
 
+class ServiceCategoryCreateUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for creating and updating service categories"""
+    
+    class Meta:
+        model = ServiceCategory
+        fields = [
+            'name', 
+            'description', 
+            'sort_order', 
+            'is_active', 
+            'is_online_booking',
+            'color_code', 
+            'icon', 
+            'image', 
+            'business'
+        ]
+    
+    def validate(self, data):
+        business = self.context.get('business')
+        if business and ServiceCategory.objects.filter(business=business).exists():
+            raise serializers.ValidationError(
+                "A service category with this business already exists."
+            )
+        return data
 
 class ServiceSerializer(serializers.ModelSerializer):
     """Serializer for Service model"""
@@ -51,8 +75,19 @@ class ServiceCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Service
         fields = [
-            'category', 'name', 'description', 'duration_minutes', 'price',
-            'is_active', 'requires_staff', 'max_capacity', 'color_code', 'icon', 'image'
+            'category',
+            'name', 
+            'description', 
+            'duration_minutes', 
+            'price',
+            'is_online_booking',
+            'is_active', 
+            'requires_staff', 
+            'max_capacity', 
+            'color_code', 
+            'icon', 
+            'image',
+            'business'
         ]
     
     def validate(self, data):

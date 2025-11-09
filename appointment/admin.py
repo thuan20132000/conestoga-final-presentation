@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import AppointmentService, Appointment
+from simple_history.admin import SimpleHistoryAdmin
 
 class AppointmentServiceInlineAdmin(admin.TabularInline):
     model = AppointmentService
@@ -11,9 +12,9 @@ class AppointmentServiceInlineAdmin(admin.TabularInline):
     readonly_fields = ['created_at', 'updated_at']
 
 @admin.register(Appointment)    
-class AppointmentAdmin(admin.ModelAdmin):
-    list_display = ['client', 'business', 'appointment_date', 'status', 'booked_by', 'booking_source', 'created_at', 'updated_at']
-    list_filter = ['status', 'booked_by', 'booking_source']
+class AppointmentAdmin(SimpleHistoryAdmin):
+    list_display = ['client', 'business', 'appointment_date', 'status', 'booking_source', 'created_at', 'updated_at']
+    list_filter = ['status', 'business', 'booking_source']
     list_per_page = 20
     list_editable = ['status']
     list_display_links = ['client', 'business', 'appointment_date']
@@ -24,3 +25,8 @@ class AppointmentAdmin(admin.ModelAdmin):
     ]
     inlines = [AppointmentServiceInlineAdmin]
     
+@admin.register(AppointmentService)
+class AppointmentServiceAdmin(SimpleHistoryAdmin):
+    list_display = ['appointment', 'service', 'staff', 'is_staff_request', 'custom_price', 'custom_duration', 'start_at', 'end_at']
+    list_filter = ['appointment', 'service', 'staff', 'is_staff_request']
+    list_per_page = 20

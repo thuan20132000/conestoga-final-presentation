@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from django.db import transaction
 from .models import Appointment, AppointmentService
+from simple_history.utils import update_change_reason
 
 from .serializers import (
     AppointmentSerializer,
@@ -19,7 +20,8 @@ from .serializers import (
     AppointmentDetailSerializer,
     AppointmentUpdateSerializer,
     AppointmentListSerializer,
-    AppointmentServiceSerializer
+    AppointmentServiceSerializer,
+    AppointmentHistorySerializer
 )
 from main.viewsets import BaseModelViewSet
 from staff.serializers import StaffCalendarSerializer
@@ -124,6 +126,17 @@ class AppointmentViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
     
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        """Get history of an appointment"""
+        try:
+            instance = self.get_object()
+            history = instance.history.all().order_by('-history_date')
+            print("history", history)
+            return self.response_success(AppointmentHistorySerializer(history, many=True).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
     # create appointment with appointment services
     @action(detail=False, methods=['post'], url_path='appointment-services')
     def create_appointment_services(self, request):
@@ -139,7 +152,6 @@ class AppointmentViewSet(BaseModelViewSet):
                     booking_source=request.data['booking_source'],
                 )
                 appointment_services = request.data['appointment_services']
-                print("appointment_services", appointment_services)
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
                         id=appointment_service['id'],
@@ -150,6 +162,7 @@ class AppointmentViewSet(BaseModelViewSet):
                         start_at=appointment_service['start_at'],
                         end_at=appointment_service['end_at'],
                     )
+                
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
             return self.response_error(str(e))

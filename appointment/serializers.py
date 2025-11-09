@@ -204,3 +204,9 @@ class AppointmentDetailSerializer(AppointmentSerializer):
         ]
         read_only_fields = AppointmentSerializer.Meta.read_only_fields + ['start_at']
 
+
+class AppointmentHistorySerializer(serializers.ModelSerializer):
+    """Serializer for history of an appointment"""
+    class Meta:
+        model = Appointment.history.model
+        fields = '__all__'

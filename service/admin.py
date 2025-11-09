@@ -1,9 +1,10 @@
 from django.contrib import admin
 from .models import ServiceCategory, Service
+from simple_history.admin import SimpleHistoryAdmin
 
 
 @admin.register(ServiceCategory)
-class ServiceCategoryAdmin(admin.ModelAdmin):
+class ServiceCategoryAdmin(SimpleHistoryAdmin):
     list_display = ['name', 'business', 'sort_order', 'is_active', 'created_at']
     list_filter = ['business', 'is_active', 'created_at']
     search_fields = ['name', 'description', 'business__name']
@@ -11,7 +12,7 @@ class ServiceCategoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Service)
-class ServiceAdmin(admin.ModelAdmin):
+class ServiceAdmin(SimpleHistoryAdmin):
     list_display = ['name', 'business', 'category', 'price', 'duration_minutes', 'is_active']
     list_filter = ['business', 'category', 'is_active', 'requires_staff', 'created_at']
     search_fields = ['name', 'description', 'business__name', 'category__name']

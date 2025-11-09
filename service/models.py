@@ -1,5 +1,6 @@
 from django.db import models
 from business.models import Business
+from simple_history.models import HistoricalRecords
 
 
 class ServiceCategory(models.Model):
@@ -16,6 +17,8 @@ class ServiceCategory(models.Model):
     icon = models.CharField(max_length=100, blank=True, null=True)
     image = models.ImageField(upload_to='service_categories/', blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    history = HistoricalRecords()
     
     class Meta:
         ordering = ['sort_order', 'name']
@@ -45,6 +48,8 @@ class Service(models.Model):
     color_code = models.CharField(max_length=10, blank=True, null=True)
     icon = models.CharField(max_length=100, blank=True, null=True)
     image = models.ImageField(upload_to='services/', blank=True, null=True)
+    
+    history = HistoricalRecords()
     
     class Meta:
         ordering = ['sort_order', 'name']

@@ -167,6 +167,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 appointment.notes = request.data.get('notes', appointment.notes)
                 appointment.internal_notes = request.data.get('internal_notes', appointment.internal_notes)
                 appointment.status = request.data.get('status', appointment.status)
+                appointment.appointment_date = request.data.get('appointment_date', appointment.appointment_date)
                 appointment.save()
                 
                 # update appointment services
@@ -177,6 +178,9 @@ class AppointmentViewSet(BaseModelViewSet):
                     is_staff_request = appointment_service['is_staff_request']
                     start_at = appointment_service['start_at']
                     end_at = appointment_service['end_at']
+                    custom_price = appointment_service.get('custom_price', None)
+                    custom_duration = appointment_service.get('custom_duration', None)
+                    
                     id = appointment_service['id']
                     try:
                         appointment_service_obj = AppointmentService.objects.get(id=id)
@@ -188,6 +192,8 @@ class AppointmentViewSet(BaseModelViewSet):
                         appointment_service_obj.end_at = end_at
                         appointment_service_obj.service_id = service_id
                         appointment_service_obj.is_staff_request = is_staff_request
+                        appointment_service_obj.custom_price = custom_price
+                        appointment_service_obj.custom_duration = custom_duration
                         appointment_service_obj.save()
                     else:
                         AppointmentService.objects.create(
@@ -198,9 +204,12 @@ class AppointmentViewSet(BaseModelViewSet):
                             is_staff_request=is_staff_request,
                             start_at=start_at,
                             end_at=end_at,
+                            custom_price=custom_price,
+                            custom_duration=custom_duration,
                         )
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
+            print("error", e)
             return self.response_error(str(e))
     
     @action(detail=False, methods=['get'], url_path='calendar-staffs')

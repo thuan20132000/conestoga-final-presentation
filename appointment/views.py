@@ -143,6 +143,7 @@ class AppointmentViewSet(BaseModelViewSet):
         """Create appointment with appointment services"""
         try:
             with transaction.atomic():
+                appointment_services = request.data['appointment_services']
                 appointment = Appointment.objects.create(
                     business_id=request.data['business'],
                     client_id=request.data['client'],
@@ -150,8 +151,9 @@ class AppointmentViewSet(BaseModelViewSet):
                     notes=request.data['notes'],
                     internal_notes=request.data['internal_notes'],
                     booking_source=request.data['booking_source'],
+                    start_at=request.data['start_at'],
+                    end_at=request.data['end_at'],
                 )
-                appointment_services = request.data['appointment_services']
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
                         id=appointment_service['id'],
@@ -181,6 +183,8 @@ class AppointmentViewSet(BaseModelViewSet):
                 appointment.internal_notes = request.data.get('internal_notes', appointment.internal_notes)
                 appointment.status = request.data.get('status', appointment.status)
                 appointment.appointment_date = request.data.get('appointment_date', appointment.appointment_date)
+                appointment.start_at = request.data.get('start_at', appointment.start_at)
+                appointment.end_at = request.data.get('end_at', appointment.end_at)
                 appointment.save()
                 
                 # update appointment services

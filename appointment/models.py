@@ -67,6 +67,9 @@ class Appointment(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     
+    start_at = models.DateTimeField(null=True, blank=True)
+    end_at = models.DateTimeField(null=True, blank=True)
+    
     is_active = models.BooleanField(default=True)
     
     history = HistoricalRecords()

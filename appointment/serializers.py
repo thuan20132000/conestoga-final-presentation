@@ -207,6 +207,7 @@ class AppointmentDetailSerializer(AppointmentSerializer):
 
 class AppointmentHistorySerializer(serializers.ModelSerializer):
     """Serializer for history of an appointment"""
+    client_name = serializers.CharField(source='client.first_name', read_only=True)
     class Meta:
         model = Appointment.history.model
         fields = '__all__'

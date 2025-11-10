@@ -70,7 +70,8 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
         }),
         ('Notification Settings', {
             'fields': (
-                'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before'
+                'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
+                'send_confirmation_sms'
             )
         }),
         ('Payment Settings', {

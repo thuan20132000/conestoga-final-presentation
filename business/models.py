@@ -123,6 +123,7 @@ class BusinessSettings(models.Model):
     send_reminder_emails = models.BooleanField(default=True)
     send_reminder_sms = models.BooleanField(default=False)
     reminder_hours_before = models.PositiveIntegerField(default=24, help_text="Hours before appointment to send reminder")
+    send_confirmation_sms = models.BooleanField(default=False)
     
     # Payment settings
     currency = models.CharField(max_length=3, default="CAD")

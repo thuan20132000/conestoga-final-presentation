@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.db import transaction
 
 from appointment.serializers import AppointmentServiceSerializer, AppointmentSerializer
-
+from business.models import BusinessSettings
 from .models import Appointment, AppointmentService
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
@@ -28,21 +28,34 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             'business_phone_number', 'Unknown Phone')
         business_name = appointment_data.get(
             'business_name', 'Unknown Business')
+        
+        
         appointment_id = appointment_data.get('id', None)
         business_id = appointment_data.get('business', None)
+        
+        # get business settings
+        business_settings = BusinessSettings.objects.get(business_id=business_id)
+        send_reminder_sms = business_settings.send_reminder_sms if business_settings else False
+        send_confirmation_sms = business_settings.send_confirmation_sms if business_settings else False
+        reminder_hours_before = business_settings.reminder_hours_before if business_settings else 2
+        
         start_at = appointment_data.get('start_at')
         start_at_obj = datetime.fromisoformat(start_at)
         start_at_str = start_at_obj.strftime("%I:%M %p on %B %d, %Y")
         metadata = instance.metadata
         schedule_name = f"reminder-sms-{business_id}-{appointment_id}"
         schedule_time = start_at_obj - timedelta(
-            hours=2,
+            hours=reminder_hours_before,
             minutes=0,
         )
 
         with transaction.atomic():
             if created:
                 if metadata and metadata.get('is_send_confirmation_sms', False) == True:
+                    
+                    if send_confirmation_sms == False:
+                        return
+                    
                     # New appointment created
                     title = f"Appointment Confirmed - {business_name}"
                     body_message = f"Hello {client_name}, your appointment #{appointment_id} has been confirmed at {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
@@ -57,6 +70,9 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                 
                 if metadata and metadata.get('is_send_reminder_sms', False) == True:
                     # New appointment created
+                    if send_reminder_sms == False:
+                        return
+                    
                     if schedule_time <= timezone.now():
                         return
                     

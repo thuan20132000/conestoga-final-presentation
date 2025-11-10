@@ -72,6 +72,8 @@ class Appointment(models.Model):
     
     is_active = models.BooleanField(default=True)
     
+    metadata = models.JSONField(null=True, blank=True)
+    
     history = HistoricalRecords()
 
     class Meta:

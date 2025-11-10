@@ -27,7 +27,7 @@ class EmailService:
 class SMSService:
     def send(self, to_phone: str, body: str) -> SendResult:
         try:
-            logger.info("SMS to %s: %s", to_phone, body)
+            logger.warning(f"========= SMS to {to_phone}: {body}")
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("SMS send failed")
@@ -37,7 +37,9 @@ class SMSService:
 class PushService:
     def send(self, device_token: str, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
         try:
-            logger.info("Push to %s: %s - %s | data=%s", device_token, title, body, data)
+            logger.warning(f"================= Push to {device_token} - {title}")
+            logger.warning(f"================= Body: {body}")
+            logger.warning(f"================= Data: {data}")
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")
@@ -51,6 +53,7 @@ class NotificationDispatcher:
         self.push = PushService()
 
     def dispatch(self, channel: str, to: str, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
+        logger.warning(f"Dispatching notification: {channel}, {to}, {title}, {body}, {data}")
         if channel == "email":
             return self.email.send(to, title, body)
         if channel == "sms":

@@ -98,6 +98,7 @@ class AppointmentViewSet(BaseModelViewSet):
         """Partial update an appointment"""
         try:
             instance = self.get_object()   
+            print(f"================= request.data: {request.data}")
             serializer = AppointmentUpdateSerializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             updated_appointment = serializer.update(instance, serializer.validated_data)
@@ -185,6 +186,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 appointment.appointment_date = request.data.get('appointment_date', appointment.appointment_date)
                 appointment.start_at = request.data.get('start_at', appointment.start_at)
                 appointment.end_at = request.data.get('end_at', appointment.end_at)
+                appointment.metadata = request.data.get('metadata', appointment.metadata)
                 appointment.save()
                 
                 # update appointment services

@@ -232,3 +232,15 @@ CORS_ALLOW_HEADERS = [
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@example.com")
 SMS_DEFAULT_SENDER = config("SMS_DEFAULT_SENDER", default="")
 PUSH_FCM_SERVER_KEY = config("PUSH_FCM_SERVER_KEY", default="")
+
+# Twilio SMS settings
+TWILIO_ACCOUNT_SID = config("TWILIO_ACCOUNT_SID", default="")
+TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN", default="")
+TWILIO_PHONE_NUMBER = config("TWILIO_PHONE_NUMBER", default="")
+
+OPT_OUT_MESSAGE = config('OPT_OUT_MESSAGE', default="To opt out, reply STOP")
+
+# AWS settings
+AWS_REGION = config('AWS_REGION')
+AWS_LAMBDA_SEND_SMS_ARN = config('AWS_LAMBDA_SEND_SMS_ARN')
+AWS_SCHEDULER_POLICY_ARN = config('AWS_SCHEDULER_POLICY_ARN')

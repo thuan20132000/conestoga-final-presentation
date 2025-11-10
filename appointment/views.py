@@ -154,6 +154,7 @@ class AppointmentViewSet(BaseModelViewSet):
                     booking_source=request.data['booking_source'],
                     start_at=request.data['start_at'],
                     end_at=request.data['end_at'],
+                    metadata=request.data['metadata'],
                 )
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(

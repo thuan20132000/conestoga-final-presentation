@@ -10,43 +10,10 @@ from appointment.serializers import AppointmentServiceSerializer, AppointmentSer
 from .models import Appointment, AppointmentService
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
-from datetime import datetime
+from datetime import datetime, timedelta
+
 logger = logging.getLogger(__name__)
 dispatcher = NotificationDispatcher()
-
-
-def get_client_contact_info(client, business):
-    """Get client contact information based on preferred contact method"""
-    logger.info(f"Client: {client.id}")
-    if not client:
-        return None, None
-    preferred_method = client.preferred_contact_method
-    logger.info(f"Preferred method: {preferred_method}")
-    # If client prefers no contact, don't send notifications
-    if preferred_method == 'none':
-        return None, None
-
-    # Determine channel and recipient based on preferred method
-    if preferred_method in ['email', 'Email']:
-        if client.email:
-            return Notification.Channel.EMAIL, client.email
-        # Fallback to SMS if email not available
-        if client.phone:
-            return Notification.Channel.SMS, client.phone
-    elif preferred_method in ['sms', 'SMS', 'phone', 'Phone']:
-        if client.phone:
-            return Notification.Channel.SMS, client.phone
-        # Fallback to email if phone not available
-        if client.email:
-            return Notification.Channel.EMAIL, client.email
-    else:
-        # Default: try email first, then SMS
-        if client.email:
-            return Notification.Channel.EMAIL, client.email
-        elif client.phone:
-            return Notification.Channel.SMS, client.phone
-
-    return None, None
 
 
 @receiver(post_save, sender=Appointment)
@@ -61,39 +28,54 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             'business_phone_number', 'Unknown Phone')
         business_name = appointment_data.get(
             'business_name', 'Unknown Business')
+        appointment_id = appointment_data.get('id', None)
+        business_id = appointment_data.get('business', None)
         start_at = appointment_data.get('start_at')
         start_at_obj = datetime.fromisoformat(start_at)
         start_at_str = start_at_obj.strftime("%I:%M %p on %B %d, %Y")
         metadata = instance.metadata
-
-        logger.warning(f"Appointment: {appointment_data}")
+        schedule_name = f"reminder-sms-{business_id}-{appointment_id}"
+        schedule_time = start_at_obj - timedelta(
+            hours=2,
+            minutes=0,
+        )
 
         with transaction.atomic():
-            print(f"Created: {created}")
             if created:
-
-                # New appointment created
-                title = f"Appointment Confirmed - {business_name}"
-                body_message = f"Hello {client_name}, your appointment has been confirmed on {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-                logger.warning(
-                    f"Created notification for appointment confirmed: {body_message}")
-                dispatcher.dispatch(
-                    title=title,
-                    body=body_message,
-                    data=metadata,
-                    channel=Notification.Channel.SMS,
-                    to=client_phone,
-                )
-                logger.warning(
-                    f"Created notification for appointment confirmed")
-
+                if metadata and metadata.get('is_send_confirmation_sms', False) == True:
+                    # New appointment created
+                    title = f"Appointment Confirmed - {business_name}"
+                    body_message = f"Hello {client_name}, your appointment #{appointment_id} has been confirmed at {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+                    dispatcher.dispatch(
+                        title=title,
+                        body=body_message,
+                        data=metadata,
+                        channel=Notification.Channel.SMS,
+                        to=client_phone,
+                        business_id=business_id,
+                    )
+                
+                if metadata and metadata.get('is_send_reminder_sms', False) == True:
+                    # New appointment created
+                    if schedule_time <= timezone.now():
+                        return
+                    
+                    title = f"Appointment Reminder - {business_name}"
+                    body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at_str} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+                    dispatcher.dispatch_scheduled(
+                        title=title,
+                        body=body_message,
+                        data=metadata,    
+                        channel=Notification.Channel.SMS,
+                        to=client_phone,
+                        business_id=business_id,
+                        schedule_name=schedule_name,
+                        schedule_time=schedule_time,
+                    )
             else:
-                print(
-                    f"================= Appointment updated metadata: {metadata}")
-
                 # Appointment rescheduled
                 if metadata and metadata.get('is_rescheduled') == True:
-                    body_message = f"Hello {client_name}, your appointment has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+                    body_message = f"Hello {client_name}, your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
                     title = f"Appointment Rescheduled - {business_name}"
                     dispatcher.dispatch(
                         title=title,
@@ -101,10 +83,11 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         data=metadata,
                         channel=Notification.Channel.SMS,
                         to=client_phone,
+                        business_id=business_id,
                     )
                 # Appointment cancelled
                 if metadata and metadata.get('is_cancelled') == True:
-                    body_message = f"Hello {client_name}, your appointment has been cancelled on {start_at_str} at {business_name}. Please contact us at {business_phone} if you have any questions."
+                    body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
                     title = f"Appointment Cancelled - {business_name}"
                     dispatcher.dispatch(
                         title=title,
@@ -112,6 +95,12 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         data=metadata,
                         channel=Notification.Channel.SMS,
                         to=client_phone,
+                        business_id=business_id,
+                    )
+                    
+                    dispatcher.dispatch_destroy_scheduled(
+                        channel=Notification.Channel.SMS,
+                        schedule_name=schedule_name,
                     )
     except Exception as e:
         logger.error(f"Error handling appointment notifications: {e}")
@@ -140,7 +129,6 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
 
         body_message = f"{client_name} has booked a new appointment for {service_name} at {start_time_str} with {staff_name} from {booking_source}."
         title = f"Appointment Service Added - {business_name}"
-        logger.warning(f"Created notification for appointment service added")
         dispatcher.dispatch(
             title=title,
             body=body_message,

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from .models import (
-    PaymentMethod, PaymentGateway, Payment, PaymentSplit, Refund, PaymentTransaction
+    PaymentMethod, PaymentGateway, Payment, PaymentSplit, Refund, PaymentTransaction, PaymentDiscount
 )
 
 @admin.register(PaymentMethod)
@@ -53,6 +53,12 @@ class PaymentTransactionInline(admin.TabularInline):
     extra = 0
     fields = ['event_type', 'description', 'amount', 'created_by']
     readonly_fields = ['created_at']
+    
+class PaymentDiscountInline(admin.TabularInline):
+    model = PaymentDiscount
+    extra = 0
+    fields = ['discount_amount', 'discount_percentage', 'discount_code', 'discount_description']
+    readonly_fields = ['created_at']
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
@@ -96,7 +102,21 @@ class PaymentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    inlines = [PaymentSplitInline, RefundInline, PaymentTransactionInline]
+    inlines = [PaymentSplitInline, RefundInline, PaymentTransactionInline, PaymentDiscountInline]
+
+@admin.register(PaymentDiscount)
+class PaymentDiscountAdmin(admin.ModelAdmin):
+    list_display = ['payment', 'discount_amount', 'discount_percentage', 'discount_code', 'discount_description', 'created_at']
+    list_filter = ['payment__status', 'created_at']
+    search_fields = ['payment__payment_id', 'discount_code', 'discount_description']
+    readonly_fields = ['created_at']
+    ordering = ['-created_at']
+
+    def payment_link(self, obj):
+        url = reverse('admin:payment_payment_change', args=[obj.payment.id])
+        return format_html('<a href="{}">{}</a>', url, obj.payment.payment_id)
+    payment_link.short_description = 'Payment'
+    payment_link.admin_order_field = 'payment__payment_id'
 
 @admin.register(PaymentSplit)
 class PaymentSplitAdmin(admin.ModelAdmin):
@@ -188,3 +208,4 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
 admin.site.site_header = "BookNgon AI - Payment Management"
 admin.site.site_title = "Payment Admin"
 admin.site.index_title = "Payment Management Administration"
+

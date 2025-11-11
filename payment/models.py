@@ -153,7 +153,6 @@ class Payment(models.Model):
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        validators=[MinValueValidator(Decimal('0.01'))],
         help_text="Amount of the payment"
     )
 
@@ -182,7 +181,6 @@ class Payment(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
-        validators=[MinValueValidator(Decimal('0.00'))],
         help_text="Amount after processing fees"
     )
     gateway_response = models.JSONField(
@@ -267,7 +265,7 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"Payment {self.payment_id} - {self.client}- ${self.amount}"
+        return f"Payment {self.payment_id} - {self.client} - ${self.amount}"
 
     def save(self, *args, **kwargs):
         # Calculate processing fee
@@ -301,6 +299,14 @@ class Payment(models.Model):
     def is_refunded(self) -> bool:
         return self.status and self.status in [PaymentStatusType.REFUNDED, PaymentStatusType.PARTIALLY_REFUNDED]
 
+class PaymentDiscount(models.Model):
+    """Payment discount model"""
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='discounts')
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_percentage = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discount_code = models.CharField(max_length=100, blank=True, null=True)
+    discount_description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 class PaymentSplit(models.Model):
     """For split payments across multiple payment methods"""

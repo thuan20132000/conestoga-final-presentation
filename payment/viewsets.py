@@ -7,12 +7,13 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import (
     PaymentMethod, Payment, PaymentSplit, 
-    Refund, PaymentTransaction, PaymentGateway, PaymentStatusType
+    Refund, PaymentTransaction, PaymentGateway, PaymentStatusType, PaymentDiscount
 )
 from .serializers import (
     PaymentMethodSerializer,
     PaymentCreateSerializer,
     PaymentSerializer,
+    PaymentDiscountCreateSerializer,
 )
 from .filters import PaymentMethodFilter
 from main.viewsets import BaseModelViewSet
@@ -80,13 +81,16 @@ class PaymentViewSet(BaseModelViewSet):
     
     def create(self, request, *args, **kwargs):
         
-        print("create payment request.data", request.data)
         try:
-            serializer = PaymentCreateSerializer(data=request.data)
+            request_data = request.data.copy()
+            discounts = request_data.pop('discounts', None)
+            serializer = PaymentCreateSerializer(data=request_data)
             serializer.is_valid(raise_exception=True)
-            data = serializer.validated_data
+            validated_data = serializer.validated_data
             payment_service = PaymentService()
-            payment = payment_service.create_payment(data)
+            
+            payment = payment_service.create_payment(validated_data, discounts)
+            
             return self.response_success(PaymentSerializer(payment).data)
         except Exception as e:
             print("error creating payment", e)

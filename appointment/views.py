@@ -6,11 +6,11 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from datetime import datetime, timedelta, date
-from django.shortcuts import get_object_or_404
 from django_filters import rest_framework as filters
 from django.db import transaction
+
+from payment.models import Payment
 from .models import Appointment, AppointmentService
-from simple_history.utils import update_change_reason
 
 from .serializers import (
     AppointmentSerializer,
@@ -19,17 +19,13 @@ from .serializers import (
     AppointmentCreateSerializer,
     AppointmentDetailSerializer,
     AppointmentUpdateSerializer,
-    AppointmentListSerializer,
     AppointmentServiceSerializer,
     AppointmentHistorySerializer
 )
 from main.viewsets import BaseModelViewSet
 from staff.serializers import StaffCalendarSerializer
 from staff.models import Staff
-from service.models import Service
-from service.serializers import ServiceSerializer
-
-import json
+from payment.serializers import PaymentSerializer
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -436,6 +432,29 @@ class AppointmentViewSet(BaseModelViewSet):
             {'error': 'Completed status not found'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    
+    # payments
+    @action(detail=True, methods=['get'], url_path='payments')
+    def payments(self, request, pk=None):
+        """Get payments for an appointment"""
+        try:
+            appointment = self.get_object()
+            payments = Payment.objects.filter(appointment=appointment)
+            serializer = PaymentSerializer(payments, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=True, methods=['get'], url_path='last-payment')
+    def last_payment(self, request, pk=None):
+        """Get last payment for an appointment"""
+        try:
+            appointment = self.get_object()
+            last_payment = Payment.objects.filter(appointment=appointment).order_by('-created_at').first()
+            serializer = PaymentSerializer(last_payment)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
     
     @action(detail=False, methods=['get'])
     def stats(self, request):

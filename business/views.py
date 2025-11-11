@@ -28,6 +28,7 @@ from main.viewsets import BaseModelViewSet
 from service.serializers import ServiceCategorySerializer, ServiceSerializer, ServiceCategoryWithServicesSerializer
 from staff.serializers import StaffSerializer, StaffRoleSerializer
 from client.serializers import ClientSerializer
+from payment.serializers import PaymentMethodSerializer
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -266,6 +267,14 @@ class BusinessViewSet(BaseModelViewSet):
         object = self.get_object()
         appointments = object.appointments.all()
         serializer = AppointmentDetailSerializer(appointments, many=True)
+        return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='payment-methods')
+    def payment_methods(self, request, pk=None):
+        """Get payment methods for a business."""
+        object = self.get_object()
+        payment_methods = object.payment_methods.all()
+        serializer = PaymentMethodSerializer(payment_methods, many=True)
         return self.response_success(serializer.data)
 
 class OperatingHoursViewSet(BaseModelViewSet):

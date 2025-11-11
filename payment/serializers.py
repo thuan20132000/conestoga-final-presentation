@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 from .models import (
-    PaymentMethod, Payment, PaymentDiscount
+    PaymentMethod, Payment, PaymentDiscount, Refund
 )
 
 
@@ -16,7 +16,14 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
 
+class PaymentRefundSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Refund
+        fields = ['id', 'payment', 'amount', 'status', 'created_at', 'updated_at', 'refund_type', 'refund_reason', 'notes']
+        read_only_fields = ['created_at', 'updated_at']
+
 class PaymentSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = Payment
         fields = [
@@ -37,7 +44,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'completed_at',
             'processed_by',
             'notes',
-            'internal_notes'
+            'internal_notes',
         ]
         read_only_fields = ['created_at', 'updated_at']
 
@@ -75,7 +82,28 @@ class PaymentCreateSerializer(PaymentSerializer):
             'internal_notes',
             'created_at',
             'updated_at',
+            'status',
         ]
         read_only_fields = ['created_at', 'updated_at']
 
 
+class PaymentDetailSerializer(PaymentSerializer):
+    discounts = PaymentDiscountSerializer(many=True, read_only=True)
+    payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
+    refund = PaymentRefundSerializer(read_only=True)
+    class Meta(PaymentSerializer.Meta):
+        model = Payment
+        fields = PaymentSerializer.Meta.fields + ['discounts', 'payment_method_name', 'refund']
+        read_only_fields = PaymentSerializer.Meta.read_only_fields + ['refund']
+        
+        
+
+class PaymentRefundSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Refund
+        fields = ['id', 'payment', 'amount', 'status', 'created_at', 'updated_at', 'refund_type', 'refund_reason', 'notes']
+        read_only_fields = ['created_at', 'updated_at']
+
+class PaymentRefundCreateSerializer(PaymentRefundSerializer):
+    class Meta(PaymentRefundSerializer.Meta):
+        fields = ['payment', 'amount', 'refund_type', 'refund_reason', 'notes']

@@ -14,11 +14,15 @@ from .serializers import (
     PaymentCreateSerializer,
     PaymentSerializer,
     PaymentDiscountCreateSerializer,
+    PaymentRefundSerializer,
+    PaymentRefundCreateSerializer,
 )
 from .filters import PaymentMethodFilter
 from main.viewsets import BaseModelViewSet
 from payment.services import PaymentService
-
+from django.db import transaction
+from payment.models import RefundTypeType
+from decimal import Decimal
 
 class PaymentMethodViewSet(BaseModelViewSet):
     """ViewSet for managing payment methods"""
@@ -96,11 +100,53 @@ class PaymentViewSet(BaseModelViewSet):
             print("error creating payment", e)
             return self.response_error(str(e))
         
+    @action(detail=True, methods=['post'], url_path='refund')
+    def refund(self, request, pk=None):
+        """Refund a payment"""
+        
+        try:
+            
+            with transaction.atomic():
+                payment = self.get_object()
+                
+                request_data = request.data.copy()
+                refund_amount = request_data.get('amount', payment.amount)
+                refund_reason = request_data.get('refund_reason', 'Refunded via API')
+                refund_type = request_data.get('refund_type', RefundTypeType.FULL)
+                refund_notes = request_data.get('notes', 'Refunded via API')
+                
+                # Use update_or_create to handle existing refunds safely (avoids UNIQUE constraint violation)
+                refund, created = Refund.objects.update_or_create(
+                    payment=payment,
+                    defaults={
+                        'amount': refund_amount,
+                        'refund_type': refund_type,
+                        'refund_reason': refund_reason,
+                        'status': PaymentStatusType.REFUNDED,
+                        'notes': refund_notes
+                    }
+                )
+                
+                payment.status = PaymentStatusType.REFUNDED
+                payment_appointment = payment.appointment
+                payment_appointment.payment_status = PaymentStatusType.REFUNDED
+                payment_appointment.save()
+                payment.save()
+                
+                serializer = PaymentSerializer(payment)
+                
+                return self.response_success(serializer.data)
+            
+        except Exception as e:
+            print("error refunding payment", e)
+            return self.response_error(str(e))
+        
     
     @action(detail=True, methods=['post'])
     def process_payment(self, request, pk=None):
         """Process a payment (simulate payment processing)"""
         payment = self.get_object()
+        
         
         if payment.is_completed:
             return Response(
@@ -148,3 +194,9 @@ class PaymentViewSet(BaseModelViewSet):
         return Response(serializer.data)
 
 
+
+class PaymentRefundViewSet(BaseModelViewSet):
+    """ViewSet for managing payment refunds"""
+    queryset = Refund.objects.all()
+    serializer_class = PaymentRefundSerializer
+    

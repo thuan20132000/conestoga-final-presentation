@@ -63,7 +63,7 @@ class PaymentDiscountInline(admin.TabularInline):
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = [
-        'payment_id', 'client', 'business', 'amount', 'currency',
+        'payment_id', 'client', 'business', 'appointment', 'amount', 'currency',
         'payment_method', 'status', 'transaction_type', 'created_at', 'completed_at'
     ]
     list_filter = [

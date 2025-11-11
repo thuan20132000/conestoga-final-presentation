@@ -26,6 +26,7 @@ class PaymentStatusType(models.TextChoices):
     REFUNDED = "refunded", "Refunded"
     PARTIALLY_REFUNDED = "partially_refunded", "Partially Refunded"
     CHARGEBACK = "chargeback", "Chargeback"
+    NOT_PAID = "not_paid", "Not Paid"
 
 
 class TransactionTypeType(models.TextChoices):
@@ -269,18 +270,6 @@ class Payment(models.Model):
 
     def save(self, *args, **kwargs):
         # Calculate processing fee
-        if getattr(self, "payment_method", None):
-            percentage_fee = self.amount * self.payment_method.processing_fee_percentage
-            self.processing_fee = percentage_fee + self.payment_method.processing_fee_fixed
-            self.net_amount = self.amount - self.processing_fee
-        else:
-            self.processing_fee = 0
-            self.net_amount = self.amount
-
-        # Set processed_at timestamp when status changes to completed
-        if self.status and self.status == PaymentStatusType.COMPLETED and not self.completed_at:
-            self.completed_at = timezone.now()
-
         super().save(*args, **kwargs)
 
     @property
@@ -388,8 +377,10 @@ class Refund(models.Model):
         null=True,
         help_text="Reason for the refund"
                                      )
-    payment = models.ForeignKey(
-        Payment, on_delete=models.CASCADE, related_name='refunds',
+    payment = models.OneToOneField(
+        Payment, 
+        on_delete=models.PROTECT,
+        related_name='refund',
         help_text="Payment that the refund belongs to"
     )
     amount = models.DecimalField(

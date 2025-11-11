@@ -45,7 +45,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'confirmed_at',
             'completed_at',
             'cancelled_at',
-            'is_active'
+            'is_active',
+            'payment_status'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at',
                             'confirmed_at', 'completed_at', 'cancelled_at', 'is_active']

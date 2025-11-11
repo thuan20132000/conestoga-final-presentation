@@ -3,27 +3,32 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from simple_history.models import HistoricalRecords
 
+from payment.models import PaymentStatusType
+class AppointmentStatusType(models.TextChoices):
+    SCHEDULED = "scheduled", "Scheduled"
+    IN_SERVICE = "in_service", "In Service"
+    CHECKED_IN = "checked_in", "Checked In"
+    CHECKED_OUT = "checked_out", "Checked Out"
+    CANCELLED = "cancelled", "Cancelled"
+    NO_SHOW = "no_show", "No Show"
+    PENDING_PAYMENT = "pending_payment", "Pending Payment"
+    
+
+class BookingSourceType(models.TextChoices):
+    ONLINE = "online", "Online Booking"
+    PHONE = "phone", "Phone Booking"
+    WALK_IN = "walk_in", "Walk-in"
+    STAFF = "staff", "Staff Booking"
+    AI_RECEPTIONIST = "ai_receptionist", "AI Receptionist"
+    
 
 class Appointment(models.Model):
     """Main appointment model"""
     
-    STATUS_CHOICES = [
-        ('scheduled', 'Scheduled'),
-        ('in_service', 'In Service'),
-        ('checked_in', 'Checked In'),
-        ('checked_out', 'Checked Out'),
-        ('cancelled', 'Cancelled'),
-        ('no_show', 'No Show'),
-    ]
     
     
-    BOOKING_SOURCE_CHOICES = [
-        ('online', 'Online Booking'),
-        ('phone', 'Phone Booking'),
-        ('walk_in', 'Walk-in'),
-        ('staff', 'Staff Booking'),
-        ('ai_receptionist', 'AI Receptionist'),
-    ]
+    
+    
     
     # Related entities
     business = models.ForeignKey(
@@ -46,7 +51,19 @@ class Appointment(models.Model):
     appointment_date = models.DateField()
 
     # Status and tracking
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='scheduled')
+    status = models.CharField(
+        max_length=50, 
+        choices=AppointmentStatusType.choices, 
+        default=AppointmentStatusType.SCHEDULED,
+        help_text="Status of the appointment"
+    )
+    
+    payment_status = models.CharField(
+        max_length=50, 
+        choices=PaymentStatusType.choices, 
+        default=PaymentStatusType.NOT_PAID,
+        help_text="Status of the payment for the appointment"
+    )
     notes = models.TextField(blank=True, null=True, help_text="Appointment notes")
     internal_notes = models.TextField(blank=True, null=True, help_text="Internal notes (not visible to client)")
 
@@ -58,7 +75,12 @@ class Appointment(models.Model):
         blank=True,
         related_name='booked_appointments'
     )
-    booking_source = models.CharField(max_length=50, choices=BOOKING_SOURCE_CHOICES, default='online')
+    booking_source = models.CharField(
+        max_length=50, 
+        choices=BookingSourceType.choices, 
+        default=BookingSourceType.ONLINE,
+        help_text="Source of the booking"
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

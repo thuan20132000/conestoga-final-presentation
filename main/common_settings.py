@@ -211,6 +211,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Next.js dev origin
     "http://127.0.0.1:3000",  # Frontend dev origin
     "http://localhost:3000",  # Frontend dev origin
+    "http://10.128.76.149:3000",  # Django dev origin
 ]
 CORS_ALLOW_CREDENTIALS = True
 

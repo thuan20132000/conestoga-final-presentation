@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, date
 from django_filters import rest_framework as filters
 from django.db import transaction
 
-from payment.models import Payment
+from payment.models import Payment, PaymentStatusType
 from .models import Appointment, AppointmentService
 
 from .serializers import (
@@ -25,7 +25,7 @@ from .serializers import (
 from main.viewsets import BaseModelViewSet
 from staff.serializers import StaffCalendarSerializer
 from staff.models import Staff
-from payment.serializers import PaymentSerializer
+from payment.serializers import PaymentSerializer, PaymentDetailSerializer
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -114,12 +114,12 @@ class AppointmentViewSet(BaseModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Destroy an appointment"""
         try:
-            instance = self.get_object()
-            instance.is_active = False
-            instance.save()
-            print("instance", instance)
-            print("AppointmentSerializer(instance).data", AppointmentSerializer(instance).data)
-            return self.response_success(AppointmentSerializer(instance).data)
+            with transaction.atomic():
+                instance = self.get_object()
+                instance.is_active = False
+                instance.payments.all().update(status=PaymentStatusType.FAILED)
+                instance.save()
+                return self.response_success(AppointmentSerializer(instance).data)
         except Exception as e:
             return self.response_error(str(e))
     
@@ -440,21 +440,27 @@ class AppointmentViewSet(BaseModelViewSet):
         try:
             appointment = self.get_object()
             payments = Payment.objects.filter(appointment=appointment)
-            serializer = PaymentSerializer(payments, many=True)
+            serializer = PaymentDetailSerializer(payments, many=True)
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error(str(e))
     
-    @action(detail=True, methods=['get'], url_path='last-payment')
-    def last_payment(self, request, pk=None):
-        """Get last payment for an appointment"""
+    @action(detail=True, methods=['get'], url_path='latest-payment')
+    def latest_payment(self, request, pk=None):
+        """Get latest payment for an appointment"""
         try:
             appointment = self.get_object()
-            last_payment = Payment.objects.filter(appointment=appointment).order_by('-created_at').first()
-            serializer = PaymentSerializer(last_payment)
+            if not appointment:
+                return self.response_error(
+                    {'error': 'Appointment not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            latest_payment = Payment.objects.filter(appointment=appointment).order_by('-created_at').first()
+            serializer = PaymentDetailSerializer(latest_payment)
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error(str(e))
+        
     
     @action(detail=False, methods=['get'])
     def stats(self, request):

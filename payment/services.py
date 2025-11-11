@@ -4,7 +4,8 @@ from django.db.transaction import atomic
 from django.db import transaction
 from typing import TypedDict, Optional
 from payment.models import PaymentMethod, PaymentDiscount
-
+from appointment.models import Appointment, AppointmentStatusType
+from django.utils import timezone
 
 class CreatePaymentData(TypedDict):
     payment_method_id: int
@@ -21,7 +22,7 @@ class PaymentService:
         try:
             with transaction.atomic():
                 payment = Payment.objects.create(**data)
-                
+                print("created payment", payment)
                 # create payment discounts
                 if discounts:
                     for discount in discounts:
@@ -31,8 +32,20 @@ class PaymentService:
                             discount_percentage=discount.get('discount_percentage', 0),
                             discount_code=discount.get('discount_code', ''),
                             discount_description=discount.get('discount_description', '')
-                            )
-                
+                        )
+
+                if payment.status == PaymentStatusType.COMPLETED:
+                    appointment = payment.appointment
+                    appointment.payment_status = payment.status
+                    appointment.status = AppointmentStatusType.CHECKED_OUT
+                    appointment.save()
+                    
+                if payment.status == PaymentStatusType.PENDING:
+                    appointment = payment.appointment
+                    appointment.payment_status = payment.status
+                    appointment.status = AppointmentStatusType.PENDING_PAYMENT
+                    appointment.save()
+                    
                 return payment
         except Exception as e:
             raise Exception(f"Error creating payment: {e}")

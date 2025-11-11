@@ -23,7 +23,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
     try:
         appointment_data = AppointmentSerializer(instance).data
         client_name = appointment_data.get('client_name', 'Unknown Client')
-        client_phone = appointment_data.get('client_phone', 'Unknown Phone')
+        client_phone = appointment_data.get('client_phone', None)
         business_phone = appointment_data.get(
             'business_phone_number', 'Unknown Phone')
         business_name = appointment_data.get(
@@ -51,6 +51,11 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 
         with transaction.atomic():
             if created:
+                
+                if not client_phone:
+                    return
+                
+                # send confirmation sms
                 if metadata and metadata.get('is_send_confirmation_sms', False) == True:
                     
                     if send_confirmation_sms == False:
@@ -76,6 +81,8 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                     if schedule_time <= timezone.now():
                         return
                     
+
+                    
                     title = f"Appointment Reminder - {business_name}"
                     body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at_str} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
                     dispatcher.dispatch_scheduled(
@@ -89,6 +96,10 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         schedule_time=schedule_time,
                     )
             else:
+                
+                if not client_phone:
+                    return
+                
                 # Appointment rescheduled
                 if metadata and metadata.get('is_rescheduled') == True:
                     body_message = f"Hello {client_name}, your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."

@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
+import uuid
 
 
 class StaffRole(models.Model):
@@ -25,7 +26,7 @@ class StaffRole(models.Model):
         ordering = ['name']
     
     def __str__(self):
-        return self.name
+        return f'{self.business.name} - {self.name}'
 
 class Staff(AbstractUser):
     """Staff members working at the business"""
@@ -47,7 +48,6 @@ class Staff(AbstractUser):
     
     class Meta:
         ordering = ['username']
-        unique_together = ['business', 'email']
     
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -63,7 +63,7 @@ class Staff(AbstractUser):
     
     def save(self, *args, **kwargs):
         if not self.username:
-            self.username = self.email
+            self.username = str(uuid.uuid4())
             
         super().save(*args, **kwargs)
         

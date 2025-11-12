@@ -113,4 +113,4 @@ class CalendarServiceCategorySerializer(ServiceCategorySerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_services(self, obj):
-        return ServiceSerializer(obj.services.all(), many=True).data
+        return ServiceSerializer(obj.services.filter(is_active=True), many=True).data

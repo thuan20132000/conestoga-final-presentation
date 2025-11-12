@@ -28,7 +28,7 @@ class ServiceCategoryViewSet(BaseModelViewSet):
     
     def get_queryset(self):
         """Get queryset for service categories"""
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(is_active=True)
         return queryset
     
     def create(self, request, *args, **kwargs):
@@ -42,11 +42,21 @@ class ServiceCategoryViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
         
+    def destroy(self, request, *args, **kwargs):
+        """Destroy a service category"""
+        try:
+            instance = self.get_object()
+            instance.is_active = False
+            instance.save()
+            return self.response_success(data=None, message="Service category deleted successfully")
+        except Exception as e:
+            return self.response_error(str(e))
+        
     @action(detail=True, methods=['get'], url_path='services')
     def services(self, request, pk=None):
         """Get services for a category"""
         category = self.get_object()
-        services = category.services.all()
+        services = category.services.filter(is_active=True)
         serializer = ServiceSerializer(services, many=True)
         return self.response_success(serializer.data, message="Services retrieved successfully")
     
@@ -80,18 +90,26 @@ class ServiceViewSet(BaseModelViewSet):
     
     def get_queryset(self):
         """Get queryset for services"""
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().filter(is_active=True)
         return queryset
     
     def create(self, request, *args, **kwargs):
         """Create a service"""
         try:
-            print("request.data", request.data)
             business_id = request.query_params.get('business_id')
-            print("business_id", business_id)
             serializer = ServiceCreateUpdateSerializer(data=request.data, context={'business_id': business_id}) 
             serializer.is_valid(raise_exception=True)
             created_service = serializer.save()
             return self.response_success(ServiceSerializer(created_service).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    def destroy(self, request, *args, **kwargs):
+        """Destroy a service"""
+        try:
+            instance = self.get_object()
+            instance.is_active = False
+            instance.save()
+            return self.response_success(data=None, message="Service deleted successfully")
         except Exception as e:
             return self.response_error(str(e))

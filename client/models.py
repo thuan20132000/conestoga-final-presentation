@@ -61,7 +61,6 @@ class Client(models.Model):
     history = HistoricalRecords()
     class Meta:
         ordering = ['last_name', 'first_name']
-        unique_together = ['email', 'phone', 'primary_business']
         verbose_name = 'Client'
         verbose_name_plural = 'Clients'
 
@@ -71,8 +70,6 @@ class Client(models.Model):
     def get_full_name(self):
         """Return the client's full name"""
         return f"{self.first_name} {self.last_name}"
-
+    
     def save(self, *args, **kwargs):
-        if not self.id:
-            self.is_active = True
         super().save(*args, **kwargs)

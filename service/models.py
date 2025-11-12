@@ -22,7 +22,6 @@ class ServiceCategory(models.Model):
     
     class Meta:
         ordering = ['sort_order', 'name']
-        unique_together = ['business', 'name']
         verbose_name_plural = 'Service Categories'
     
     def __str__(self):
@@ -53,13 +52,12 @@ class Service(models.Model):
     
     class Meta:
         ordering = ['sort_order', 'name']
-        unique_together = ['business', 'name']
     
     def __str__(self):
         return f"{self.business.name} - {self.name}"
     
     def save(self, *args, **kwargs):
         """Save the service and update the sort order"""
-        if self.color_code is None:
+        if not self.color_code and self.category.color_code:
             self.color_code = self.category.color_code
         super().save(*args, **kwargs)

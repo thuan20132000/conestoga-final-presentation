@@ -57,21 +57,6 @@ class BusinessViewSet(BaseModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
-        # Filter by business type if specified
-        business_type = self.request.query_params.get('business_type')
-        if business_type:
-            queryset = queryset.filter(
-                business_type__name__icontains=business_type)
-
-        # Filter by location
-        location = self.request.query_params.get('location')
-        if location:
-            queryset = queryset.filter(
-                Q(city__icontains=location) |
-                Q(state_province__icontains=location) |
-                Q(address__icontains=location)
-            )
-
         return queryset
 
     @action(detail=True, methods=['get'], url_path='operating-hours')
@@ -217,7 +202,7 @@ class BusinessViewSet(BaseModelViewSet):
     def service_categories(self, request, pk=None):
         """Get services categories for a business."""
         object = self.get_object()
-        categories = object.service_categories.all()
+        categories = object.service_categories.filter(is_active=True)
         serializer = ServiceCategorySerializer(categories, many=True)
         return self.response_success(serializer.data)
     
@@ -225,7 +210,7 @@ class BusinessViewSet(BaseModelViewSet):
     def services(self, request, pk=None):
         """Get services for a business."""
         object = self.get_object()
-        services = object.services.all()
+        services = object.services.filter(is_active=True)
         serializer = ServiceSerializer(services, many=True)
         return self.response_success(serializer.data)
     
@@ -233,7 +218,7 @@ class BusinessViewSet(BaseModelViewSet):
     def categories_services(self, request, pk=None):
         """Get services for all categories of a business."""
         object = self.get_object()
-        categories = object.service_categories.all()
+        categories = object.service_categories.filter(is_active=True)
         serializer = ServiceCategoryWithServicesSerializer(categories, many=True)
         return self.response_success(serializer.data)
 

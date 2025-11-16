@@ -24,11 +24,13 @@ class PaymentRefundSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     
+    payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
     class Meta:
         model = Payment
         fields = [
             'id',
             'payment_method',
+            'payment_method_name',
             'business',
             'client',
             'appointment',

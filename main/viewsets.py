@@ -8,12 +8,17 @@ class BaseModelViewSet(viewsets.ModelViewSet):
         super().__init__(*args, **kwargs)
 
     def response_success(self, data, status_code=status.HTTP_200_OK, message=None, metadata=None):
-        response_data = {"results": data, "success": True, "status_code": status_code}
-        if message:
-            response_data["message"] = message
-        if metadata:
-            response_data["metadata"] = metadata
-        return Response(response_data, status=status_code)
+        
+        try:
+            response_data = {"results": data, "success": True, "status_code": status_code}
+            if message:
+                response_data["message"] = message
+            if metadata:
+                response_data["metadata"] = metadata
+            return Response(response_data, status=status_code)
+        except Exception as e:
+            print("Error:: ", e)
+            return self.response_error(str(e))
 
     def get_paginated_response(self, data, status_code=status.HTTP_200_OK, message=None, metadata=None):
         paginated_response = self.paginator.get_paginated_response(data)

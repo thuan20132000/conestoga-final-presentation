@@ -21,6 +21,7 @@ from .serializers import (
     BusinessSettingsSerializer
 )
 from appointment.serializers import AppointmentDetailSerializer, AppointmentListSerializer
+from payment.serializers import PaymentSerializer
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
@@ -29,6 +30,9 @@ from service.serializers import ServiceCategorySerializer, ServiceSerializer, Se
 from staff.serializers import StaffSerializer, StaffRoleSerializer
 from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
+from django.db.models import Sum, Count
+from payment.models import Payment
+from payment.services import PaymentService
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -261,6 +265,26 @@ class BusinessViewSet(BaseModelViewSet):
         payment_methods = object.payment_methods.all()
         serializer = PaymentMethodSerializer(payment_methods, many=True)
         return self.response_success(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='payments-stats')
+    def payment_stats(self, request, pk=None):
+        """Get payment stats for a business."""
+        try:
+            object = self.get_object()
+            
+            from_date = request.query_params.get('from_date')
+            to_date = request.query_params.get('to_date')
+            
+            print("From date:: ", from_date)
+            print("To date:: ", to_date)
+            
+            payment_service = PaymentService()
+            payment_stats = payment_service.get_payment_stats(object, from_date, to_date)
+            serializer = PaymentSerializer(payment_stats['results'], many=True)
+            metadata = payment_stats['metadata']
+            return self.response_success(serializer.data, metadata=metadata)
+        except Exception as e:
+            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""

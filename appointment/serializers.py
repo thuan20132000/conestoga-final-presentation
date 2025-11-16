@@ -78,8 +78,6 @@ class AppointmentUpdateSerializer(AppointmentSerializer):
     def update(self, instance, validated_data, metadata=None):
         """Update appointment with automatic status setting"""
         try:
-            print(f"================= instance: {instance}")
-            print(f"================= validated_data: {validated_data}")
             appointment = super().update(instance, validated_data)
             print("updated appointment", appointment)
             return AppointmentDetailSerializer(appointment).data
@@ -133,7 +131,8 @@ class AppointmentServiceSerializer(serializers.ModelSerializer):
             'end_at',
             'created_at',
             'updated_at',
-            'is_active'
+            'is_active',
+            'tip_amount'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -162,7 +161,8 @@ class AppointmentListSerializer(AppointmentSerializer):
             'confirmed_at',
             'completed_at',
             'cancelled_at',
-            'appointment_services'
+            'appointment_services',
+            'tip_amount'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at',
                             'confirmed_at', 'completed_at', 'cancelled_at']

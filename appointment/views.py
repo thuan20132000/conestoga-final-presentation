@@ -151,6 +151,7 @@ class AppointmentViewSet(BaseModelViewSet):
                     start_at=request.data['start_at'],
                     end_at=request.data['end_at'],
                     metadata=request.data['metadata'],
+                    
                 )
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
@@ -161,6 +162,7 @@ class AppointmentViewSet(BaseModelViewSet):
                         is_staff_request=appointment_service['is_staff_request'],
                         start_at=appointment_service['start_at'],
                         end_at=appointment_service['end_at'],
+                        custom_price=appointment_service['custom_price'] or appointment_service['service'].price,
                     )
                 
                 return self.response_success(AppointmentDetailSerializer(appointment).data)

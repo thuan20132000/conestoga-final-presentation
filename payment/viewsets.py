@@ -87,13 +87,19 @@ class PaymentViewSet(BaseModelViewSet):
         
         try:
             request_data = request.data.copy()
-            discounts = request_data.pop('discounts', None)
+            appointment_services = request_data.get('appointment_services', None)
+            discounts = request_data.get('discounts', None)
+            
             serializer = PaymentCreateSerializer(data=request_data)
             serializer.is_valid(raise_exception=True)
             validated_data = serializer.validated_data
             payment_service = PaymentService()
             
-            payment = payment_service.create_payment(validated_data, discounts)
+            payment = payment_service.create_payment(
+                payment_data=validated_data, 
+                discounts=discounts,
+                appointment_services=appointment_services
+            )
             
             return self.response_success(PaymentSerializer(payment).data)
         except Exception as e:

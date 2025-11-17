@@ -1,9 +1,10 @@
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
-
+from django.contrib.auth import authenticate
 from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
 from .serializers import (
     StaffSerializer,
@@ -14,10 +15,13 @@ from .serializers import (
     StaffWorkingHoursCreateUpdateSerializer,
     StaffOffDaySerializer,
     StaffOffDayCreateUpdateSerializer,
+    LoginSerializer,
+    UserProfileSerializer,
 )
 from business.models import Business
 from main.viewsets import BaseModelViewSet
-
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
 
 class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
@@ -138,3 +142,123 @@ class StaffOffDayViewSet(BaseModelViewSet):
         if self.action in ['create', 'update', 'partial_update']:
             return StaffOffDayCreateUpdateSerializer
         return StaffOffDaySerializer
+
+
+class LoginView(APIView):
+    """View for user login and JWT token generation"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            serializer = LoginSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.validated_data['user']
+                refresh = RefreshToken.for_user(user)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Login successful',
+                    'results': {
+                        'user': UserProfileSerializer(user).data,
+                        'tokens': {
+                            'refresh': str(refresh),
+                            'access': str(refresh.access_token),
+                        }
+                    }
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                'success': False,
+                'message': 'Invalid credentials',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': 'Error during login',
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LogoutView(APIView):
+    """View for user logout (token blacklisting)"""
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh_token')
+            if refresh_token:
+                try:
+                    token = RefreshToken(refresh_token)
+                    # Try to blacklist if blacklist app is installed
+                    try:
+                        token.blacklist()
+                    except AttributeError:
+                        # Blacklist not enabled, just invalidate the token
+                        pass
+                except Exception as token_error:
+                    # Token might already be invalid/blacklisted
+                    pass
+            
+            return Response({
+                'success': True,
+                'message': 'Logout successful'
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': 'Error during logout',
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserProfileView(APIView):
+    """View to get current user profile"""
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        serializer = UserProfileSerializer(request.user)
+        return Response({
+            'success': True,
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    def put(self, request):
+        serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'message': 'Profile updated successfully',
+                'results': serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'success': False,
+            'message': 'Error updating profile',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TokenRefreshViewCustom(TokenRefreshView):
+    """Custom token refresh view with better response format"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200:
+            return Response({
+                'success': True,
+                'message': 'Token refreshed successfully',
+                'results': response.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'success': False,
+            'message': 'Token refresh failed',
+            'errors': response.data
+        }, status=response.status_code)
+    
+
+

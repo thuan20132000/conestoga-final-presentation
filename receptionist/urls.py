@@ -1,9 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+
 from .viewsets import (
     AIConfigurationViewSet, CallSessionViewSet,
     ConversationMessageViewSet, IntentViewSet, AudioRecordingViewSet,
@@ -27,10 +24,6 @@ urlpatterns = [
     
     # Router URLs
     path('', include(router.urls)),
-    
-    # Authentication URLs
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # Custom API endpoints
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),

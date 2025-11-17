@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.contrib.auth import authenticate
 from .models import Staff, StaffService, StaffRole, StaffWorkingHours, StaffOffDay
 
 
@@ -114,3 +115,54 @@ class StaffCalendarSerializer(StaffSerializer):
             return StaffWorkingHoursSerializer(working_hours).data
         except Exception as e:
             return None
+
+
+class LoginSerializer(serializers.Serializer):
+    """Serializer for user login"""
+    username = serializers.CharField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+    
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if not user:
+                raise serializers.ValidationError('Unable to log in with provided credentials.')
+            if not user.is_active:
+                raise serializers.ValidationError('User account is disabled.')
+            attrs['user'] = user
+        else:
+            raise serializers.ValidationError('Must include "username" and "password".')
+        
+        return attrs
+
+
+class UserProfileSerializer(StaffSerializer):
+    """Serializer for authenticated user profile"""
+    business_name = serializers.CharField(source='business.name', read_only=True)
+    
+    class Meta(StaffSerializer.Meta):
+        fields = [
+            'id', 
+            'username',
+            'first_name', 
+            'last_name', 
+            'full_name', 
+            'email', 
+            'phone',
+            'role',
+            'role_name',
+            'business',
+            'business_name',
+            'is_active',
+            'is_online_booking_allowed', 
+            'is_payment_processing_allowed',
+            'hire_date', 
+            'bio', 
+            'photo',
+            'created_at', 
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'username', 'created_at', 'updated_at']

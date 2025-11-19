@@ -4,6 +4,7 @@ from .views import (
     StaffViewSet, 
     StaffWorkingHoursViewSet, 
     StaffOffDayViewSet,
+    RegisterView,
     LoginView,
     LogoutView,
     UserProfileView,
@@ -19,6 +20,7 @@ router.register(r'off-days', StaffOffDayViewSet, basename='staff-off-days')
 urlpatterns = [
     path('', include(router.urls)),
     # Authentication endpoints
+    path('auth/register/', RegisterView.as_view(), name='register'),
     path('auth/login/', LoginView.as_view(), name='login'),
     path('auth/logout/', LogoutView.as_view(), name='logout'),
     path('auth/refresh/', TokenRefreshViewCustom.as_view(), name='token_refresh'),

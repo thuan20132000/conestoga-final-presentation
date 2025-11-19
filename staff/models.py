@@ -38,7 +38,7 @@ class Staff(AbstractUser):
     is_active = models.BooleanField(default=True)
     is_online_booking_allowed = models.BooleanField(default=True)
     is_payment_processing_allowed = models.BooleanField(default=True)
-    hire_date = models.DateField(default=timezone.now)
+    hire_date = models.DateField(null=True, blank=True, default=timezone.now().date())
     bio = models.TextField(blank=True, null=True)
     photo = models.ImageField(upload_to='staff_photos/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

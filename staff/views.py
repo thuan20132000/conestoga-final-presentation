@@ -16,6 +16,7 @@ from .serializers import (
     StaffOffDaySerializer,
     StaffOffDayCreateUpdateSerializer,
     LoginSerializer,
+    RegisterSerializer,
     UserProfileSerializer,
 )
 from business.models import Business
@@ -142,6 +143,42 @@ class StaffOffDayViewSet(BaseModelViewSet):
         if self.action in ['create', 'update', 'partial_update']:
             return StaffOffDayCreateUpdateSerializer
         return StaffOffDaySerializer
+
+
+class RegisterView(APIView):
+    """View for user registration"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            serializer = RegisterSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                refresh = RefreshToken.for_user(user)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Registration successful',
+                    'results': {
+                        'user': StaffSerializer(user).data,
+                        'tokens': {
+                            'refresh': str(refresh),
+                            'access': str(refresh.access_token),
+                        }
+                    }
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response({
+                'success': False,
+                'message': 'Registration failed',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': 'Error during registration',
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoginView(APIView):

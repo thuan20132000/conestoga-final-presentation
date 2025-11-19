@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import Staff, StaffService, StaffRole, StaffWorkingHours, StaffOffDay
+from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
 
 
 class StaffRoleSerializer(serializers.ModelSerializer):
@@ -139,9 +140,84 @@ class LoginSerializer(serializers.Serializer):
         return attrs
 
 
+class RegisterSerializer(serializers.ModelSerializer):
+    """Serializer for user registration"""
+    password = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        min_length=8,
+        help_text='Password must be at least 8 characters long'
+    )
+    password_confirm = serializers.CharField(
+        write_only=True,
+        required=True,
+        style={'input_type': 'password'},
+        help_text='Enter the same password as before, for verification'
+    )
+    
+    class Meta:
+        model = Staff
+        fields = [
+            'username',
+            'email',
+            'password',
+            'password_confirm',
+            'first_name',
+            'last_name',
+            'phone',
+            'business',
+        ]
+        extra_kwargs = {
+            'username': {'required': False},  # Will be auto-generated if not provided
+            'email': {'required': True},
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+        }
+    
+    def validate_email(self, value):
+        """Validate that email is unique"""
+        if Staff.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+    
+    def validate(self, attrs):
+        """Validate that passwords match"""
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError({
+                'password_confirm': "Password fields didn't match."
+            })
+        return attrs
+    
+    def create(self, validated_data):
+        """Create a new user with hashed password"""
+        validated_data.pop('password_confirm')
+        password = validated_data.pop('password')
+        
+        # Generate username if not provided (using email as base)
+        if not validated_data.get('username'):
+            email = validated_data.get('email', '')
+            username_base = email.split('@')[0] if email else 'user'
+            # Ensure username is unique
+            username = username_base
+            counter = 1
+            while Staff.objects.filter(username=username).exists():
+                username = f"{username_base}{counter}"
+                counter += 1
+            validated_data['username'] = username
+        
+        # Create user
+        user = Staff.objects.create(**validated_data)
+        user.set_password(password)
+        user.save()
+        
+        return user
+
+
 class UserProfileSerializer(StaffSerializer):
     """Serializer for authenticated user profile"""
-    business_name = serializers.CharField(source='business.name', read_only=True)
+    business = serializers.SerializerMethodField()
+    business_settings = serializers.SerializerMethodField();
     
     class Meta(StaffSerializer.Meta):
         fields = [
@@ -155,7 +231,6 @@ class UserProfileSerializer(StaffSerializer):
             'role',
             'role_name',
             'business',
-            'business_name',
             'is_active',
             'is_online_booking_allowed', 
             'is_payment_processing_allowed',
@@ -163,6 +238,29 @@ class UserProfileSerializer(StaffSerializer):
             'bio', 
             'photo',
             'created_at', 
-            'updated_at'
+            'updated_at',
+            'business',
+            'business_settings',
         ]
         read_only_fields = ['id', 'username', 'created_at', 'updated_at']
+        
+    
+    def get_business(self, obj):
+        """Get business"""
+        try:
+            if obj.role.name in ['owner', 'manager']:
+                return BusinessSerializer(obj.business).data
+            else:
+                return None
+        except Exception as e:
+            return None
+    
+    def get_business_settings(self, obj):
+        """Get business settings"""
+        try:
+            if obj.role.name in ['owner', 'manager']:
+                return BusinessSettingsSerializer(obj.business.settings).data
+            else:
+                return None
+        except Exception as e:
+            return None

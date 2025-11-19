@@ -48,9 +48,10 @@ class PaymentService:
                                 'end_at': appointment_service['end_at'],
                                 'custom_price': appointment_service['custom_price'] or 0,
                                 'tip_amount': appointment_service['tip_amount'] or 0,
+                                'appointment_id': appointment_service['appointment'],
                             }
                         )
-
+                        
                 payment = Payment.objects.create(**payment_data)
                 # create payment discounts
                 if discounts:

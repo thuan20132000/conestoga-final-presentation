@@ -51,8 +51,9 @@ class PaymentService:
                                 'appointment_id': appointment_service['appointment'],
                             }
                         )
-                        
-                payment = Payment.objects.create(**payment_data)
+                payment = Payment.objects.create(
+                    **payment_data,
+                )
                 # create payment discounts
                 if discounts:
                     for discount in discounts:
@@ -105,7 +106,7 @@ class PaymentService:
 
     def get_payment_stats(self, business: Business, from_date: datetime, to_date: datetime) -> PaymentStatsResponse:
         try:
-
+            
             current_timezone = timezone.get_current_timezone()
 
             if from_date and to_date:
@@ -118,6 +119,8 @@ class PaymentService:
                     created_at__range=(timezone_from_date, timezone_to_date),
                     # status=PaymentStatusType.COMPLETED
                 )
+                
+                print("payment_stats", payment_stats)
             else:
                 current_timezone = timezone.get_current_timezone()
                 timezone_now = timezone.now().astimezone(current_timezone)

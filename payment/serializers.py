@@ -82,11 +82,8 @@ class PaymentCreateSerializer(PaymentSerializer):
             'net_amount',
             'notes',
             'internal_notes',
-            'created_at',
-            'updated_at',
             'status',
         ]
-        read_only_fields = ['created_at', 'updated_at']
 
 
 class PaymentDetailSerializer(PaymentSerializer):

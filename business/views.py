@@ -34,25 +34,20 @@ from payment.serializers import PaymentMethodSerializer
 from django.db.models import Sum, Count
 from payment.models import Payment
 from payment.services import PaymentService
+from staff.permissions import IsBusinessManager
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
     """ViewSet for BusinessType - read-only since these are predefined"""
     queryset = BusinessType.objects.all()
     serializer_class = BusinessTypeSerializer
-    permission_classes = [AllowAny]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['name', 'description']
-    ordering_fields = ['name', 'created_at']
-    ordering = ['name']
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
 
 class BusinessViewSet(BaseModelViewSet):
     """ViewSet for Business management"""
     queryset = Business.objects.all()
-    # Adjust based on your authentication needs
-    permission_classes = [AllowAny]
-    # serializer_class = BusinessSerializer
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
     def get_serializer_class(self):
         if self.action == 'list':

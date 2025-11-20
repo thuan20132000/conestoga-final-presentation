@@ -87,6 +87,7 @@ class PaymentViewSet(BaseModelViewSet):
         
         try:
             request_data = request.data.copy()
+            print("payment request_data:: ", request_data)
             appointment_services = request_data.get('appointment_services', None)
             discounts = request_data.get('discounts', None)
             

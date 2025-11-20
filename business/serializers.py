@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db.models import Sum, Avg
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings
+    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles
 )
 
 class BusinessTypeSerializer(serializers.ModelSerializer):
@@ -201,3 +201,11 @@ class BusinessDashboardSerializer(BusinessDetailSerializer):
     class Meta(BusinessDetailSerializer.Meta):
         fields = BusinessDetailSerializer.Meta.fields 
         read_only_fields = BusinessDetailSerializer.Meta.read_only_fields
+
+
+class BusinessRolesSerializer(serializers.ModelSerializer):
+    """Serializer for BusinessRoles model"""
+    class Meta:
+        model = BusinessRoles
+        fields = ['id', 'name', 'description']
+        read_only_fields = ['id']

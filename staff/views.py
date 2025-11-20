@@ -10,7 +10,6 @@ from .serializers import (
     StaffSerializer,
     StaffCreateUpdateSerializer,
     StaffServiceSerializer,
-    StaffRoleSerializer,
     StaffWorkingHoursSerializer,
     StaffWorkingHoursCreateUpdateSerializer,
     StaffOffDaySerializer,
@@ -20,10 +19,11 @@ from .serializers import (
     UserProfileSerializer,
 )
 from business.models import Business
+from business.serializers import BusinessRolesSerializer
 from main.viewsets import BaseModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-
+from rest_framework_simplejwt.views import TokenVerifyView
 class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
     queryset = Staff.objects.select_related('business')
@@ -43,8 +43,8 @@ class StaffViewSet(BaseModelViewSet):
     def roles(self, request, pk=None):
         """Get staff roles"""
         staff = self.get_object()
-        roles = staff.roles.all()
-        serializer = StaffRoleSerializer(roles, many=True)
+        roles = staff.role
+        serializer = BusinessRolesSerializer(roles, many=True)
         return self.response_success(serializer.data)
 
     @action(detail=True, methods=['get'], url_path='working-hours')
@@ -298,4 +298,28 @@ class TokenRefreshViewCustom(TokenRefreshView):
         }, status=response.status_code)
     
 
-
+class TokenVerifyViewCustom(TokenVerifyView):
+    """Custom token verify view with better response format"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            token = request.data.get('token')
+            if not token:
+                return Response({
+                    'success': False,
+                    'message': 'Token is required',
+                    'error': 'Token is required'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            response = super().post(request, *args, **kwargs)
+            return Response({
+                'success': True,
+                'message': 'Token verified successfully',
+                'results': response.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': 'Error during token verification',
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)

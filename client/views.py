@@ -11,26 +11,49 @@ from .serializers import (
 from main.viewsets import BaseModelViewSet
 from appointment.serializers import AppointmentDetailSerializer
 from appointment.models import Appointment
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from staff.permissions import IsBusinessManager
 from django_filters import rest_framework as filters
-
 
 class ClientFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='primary_business_id', required=True)
+    search = filters.CharFilter(field_name='search', lookup_expr='icontains', required=False, method='filter_search')
+    is_active = filters.BooleanFilter(field_name='is_active', required=False)
+    is_vip = filters.BooleanFilter(field_name='is_vip', required=False)
+    
     class Meta:
         model = Client
-        fields = ['business_id']
-
+        fields = ['business_id', 'search', 'is_active', 'is_vip']
+    
+    def filter_search(self, queryset, name, value):
+        return queryset.filter(
+            Q(first_name__icontains=value) |
+            Q(last_name__icontains=value) |
+            Q(email__icontains=value) |
+            Q(phone__icontains=value) |
+            Q(city__icontains=value) |
+            Q(state_province__icontains=value) |
+            Q(postal_code__icontains=value) |
+            Q(country__icontains=value)
+        )
 class ClientViewSet(BaseModelViewSet):
     """ViewSet for managing clients"""
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
-    
+    permission_classes = [IsAuthenticated, IsBusinessManager]
     filterset_class = ClientFilter
-
+    
     def get_queryset(self):
-        queryset = super().get_queryset()
-        queryset = self.filter_queryset(queryset)
-        return queryset
+        """Get queryset for clients"""
+        print("self.request.user", self.request.user)
+        return self.filter_queryset(super().get_queryset())
+
+    def list(self, request, *args, **kwargs):
+        print("request.user", request.user)
+        queryset = self.get_queryset()
+        serializer = ClientListSerializer(queryset, many=True)
+        return self.response_success(serializer.data)
     
     def create(self, request, *args, **kwargs):
         try:

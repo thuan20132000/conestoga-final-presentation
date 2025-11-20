@@ -1,11 +1,10 @@
 from django.db import models
-from business.models import Business
 from simple_history.models import HistoricalRecords
 
 
 class ServiceCategory(models.Model):
     """Categories for organizing services (e.g., Hair Services, Nail Services, etc.)"""
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='service_categories')
+    business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='service_categories')
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     sort_order = models.PositiveIntegerField(default=0)
@@ -30,7 +29,7 @@ class ServiceCategory(models.Model):
 
 class Service(models.Model):
     """Services offered by the business"""
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
+    business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='services')
     category = models.ForeignKey(ServiceCategory, on_delete=models.CASCADE, related_name='services')
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)

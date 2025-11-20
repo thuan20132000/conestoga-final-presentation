@@ -9,6 +9,7 @@ from .views import (
     LogoutView,
     UserProfileView,
     TokenRefreshViewCustom,
+    TokenVerifyViewCustom,
 )
 # Create a router and register our viewsets with it
 router = DefaultRouter()
@@ -24,5 +25,6 @@ urlpatterns = [
     path('auth/login/', LoginView.as_view(), name='login'),
     path('auth/logout/', LogoutView.as_view(), name='logout'),
     path('auth/refresh/', TokenRefreshViewCustom.as_view(), name='token_refresh'),
+    path('auth/verify/', TokenVerifyViewCustom.as_view(), name='token_verify'),
     path('auth/me/', UserProfileView.as_view(), name='user_profile'),
 ]

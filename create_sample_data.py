@@ -28,16 +28,15 @@ def main():
     call_command('create_business_types')
     call_command('create_sample_businesses')
     call_command('create_sample_services')
-    call_command('create_sample_staff_role')
     call_command('create_sample_staff',
                  per_business=3,
                  assign_services=True)
     # Notifications sample data
-    call_command('create_sample_notifications', per_business=10, push_devices_per_business=3)
-    # Receptionist sample data
-    call_command('create_receptionist_sample_data')
-    # Appointment sample data
-    call_command('create_appointment_samples', per_business=15, days_ahead=30, include_past=True)
+    # call_command('create_sample_notifications', per_business=10, push_devices_per_business=3)
+    # # Receptionist sample data
+    # call_command('create_receptionist_sample_data')
+    # # Appointment sample data
+    # call_command('create_appointment_samples', per_business=15, days_ahead=30, include_past=True)
 
     print("Sample data creation completed!")
     print("\nYou can now:")

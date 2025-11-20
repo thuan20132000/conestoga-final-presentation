@@ -14,7 +14,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_total_services(self, obj):
-        return obj.services.count()
+        return obj.services.filter(is_active=True, business=obj.business).count()
 
 class ServiceCategoryCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating service categories"""
@@ -113,4 +113,4 @@ class CalendarServiceCategorySerializer(ServiceCategorySerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_services(self, obj):
-        return ServiceSerializer(obj.services.filter(is_active=True), many=True).data
+        return ServiceSerializer(obj.services.filter(is_active=True, business=obj.business), many=True).data

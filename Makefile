@@ -46,10 +46,11 @@ createsuperuser: ## Create Django superuser
 	python manage.py createsuperuser
 
 fake-data: ## Create sample data for testing
-	python manage.py create_sample_clients --count 50 --business-id 1
+	python manage.py create_business_types
+	python manage.py create_sample_businesses
 
 clear-data: ## Clear all sample data
-	python manage.py create_sample_clients --clear-existing --business-id 1
+	python manage.py create_sample_data --clear-existing
 
 # Development servers
 run: run-django ## Run Django development server (default)

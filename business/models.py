@@ -1,8 +1,7 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.utils import timezone
-from staff.models import Staff
 
+from service.models import ServiceCategory, Service
+from payment.models import PaymentMethod
 
 class BusinessType(models.Model):
     """Different types of businesses that can use the system."""
@@ -70,10 +69,9 @@ class Business(models.Model):
     
     def __str__(self):
         return self.name
-
-
-
-
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
 class OperatingHours(models.Model):
     """Operating hours for each day of the week"""
     DAY_CHOICES = [
@@ -141,3 +139,26 @@ class BusinessSettings(models.Model):
     
     def __str__(self):
         return f"Settings for {self.business.name}"
+
+class BusinessRoles(models.Model):
+    """Roles for the business"""
+    ROLE_CHOICES = [
+        ('Owner', 'Owner'),
+        ('Manager', 'Manager'),
+        ('Stylist', 'Stylist'),
+        ('Technician', 'Technician'),
+        ('Assistant', 'Assistant'),
+        ('Receptionist', 'Receptionist'),
+        ('Other', 'Other'),
+    ]
+    business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='roles')
+    name = models.CharField(max_length=100, choices=ROLE_CHOICES)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.business.name} - {self.name}"

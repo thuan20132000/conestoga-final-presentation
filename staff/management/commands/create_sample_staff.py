@@ -4,7 +4,7 @@ from django.db import transaction
 
 from business.models import Business
 from service.models import Service
-from staff.models import Staff, StaffRole, StaffService, StaffWorkingHours
+from staff.models import Staff, StaffService, StaffWorkingHours
 
 
 class Command(BaseCommand):
@@ -46,7 +46,6 @@ class Command(BaseCommand):
             with transaction.atomic():
                 if clear_existing:
                     self._clear_for_business(business)
-                self._ensure_roles(business)
                 created = self._create_staff_for_business(
                     business, per_business)
                 if assign_services:
@@ -59,29 +58,21 @@ class Command(BaseCommand):
         StaffService.objects.filter(staff__business=business).delete()
         StaffWorkingHours.objects.filter(staff__business=business).delete()
         Staff.objects.filter(business=business).delete()
-        StaffRole.objects.filter(business=business).delete()
 
-    def _ensure_roles(self, business):
-        for role_value, _ in StaffRole.ROLE_CHOICES:
-            StaffRole.objects.get_or_create(business=business, name=role_value)
 
     def _create_staff_for_business(self, business, per_business):
-        role_map = {
-            r.name: r for r in StaffRole.objects.filter(business=business)
-        }
         sample_people = [
-            ('alex', 'Alex', 'Nguyen', 'stylist'),
-            ('bella', 'Bella', 'Tran', 'technician'),
-            ('chris', 'Chris', 'Pham', 'manager'),
-            ('diana', 'Diana', 'Le', 'assistant'),
-            ('eric', 'Eric', 'Vu', 'receptionist'),
-            ('fiona', 'Fiona', 'Do', 'stylist'),
-            ('george', 'George', 'Hoang', 'technician'),
+            ('alex', 'Alex', 'Nguyen'),
+            ('bella', 'Bella', 'Tran'),
+            ('chris', 'Chris', 'Pham'),
+            ('diana', 'Diana', 'Le'),
+            ('eric', 'Eric', 'Vu'),
+            ('fiona', 'Fiona', 'Do'),
+            ('george', 'George', 'Hoang'),
         ]
 
         created_count = 0
-        for idx, (username, first, last, role_key) in enumerate(sample_people[:per_business]):
-            role = role_map.get(role_key)
+        for idx, (username, first, last) in enumerate(sample_people[:per_business]):
             email = f"{username}@{business.name.replace(' ', '').lower()}.com"
             staff, created = Staff.objects.get_or_create(
                 business=business,
@@ -91,7 +82,6 @@ class Command(BaseCommand):
                     'first_name': first,
                     'last_name': last,
                     'phone': business.phone_number or '+1-555-0000',
-                    'role_id': role.id,
                     'is_active': True,
                     'hire_date': timezone.now().date(),
                 }

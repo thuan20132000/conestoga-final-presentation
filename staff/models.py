@@ -4,37 +4,20 @@ from django.contrib.auth.models import AbstractUser
 import uuid
 
 
-class StaffRole(models.Model):
-    """Staff roles"""
-    ROLE_CHOICES = [
-        ('owner', 'Owner'),
-        ('manager', 'Manager'),
-        ('stylist', 'Stylist'),
-        ('technician', 'Technician'),
-        ('assistant', 'Assistant'),
-        ('receptionist', 'Receptionist'),
-        ('other', 'Other'),
-    ]
-    
-    name = models.CharField(max_length=100, choices=ROLE_CHOICES)
-    description = models.TextField(blank=True, null=True)
-    business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='staff_roles')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['name']
-    
-    def __str__(self):
-        return f'{self.business.name} - {self.name}'
-
 class Staff(AbstractUser):
     """Staff members working at the business"""
     
     
     business = models.ForeignKey('business.Business', on_delete=models.CASCADE, null=True, blank=True, related_name='staff')
     phone = models.CharField(max_length=50, blank=True, null=True)
-    role = models.ForeignKey('staff.StaffRole', null=True, blank=True, on_delete=models.CASCADE, related_name='staff')
+    role = models.ForeignKey(
+        'business.BusinessRoles', 
+        null=True, 
+        blank=True, 
+        on_delete=models.SET_NULL, 
+        related_name='staff',
+        help_text="The role of the staff member in the business"
+    )
     is_active = models.BooleanField(default=True)
     is_online_booking_allowed = models.BooleanField(default=True)
     is_payment_processing_allowed = models.BooleanField(default=True)

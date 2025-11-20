@@ -11,11 +11,13 @@ from .serializers import (
     ServiceCategoryCreateUpdateSerializer,
 )
 from main.viewsets import BaseModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from staff.permissions import IsBusinessManager
 
 
 class ServiceCategoryFilter(filters.FilterSet):
     is_active = filters.BooleanFilter(field_name='is_active')
-    business_id = filters.NumberFilter(field_name='business_id')
+    business_id = filters.NumberFilter(field_name='business_id',required=True)
     class Meta:
         model = ServiceCategory
         fields = ['is_active', 'business_id']
@@ -24,7 +26,8 @@ class ServiceCategoryViewSet(BaseModelViewSet):
     """ViewSet for ServiceCategory management"""
     queryset = ServiceCategory.objects.all()
     serializer_class = ServiceCategorySerializer
-    permission_classes = [AllowAny]
+    filterset_class = ServiceCategoryFilter
+    permission_classes = [IsAuthenticated, IsBusinessManager]
     
     def get_queryset(self):
         """Get queryset for service categories"""
@@ -56,7 +59,7 @@ class ServiceCategoryViewSet(BaseModelViewSet):
     def services(self, request, pk=None):
         """Get services for a category"""
         category = self.get_object()
-        services = category.services.filter(is_active=True)
+        services = category.services.filter(is_active=True, business=request.user.business)
         serializer = ServiceSerializer(services, many=True)
         return self.response_success(serializer.data, message="Services retrieved successfully")
     
@@ -64,7 +67,11 @@ class ServiceCategoryViewSet(BaseModelViewSet):
     def calendar_services(self, request):
         """Get calendar services"""
         try:
-            queryset = ServiceCategory.objects.filter(is_active=True).order_by('sort_order')
+            business = request.user.business
+            queryset = ServiceCategory.objects.filter(
+                is_active=True, 
+                business=business,
+            )
             serializer = CalendarServiceCategorySerializer(queryset, many=True)
             return self.response_success(serializer.data)
         except Exception as e:

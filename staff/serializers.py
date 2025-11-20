@@ -1,14 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffRole, StaffWorkingHours, StaffOffDay
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
 from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
 
-
-class StaffRoleSerializer(serializers.ModelSerializer):
-    """Serializer for StaffRole model"""
-    class Meta:
-        model = StaffRole
-        fields = ['id', 'name', 'description']
 
 class StaffServiceSerializer(serializers.ModelSerializer):
     """Serializer for StaffService model"""
@@ -248,7 +242,7 @@ class UserProfileSerializer(StaffSerializer):
     def get_business(self, obj):
         """Get business"""
         try:
-            if obj.role.name in ['owner', 'manager']:
+            if obj.role.name in ['Owner', 'Manager']:
                 return BusinessSerializer(obj.business).data
             else:
                 return None
@@ -258,7 +252,7 @@ class UserProfileSerializer(StaffSerializer):
     def get_business_settings(self, obj):
         """Get business settings"""
         try:
-            if obj.role.name in ['owner', 'manager']:
+            if obj.role.name in ['Owner', 'Manager']:
                 return BusinessSettingsSerializer(obj.business.settings).data
             else:
                 return None

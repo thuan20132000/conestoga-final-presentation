@@ -18,7 +18,8 @@ from .serializers import (
     ReceptionistStatisticsSerializer, 
     BusinessDashboardSerializer,
     BusinessSerializer,
-    BusinessSettingsSerializer
+    BusinessSettingsSerializer,
+    BusinessRolesSerializer
 )
 from appointment.serializers import AppointmentDetailSerializer, AppointmentListSerializer
 from payment.serializers import PaymentSerializer
@@ -27,7 +28,7 @@ from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
 from main.viewsets import BaseModelViewSet
 from service.serializers import ServiceCategorySerializer, ServiceSerializer, ServiceCategoryWithServicesSerializer
-from staff.serializers import StaffSerializer, StaffRoleSerializer
+from staff.serializers import StaffSerializer
 from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
 from django.db.models import Sum, Count
@@ -238,8 +239,8 @@ class BusinessViewSet(BaseModelViewSet):
     def roles(self, request, pk=None):
         """Get roles for a business."""
         object = self.get_object()
-        roles = object.staff_roles.all()
-        serializer = StaffRoleSerializer(roles, many=True)
+        roles = object.roles.all()
+        serializer = BusinessRolesSerializer(roles, many=True)
         return self.response_success(serializer.data)
 
     @action(detail=True, methods=['get'], url_path='clients')

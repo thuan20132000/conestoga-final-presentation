@@ -1,12 +1,20 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings
+    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles
 )
 
 
 @admin.register(BusinessType)
 class BusinessTypeAdmin(admin.ModelAdmin):
+    list_display = ['name', 'description', 'created_at']
+    list_filter = ['created_at']
+    search_fields = ['name', 'description']
+    ordering = ['name']
+
+
+@admin.register(BusinessRoles)
+class BusinessRolesAdmin(admin.ModelAdmin):
     list_display = ['name', 'description', 'created_at']
     list_filter = ['created_at']
     search_fields = ['name', 'description']

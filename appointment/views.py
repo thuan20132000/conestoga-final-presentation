@@ -10,6 +10,7 @@ from django_filters import rest_framework as filters
 from django.db import transaction
 
 from payment.models import Payment, PaymentStatusType
+from service.models import ServiceCategory
 from .models import Appointment, AppointmentService
 
 from .serializers import (
@@ -26,6 +27,9 @@ from main.viewsets import BaseModelViewSet
 from staff.serializers import StaffCalendarSerializer
 from staff.models import Staff
 from payment.serializers import PaymentSerializer, PaymentDetailSerializer
+from service.serializers import BusinessBookingServiceCategorySerializer
+from staff.serializers import BusinessBookingStaffSerializer
+
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -670,4 +674,46 @@ class AppointmentServiceViewSet(BaseModelViewSet):
                 data=str(e),
                 message="Failed to delete appointment service"
             )
+    
+
+# Booking appointments viewset for booking pages
+class BusinessBookingViewSet(BaseModelViewSet):
+    """ViewSet for managing booking pages"""
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    
+    
+    @action(detail=False, methods=['get'], url_path='categories-services')
+    def categories_services(self, request):
+        """Get business services"""
+        business_id = request.query_params.get('business_id')
+        if not business_id:
+            return self.response_error(
+                {'error': 'business_id parameter is required'}, 
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+            
+        categories_services = ServiceCategory.objects.filter(business_id=business_id)
+        serializer = BusinessBookingServiceCategorySerializer(categories_services, many=True)
+        return self.response_success(serializer.data)
+    
+    # available staffs for specific service and date
+    @action(detail=False, methods=['get'], url_path='available-staffs')
+    def available_staffs(self, request):
+        """Get available staffs for a specific service and date"""
+        try:
+            business_id = request.query_params.get('business_id')
+            if not business_id:
+                return self.response_error(
+                    {'error': 'business_id parameter is required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            staffs = Staff.objects.filter(business_id=business_id, is_active=True)
+            
+            serializer = BusinessBookingStaffSerializer(staffs, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+        
     

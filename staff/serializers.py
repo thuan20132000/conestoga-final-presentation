@@ -258,3 +258,13 @@ class UserProfileSerializer(StaffSerializer):
                 return None
         except Exception as e:
             return None
+
+class BusinessBookingStaffSerializer(serializers.ModelSerializer):
+    """Serializer for business booking staff"""
+    role_name = serializers.CharField(source='role.name', read_only=True)
+    class Meta:
+        model = Staff
+        fields = [
+            'id', 'first_name', 'last_name', 'email', 'phone', 'role', 'role_name', 'is_active', 'created_at', 'photo'
+        ]
+        read_only_fields = ['id', 'created_at', 'photo', 'role_name']

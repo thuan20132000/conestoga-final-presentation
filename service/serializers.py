@@ -114,3 +114,37 @@ class CalendarServiceCategorySerializer(ServiceCategorySerializer):
 
     def get_services(self, obj):
         return ServiceSerializer(obj.services.filter(is_active=True, business=obj.business), many=True).data
+    
+    
+# Business booking serializer
+class BusinessBookingServiceCategorySerializer(serializers.ModelSerializer):
+    """Serializer for business booking service categories"""
+    services = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ServiceCategory
+        fields = [
+            'id', 
+            'business',
+            'name', 
+            'description', 
+            'sort_order', 
+            'is_active', 
+            'is_online_booking', 
+            'created_at', 
+            'color_code', 
+            'icon', 
+            'image', 
+            'services', 
+        ]
+        read_only_fields = ['id', 'created_at']
+
+    def get_services(self, obj):
+        business_services = Service.objects.filter(
+            category=obj, 
+            is_active=True,
+            business=obj.business,
+            is_online_booking=True
+        )
+        return ServiceSerializer(business_services, many=True).data
+    

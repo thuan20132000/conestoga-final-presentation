@@ -7,10 +7,26 @@ from business.serializers import BusinessSettingsSerializer, BusinessSerializer,
 class StaffServiceSerializer(serializers.ModelSerializer):
     """Serializer for StaffService model"""
     service_name = serializers.SerializerMethodField()
+    service_duration = serializers.IntegerField(source='service.duration_minutes', read_only=True)
+    service_price = serializers.DecimalField(source='service.price', read_only=True, max_digits=10, decimal_places=2)
     
     class Meta:
         model = StaffService
-        fields = ['id', 'service_id', 'service_name', 'is_primary', 'is_online_booking_allowed', 'is_payment_processing_allowed', 'created_at']
+        fields = [
+            'id', 
+            'service_id', 
+            'service_name', 
+            'service_duration',
+            'service_price',
+            'is_primary', 
+            'custom_price',
+            'custom_duration',
+            'is_online_booking', 
+            'is_active', 
+            'staff_id',
+            'created_at',
+            'updated_at'
+        ]
         read_only_fields = ['id', 'created_at']
     
     def get_service_name(self, obj):
@@ -98,9 +114,10 @@ class StaffOffDayCreateUpdateSerializer(serializers.ModelSerializer):
 class StaffCalendarSerializer(StaffSerializer):
     """Serializer for staff calendar"""
     working_hours = serializers.SerializerMethodField()
+    is_off_day = serializers.SerializerMethodField();
     class Meta:
         model = Staff
-        fields = StaffSerializer.Meta.fields + ['working_hours']
+        fields = StaffSerializer.Meta.fields + ['working_hours', 'is_off_day']
         
     def get_working_hours(self, obj):
         """Get working hours for staff"""
@@ -110,7 +127,14 @@ class StaffCalendarSerializer(StaffSerializer):
             return StaffWorkingHoursSerializer(working_hours).data
         except Exception as e:
             return None
-
+    
+    def get_is_off_day(self, obj):
+        """Get if staff is off day"""
+        try:
+            appointment_date = self.context.get('appointment_date')
+            return obj.staff_off_days.filter(start_date__lte=appointment_date, end_date__gte=appointment_date).exists()
+        except Exception as e:
+            return False
 
 class LoginSerializer(serializers.Serializer):
     """Serializer for user login"""

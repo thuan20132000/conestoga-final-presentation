@@ -25,10 +25,11 @@ from .serializers import (
 )
 from main.viewsets import BaseModelViewSet
 from staff.serializers import StaffCalendarSerializer
-from staff.models import Staff
+from staff.models import Staff, StaffOffDay
 from payment.serializers import PaymentSerializer, PaymentDetailSerializer
 from service.serializers import BusinessBookingServiceCategorySerializer
 from staff.serializers import BusinessBookingStaffSerializer
+from .services import BusinessBookingService
 
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
@@ -258,13 +259,28 @@ class AppointmentViewSet(BaseModelViewSet):
             )
             
             # Get staff who have an off day on the appointment date
-            business_day_off_staffs = business_staffs.filter(
-                staff_off_days__start_date__lte=appointment_date,
-                staff_off_days__end_date__gte=appointment_date,
+            staff_off_days = StaffOffDay.objects.filter(
+                staff__id__in=business_staffs.values_list('id', flat=True),
+                start_date__lte=appointment_date,
+                end_date__gte=appointment_date,
             )
             
+            
             # Get staff who are available for the appointment date
-            available_staffs = business_staffs.exclude(id__in=business_day_off_staffs.values_list('id', flat=True))
+            if staff_off_days.exists():
+                staff_on_leave_ids = staff_off_days.values_list('staff__id', flat=True)
+                staff_off_day_appointments = AppointmentService.objects.filter(
+                    staff_id__in=staff_on_leave_ids,
+                    appointment__appointment_date=appointment_date,
+                )
+                staff_on_leave_with_appointments = staff_off_day_appointments.values_list('staff_id', flat=True)
+                
+                staff_on_leave_without_appointments = staff_on_leave_ids.exclude(id__in=list(staff_on_leave_with_appointments))
+                
+                available_staffs = business_staffs.exclude(id__in=staff_on_leave_without_appointments)
+            else:
+                available_staffs = business_staffs
+                
             serializer = StaffCalendarSerializer(
                 available_staffs, 
                 many=True, 
@@ -716,4 +732,41 @@ class BusinessBookingViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
         
-    
+    @action(detail=False, methods=['get'], url_path='available-time-slots')
+    def available_time_slots(self, request):
+        """Get available time slots for a specific service and date"""
+        try:
+            business_id = request.query_params.get('business_id')
+            service_ids = request.query_params.getlist('service_ids[]')
+            duration = request.query_params.get('duration')
+            date = request.query_params.get('date')
+            staff_id = request.query_params.get('staff_id')
+            
+            print(' business_id', business_id)
+            print(' service_ids', service_ids)
+            print(' duration', duration)
+            print(' date', date)
+            print(' staff_id', staff_id)
+            
+            booking_service = BusinessBookingService(
+                business_id=business_id
+            )
+            
+            if staff_id:
+                available_time_slots_for_staff = booking_service.get_staff_time_slots(
+                    staff_id=staff_id,
+                    service_ids=service_ids,
+                    appointment_date=date,
+                    service_duration=duration
+                )
+                return self.response_success(available_time_slots_for_staff)
+            else:
+                available_time_slots = booking_service.get_all_available_time_slots(
+                    business_id=business_id,
+                    service_ids=service_ids,
+                    appointment_date=date,
+                    service_duration=duration
+                )
+                return self.response_success(available_time_slots)
+        except Exception as e:
+            return self.response_error(str(e))

@@ -77,6 +77,25 @@ class StaffViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
                 
+class StaffServiceViewSet(BaseModelViewSet):
+    """ViewSet for Staff services"""
+    queryset = StaffService.objects.all()
+    permission_classes = [AllowAny]
+
+    def get_serializer_class(self):
+        return StaffServiceSerializer
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update staff service"""
+        try:
+            instance = self.get_object()
+            serializer = StaffServiceSerializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            instance = serializer.save()
+            return self.response_success(StaffServiceSerializer(instance).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
 class StaffWorkingHoursViewSet(BaseModelViewSet):
     """ViewSet for Staff working hours"""
     queryset = StaffWorkingHours.objects.all()

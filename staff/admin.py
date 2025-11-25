@@ -31,13 +31,6 @@ class StaffAdmin(UserAdmin):
         "business",
     ]
     list_filter = [
-        "role",
-        "is_active",
-        "is_staff",
-        "is_superuser",
-        "hire_date",
-        "date_joined",
-        "last_login",
         "business",
     ]
     search_fields = ["username", "first_name", "last_name", "email", "business", "role"]
@@ -49,6 +42,7 @@ class StaffAdmin(UserAdmin):
         ("Business Info", {"fields": ("role", "business", "hire_date", "photo")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
+        ("Soft delete", {"fields": ("is_deleted", "deleted_at")}),
     )
 
     add_fieldsets = (

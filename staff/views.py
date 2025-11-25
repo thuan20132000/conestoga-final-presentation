@@ -18,17 +18,25 @@ from .serializers import (
     RegisterSerializer,
     UserProfileSerializer,
 )
-from business.models import Business
 from business.serializers import BusinessRolesSerializer
 from main.viewsets import BaseModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
+from staff.permissions import IsBusinessManager
 class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
-    queryset = Staff.objects.select_related('business')
-    permission_classes = [AllowAny]
+    queryset = Staff.objects.select_related('business').filter(is_deleted=False)
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
+    def destroy(self, request, *args, **kwargs):
+        """Destroy a staff"""
+        try:
+            instance = self.get_object()
+            instance.soft_delete()
+            return self.response_success(data=None, message="Staff deleted successfully")
+        except Exception as e:
+            return self.response_error(str(e))
     
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -80,7 +88,7 @@ class StaffViewSet(BaseModelViewSet):
 class StaffServiceViewSet(BaseModelViewSet):
     """ViewSet for Staff services"""
     queryset = StaffService.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
     def get_serializer_class(self):
         return StaffServiceSerializer
@@ -99,7 +107,7 @@ class StaffServiceViewSet(BaseModelViewSet):
 class StaffWorkingHoursViewSet(BaseModelViewSet):
     """ViewSet for Staff working hours"""
     queryset = StaffWorkingHours.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -109,7 +117,7 @@ class StaffWorkingHoursViewSet(BaseModelViewSet):
 class StaffOffDayViewSet(BaseModelViewSet):
     """ViewSet for Staff off days"""
     queryset = StaffOffDay.objects.all()
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

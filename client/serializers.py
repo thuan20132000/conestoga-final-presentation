@@ -95,3 +95,41 @@ class ClientStatsSerializer(serializers.Serializer):
     new_clients_this_month = serializers.IntegerField()
     clients_by_business = serializers.DictField()
     clients_by_preferred_contact = serializers.DictField()
+
+
+class BookingClientSerializer(serializers.ModelSerializer):
+    """Serializer for booking client"""
+    class Meta:
+        model = Client
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'primary_business_id']
+        read_only_fields = ['id']
+        
+class BookingClientCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a booking client for a specific business"""
+    primary_business_id = serializers.IntegerField(required=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    phone = serializers.CharField(required=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
+    class Meta:
+        model = Client
+        fields = ['first_name', 'last_name', 'email', 'phone', 'date_of_birth', 'primary_business_id']
+        read_only_fields = ['id']
+        
+        
+    def update_or_create(self, validated_data):
+        """Update or create a client for a specific business"""
+        try:
+            client, created = Client.objects.update_or_create(
+                primary_business_id=validated_data['primary_business_id'],
+                phone=validated_data['phone'],
+                defaults={
+                    'first_name': validated_data['first_name'],
+                    'last_name': validated_data.get('last_name', None),
+                    'email': validated_data.get('email', None),
+                    'date_of_birth': validated_data.get('date_of_birth', None),
+                }
+            )
+            return BookingClientSerializer(client).data
+        except Exception as e:
+            raise serializers.ValidationError(str(e))

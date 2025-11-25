@@ -49,7 +49,7 @@ class BusinessSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Business
-        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'timezone', 'status', 'description', 'logo', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'timezone', 'description', 'logo', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
@@ -61,7 +61,7 @@ class BusinessListSerializer(serializers.ModelSerializer):
         model = Business
         fields = [
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
-            'email', 'city', 'state_province', 'country', 'status', 'created_at'
+            'email', 'city', 'state_province', 'country', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -77,7 +77,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
-            'country', 'timezone', 'status', 'description', 'logo', 'operating_hours',
+            'country', 'timezone', 'description', 'logo', 'operating_hours',
             'settings', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -93,7 +93,7 @@ class BusinessCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'name', 'business_type', 'phone_number', 'email', 'website',
             'address', 'city', 'state_province', 'postal_code', 'country',
-            'timezone', 'status', 'description', 'logo', 'operating_hours', 'settings'
+            'timezone', 'description', 'logo', 'operating_hours', 'settings'
         ]
     
     def create(self, validated_data):

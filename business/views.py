@@ -226,7 +226,7 @@ class BusinessViewSet(BaseModelViewSet):
     def staff(self, request, pk=None):
         """Get staff for a business."""
         object = self.get_object()
-        staff = object.staff.all()
+        staff = object.staff.filter(is_deleted=False, is_active=True)
         serializer = StaffSerializer(staff, many=True)
         return self.response_success(serializer.data)
     

@@ -2,9 +2,10 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 import uuid
+from main.models import SoftDeleteModel
 
 
-class Staff(AbstractUser):
+class Staff(AbstractUser, SoftDeleteModel):
     """Staff members working at the business"""
     
     
@@ -24,13 +25,7 @@ class Staff(AbstractUser):
     hire_date = models.DateField(null=True, blank=True, default=timezone.now().date())
     bio = models.TextField(blank=True, null=True)
     photo = models.ImageField(upload_to='staff_photos/', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
-    
-    
-    class Meta:
-        ordering = ['username']
     
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -53,7 +48,7 @@ class Staff(AbstractUser):
         if not self.working_hours.all():
             self.create_default_working_hours()
 
-class StaffSalarySettings(models.Model):
+class StaffSalarySettings(SoftDeleteModel):
     """Staff salary settings"""
     BONUS_TYPE_CHOICES = [
         ('percentage', 'Percentage'),
@@ -66,13 +61,11 @@ class StaffSalarySettings(models.Model):
     bonus_threshold = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     bonus_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     bonus_type = models.CharField(max_length=100, choices=BONUS_TYPE_CHOICES, default='percentage')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         unique_together = ['staff']
 
-class StaffService(models.Model):
+class StaffService(SoftDeleteModel):
     """Many-to-many relationship between staff and services they can provide"""
     staff = models.ForeignKey('staff.Staff', on_delete=models.CASCADE, related_name='staff_services')
     service = models.ForeignKey('service.Service', on_delete=models.CASCADE, related_name='staff_services')
@@ -81,8 +74,6 @@ class StaffService(models.Model):
     is_active = models.BooleanField(default=True)
     is_online_booking = models.BooleanField(default=True)
     is_primary = models.BooleanField(default=False, help_text="Primary service for this staff member")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
     
     class Meta:
         unique_together = ['staff', 'service']
@@ -90,7 +81,7 @@ class StaffService(models.Model):
     def __str__(self):
         return f"{self.staff.get_full_name()} - Service {self.service.name}"
     
-class StaffWorkingHours(models.Model):
+class StaffWorkingHours(SoftDeleteModel):
     """Staff working hours"""
     DAY_CHOICES = [
         (0, 'Monday'),
@@ -106,8 +97,6 @@ class StaffWorkingHours(models.Model):
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
     is_working = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         unique_together = ['staff', 'day_of_week']
@@ -115,13 +104,11 @@ class StaffWorkingHours(models.Model):
     def __str__(self):
         return f"{self.staff} - {self.day_of_week}"
 
-class StaffOffDay(models.Model):
+class StaffOffDay(SoftDeleteModel):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='staff_off_days')
     start_date = models.DateField()
     end_date = models.DateField()
     reason = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.staff} - {self.start_date} to {self.end_date} - {self.reason}"

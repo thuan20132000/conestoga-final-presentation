@@ -1,5 +1,5 @@
 from rest_framework import status
-from rest_framework.decorators import action
+from rest_framework.decorators import APIView, action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
@@ -10,8 +10,11 @@ from django_filters import rest_framework as filters
 from django.db import transaction
 
 from payment.models import Payment, PaymentStatusType
+from business.models import Business
 from service.models import ServiceCategory
 from .models import Appointment, AppointmentService
+from client.models import Client
+from client.serializers import ClientSerializer, BookingClientSerializer, BookingClientCreateSerializer
 
 from .serializers import (
     AppointmentSerializer,
@@ -23,14 +26,15 @@ from .serializers import (
     AppointmentServiceSerializer,
     AppointmentHistorySerializer
 )
-from main.viewsets import BaseModelViewSet
+from main.viewsets import BaseModelViewSet, BaseViewSet
 from staff.serializers import StaffCalendarSerializer
 from staff.models import Staff, StaffOffDay
 from payment.serializers import PaymentSerializer, PaymentDetailSerializer
 from service.serializers import BusinessBookingServiceCategorySerializer
 from staff.serializers import BusinessBookingStaffSerializer
 from .services import BusinessBookingService
-
+from business.serializers import BusinessSerializer
+from appointment.services import BusinessStaffService
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -143,11 +147,12 @@ class AppointmentViewSet(BaseModelViewSet):
     @action(detail=False, methods=['post'], url_path='appointment-services')
     def create_appointment_services(self, request):
         """Create appointment with appointment services"""
+        print("request.data", request.data)
         try:
             with transaction.atomic():
                 appointment_services = request.data['appointment_services']
                 appointment = Appointment.objects.create(
-                    business_id=request.data['business'],
+                    business_id=request.data['business_id'],
                     client_id=request.data['client'],
                     appointment_date=request.data['appointment_date'],
                     notes=request.data['notes'],
@@ -172,6 +177,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
+            print("error", e)
             return self.response_error(str(e))
     
     # update appointment with appointment services
@@ -233,7 +239,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
             print("error", e)
-            return self.response_error(str(e))
+            return self.response_error(str(e), status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['get'], url_path='calendar-staffs')
     def calendar_staffs(self, request):
@@ -249,13 +255,14 @@ class AppointmentViewSet(BaseModelViewSet):
                 
             weekday = datetime.strptime(appointment_date, '%Y-%m-%d').weekday()
             
-            # Get staff who are working on the appointment date
+            # Get staff with role and who are working on the appointment date
             business_staffs = Staff.objects.filter(
                 business_id=business_id,
                 is_active=True,
                 is_online_booking_allowed=True,
                 working_hours__is_working=True,
                 working_hours__day_of_week=weekday,
+                role__name__in=['Technician', 'Stylist'],
             )
             
             # Get staff who have an off day on the appointment date
@@ -695,11 +702,44 @@ class AppointmentServiceViewSet(BaseModelViewSet):
 # Booking appointments viewset for booking pages
 class BusinessBookingViewSet(BaseModelViewSet):
     """ViewSet for managing booking pages"""
-    queryset = Appointment.objects.all()
-    serializer_class = AppointmentSerializer
     
     
-    @action(detail=False, methods=['get'], url_path='categories-services')
+    http_method_names = ['get', 'post']
+    
+    @action(
+        detail=False, 
+        methods=['get'], 
+        url_path='business', 
+        permission_classes=[AllowAny]
+    )
+    def business(self, request):
+        """Get business"""
+        try:
+            
+            business_id = request.query_params.get('business_id')
+            if not business_id:
+                return self.response_error(
+                    {'error': 'business_id parameter is required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            business = Business.objects.filter(is_deleted=False, id=business_id).first()
+            if not business:
+                return self.response_error(
+                    {'error': 'Business not found'}, 
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            serializer = BusinessSerializer(business)
+            return self.response_success(serializer.data, message="Business retrieved successfully")
+        except Exception as e:
+            return self.response_error(str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to retrieve business")
+
+    
+    @action(
+        detail=False, 
+        methods=['get'], 
+        url_path='categories-services', 
+        permission_classes=[AllowAny]
+    )
     def categories_services(self, request):
         """Get business services"""
         business_id = request.query_params.get('business_id')
@@ -714,10 +754,11 @@ class BusinessBookingViewSet(BaseModelViewSet):
         return self.response_success(serializer.data)
     
     # available staffs for specific service and date
-    @action(detail=False, methods=['get'], url_path='available-staffs')
-    def available_staffs(self, request):
-        """Get available staffs for a specific service and date"""
+    @action(detail=False, methods=['get'], url_path='technicians')
+    def technicians(self, request):
+        """Get technicians for a specific service and date"""
         try:
+            print("request.query_params", request.query_params)
             business_id = request.query_params.get('business_id')
             if not business_id:
                 return self.response_error(
@@ -725,10 +766,10 @@ class BusinessBookingViewSet(BaseModelViewSet):
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
             
-            staffs = Staff.objects.filter(business_id=business_id, is_active=True)
-            
-            serializer = BusinessBookingStaffSerializer(staffs, many=True)
-            return self.response_success(serializer.data)
+            business_staff = BusinessStaffService(business_id)
+            technicians = business_staff.get_business_active_technicians()
+            return self.response_success(BusinessBookingStaffSerializer(technicians, many=True).data)
+        
         except Exception as e:
             return self.response_error(str(e))
         
@@ -741,15 +782,17 @@ class BusinessBookingViewSet(BaseModelViewSet):
             duration = request.query_params.get('duration')
             date = request.query_params.get('date')
             staff_id = request.query_params.get('staff_id')
+            interval_minutes = request.query_params.get('interval_minutes',0)
             
             print(' business_id', business_id)
             print(' service_ids', service_ids)
             print(' duration', duration)
             print(' date', date)
             print(' staff_id', staff_id)
-            
+            print(' interval_minutes', interval_minutes)
             booking_service = BusinessBookingService(
-                business_id=business_id
+                business_id=business_id,
+                interval_minutes=interval_minutes
             )
             
             if staff_id:
@@ -770,3 +813,70 @@ class BusinessBookingViewSet(BaseModelViewSet):
                 return self.response_success(available_time_slots)
         except Exception as e:
             return self.response_error(str(e))
+        
+    
+    @action(detail=False, methods=['get'], url_path='client-by-phone')
+    def client_by_phone(self, request):
+        """Get client for a specific business"""
+        try:
+            business_id = request.query_params.get('business_id')
+            phone = request.query_params.get('phone')
+            if not business_id or not phone:
+                return self.response_error(
+                    {'error': 'business_id and phone parameters are required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST)
+            
+            client = Client.objects.filter(primary_business_id=business_id, phone=phone).first()
+            
+            print("client", client)
+            
+            if not client:
+                return self.response_error(
+                    {'error': 'Client not found'}, 
+                    status_code=status.HTTP_404_NOT_FOUND)
+            return self.response_success(BookingClientSerializer(client).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=False, methods=['post'], url_path='client')
+    def client(self, request):
+        """Create a client for a specific business"""
+        try:
+            print("request.data", request.data)
+            serializer = BookingClientCreateSerializer(data=request.data)
+            print("serializer", serializer)
+            serializer.is_valid(raise_exception=True)
+            client = serializer.update_or_create(serializer.validated_data)
+            print("client", client)
+            
+            return self.response_success(client, message="Client created successfully")
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    
+    @action(detail=False, methods=['post'], url_path='appointment')
+    def create_appointment(self, request):
+        """Make an appointment"""
+        print("create appointment request.data", request.data)
+        try:
+            
+            appointment_data = request.data
+            appointment_services = appointment_data.pop('appointment_services', [])
+            print("appointment_data", appointment_data)
+            print("appointment_services", appointment_services)
+            
+            appointment_service = BusinessBookingService(
+                business_id=appointment_data.get('business_id'),
+                interval_minutes=appointment_data.get('interval_minutes', 0)
+            )
+            created_appointment = appointment_service.create_appointment_services(
+                appointment=appointment_data,
+                appointment_services=appointment_services
+            )
+            appointment_serializer = AppointmentDetailSerializer(created_appointment)
+            return self.response_success(appointment_serializer.data)
+        except Exception as e:
+            print("error", e)
+            return self.response_error(str(e))
+        
+    

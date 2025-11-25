@@ -55,3 +55,17 @@ class BaseModelViewSet(viewsets.ModelViewSet):
             status_code=status.HTTP_200_OK,
             message="Data retrieved successfully",
         )
+        
+
+class BaseViewSet(viewsets.ViewSet):
+    def response_success(self, data, status_code=status.HTTP_200_OK, message=None, metadata=None):
+        return BaseModelViewSet.response_success(self, data, status_code, message, metadata)
+    
+    def response_error(self, data, status_code=status.HTTP_400_BAD_REQUEST, message=None, metadata=None):
+        return BaseModelViewSet.response_error(self, data, status_code, message, metadata)
+    
+    def response_unauthorized(self, data, status_code=status.HTTP_401_UNAUTHORIZED, message=None, metadata=None):
+        return BaseModelViewSet.response_unauthorized(self, data, status_code, message, metadata)
+    
+    def get_paginated_response(self, data, status_code=status.HTTP_200_OK, message=None, metadata=None):
+        return BaseModelViewSet.get_paginated_response(self, data, status_code, message, metadata)

@@ -25,11 +25,6 @@ class BookingSourceType(models.TextChoices):
 class Appointment(models.Model):
     """Main appointment model"""
     
-    
-    
-    
-    
-    
     # Related entities
     business = models.ForeignKey(
         'business.Business', 

@@ -2,13 +2,13 @@ from django.db import models
 
 from service.models import ServiceCategory, Service
 from payment.models import PaymentMethod
+from main.models import SoftDeleteModel
 
-class BusinessType(models.Model):
+class BusinessType(SoftDeleteModel):
     """Different types of businesses that can use the system."""
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     icon = models.CharField(max_length=50, blank=True, null=True)  # For UI icons
-    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         ordering = ['name']
@@ -17,7 +17,7 @@ class BusinessType(models.Model):
         return self.name
 
 
-class Business(models.Model):
+class Business(SoftDeleteModel):
     """Represents a salon or company using the AI receptionist."""
     BUSINESS_STATUS_CHOICES = [
         ('active', 'Active'),
@@ -57,11 +57,8 @@ class Business(models.Model):
     timezone = models.CharField(max_length=100, choices=TIMEZONE_CHOICES, default="America/Toronto")
     currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default="USD")
     cost_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=0.5)
-    status = models.CharField(max_length=20, choices=BUSINESS_STATUS_CHOICES, default='active')
     description = models.TextField(blank=True, null=True)
     logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['name']
@@ -72,7 +69,7 @@ class Business(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-class OperatingHours(models.Model):
+class OperatingHours(SoftDeleteModel):
     """Operating hours for each day of the week"""
     DAY_CHOICES = [
         (0, 'Monday'),
@@ -104,7 +101,7 @@ class OperatingHours(models.Model):
         return f"{day_name}: {self.open_time} - {self.close_time}"
 
 
-class BusinessSettings(models.Model):
+class BusinessSettings(SoftDeleteModel):
     """Additional settings and preferences for the business"""
     business = models.OneToOneField(Business, on_delete=models.CASCADE, related_name='settings')
     
@@ -134,13 +131,10 @@ class BusinessSettings(models.Model):
     require_client_email = models.BooleanField(default=False)
     auto_confirm_appointments = models.BooleanField(default=False)
     
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
     def __str__(self):
         return f"Settings for {self.business.name}"
 
-class BusinessRoles(models.Model):
+class BusinessRoles(SoftDeleteModel):
     """Roles for the business"""
     ROLE_CHOICES = [
         ('Owner', 'Owner'),
@@ -154,8 +148,6 @@ class BusinessRoles(models.Model):
     business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='roles')
     name = models.CharField(max_length=100, choices=ROLE_CHOICES)
     description = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['name']

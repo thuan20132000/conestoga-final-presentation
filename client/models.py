@@ -4,9 +4,10 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import AbstractUser
 from business.models import Business
 from simple_history.models import HistoricalRecords
+from main.models import SoftDeleteModel
 
 
-class Client(models.Model):
+class Client(SoftDeleteModel):
     """Client information for appointments and services"""
     first_name = models.CharField(max_length=100, help_text="Client's first name")
     last_name = models.CharField(max_length=100, help_text="Client's last name", blank=True, null=True)

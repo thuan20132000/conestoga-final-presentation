@@ -123,6 +123,8 @@ class BookingClientCreateSerializer(serializers.ModelSerializer):
             client, created = Client.objects.update_or_create(
                 primary_business_id=validated_data['primary_business_id'],
                 phone=validated_data['phone'],
+                is_active=True,
+                is_deleted=False,
                 defaults={
                     'first_name': validated_data['first_name'],
                     'last_name': validated_data.get('last_name', None),

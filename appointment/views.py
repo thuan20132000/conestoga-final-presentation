@@ -209,6 +209,7 @@ class AppointmentViewSet(BaseModelViewSet):
                     end_at = appointment_service['end_at']
                     custom_price = appointment_service.get('custom_price', None)
                     custom_duration = appointment_service.get('custom_duration', None)
+                    metadata = appointment_service.get('metadata', None)
                     
                     id = appointment_service['id']
                     try:
@@ -223,6 +224,7 @@ class AppointmentViewSet(BaseModelViewSet):
                         appointment_service_obj.is_staff_request = is_staff_request
                         appointment_service_obj.custom_price = custom_price
                         appointment_service_obj.custom_duration = custom_duration
+                        appointment_service_obj.metadata = metadata
                         appointment_service_obj.save()
                     else:
                         AppointmentService.objects.create(
@@ -235,6 +237,7 @@ class AppointmentViewSet(BaseModelViewSet):
                             end_at=end_at,
                             custom_price=custom_price,
                             custom_duration=custom_duration,
+                            metadata=metadata,
                         )
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
@@ -671,10 +674,11 @@ class AppointmentServiceViewSet(BaseModelViewSet):
             return self.response_success(AppointmentServiceSerializer(created_appointment_service).data)
         except Exception as e:
             return self.response_error(str(e))
-        
+    
     def partial_update(self, request, *args, **kwargs):
         """Partial update an appointment service"""
         try:
+            print("request.data", request.data)
             instance = self.get_object()
             serializer = self.get_serializer(instance, data=request.data, partial=True)
             if serializer.is_valid():
@@ -826,7 +830,12 @@ class BusinessBookingViewSet(BaseModelViewSet):
                     {'error': 'business_id and phone parameters are required'}, 
                     status_code=status.HTTP_400_BAD_REQUEST)
             
-            client = Client.objects.filter(primary_business_id=business_id, phone=phone).first()
+            client = Client.objects.filter(
+                primary_business_id=business_id, 
+                phone=phone,
+                is_active=True,
+                is_deleted=False
+            ).first()
             
             print("client", client)
             
@@ -852,8 +861,8 @@ class BusinessBookingViewSet(BaseModelViewSet):
             return self.response_success(client, message="Client created successfully")
         except Exception as e:
             return self.response_error(str(e))
-    
-    
+        
+
     @action(detail=False, methods=['post'], url_path='appointment')
     def create_appointment(self, request):
         """Make an appointment"""

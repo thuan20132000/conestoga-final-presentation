@@ -4,6 +4,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from simple_history.models import HistoricalRecords
 
 from payment.models import PaymentStatusType
+from main.models import SoftDeleteModel
+
 class AppointmentStatusType(models.TextChoices):
     SCHEDULED = "scheduled", "Scheduled"
     IN_SERVICE = "in_service", "In Service"
@@ -22,7 +24,7 @@ class BookingSourceType(models.TextChoices):
     AI_RECEPTIONIST = "ai_receptionist", "AI Receptionist"
     
 
-class Appointment(models.Model):
+class Appointment(SoftDeleteModel):
     """Main appointment model"""
     
     # Related entities
@@ -120,7 +122,7 @@ class Appointment(models.Model):
 
     
 
-class AppointmentService(models.Model):
+class AppointmentService(SoftDeleteModel):
     """Appointment service model"""
     SERVICE_REQUEST_STATUS_CHOICES = [
         ('requested', 'Requested'),
@@ -178,6 +180,8 @@ class AppointmentService(models.Model):
         null=True, 
         blank=True,
     )
+    
+    metadata = models.JSONField(null=True, blank=True)
     
     history = HistoricalRecords()
     

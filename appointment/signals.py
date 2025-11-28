@@ -54,16 +54,16 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 
                 if not client_phone:
                     return
-
                 # send confirmation sms
                 if metadata and metadata.get('is_send_confirmation_sms', False) == True:
-
+                    
                     if send_confirmation_sms == False:
                         return
 
                     # New appointment created
                     title = f"Appointment Confirmed - {business_name}"
                     body_message = f"Hello {client_name}, your appointment #{appointment_id} has been confirmed at {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+                    print("================= Dispatching SMS to {to} - {body} - {business_id}", client_phone, body_message, business_id)
                     dispatcher.dispatch(
                         title=title,
                         body=body_message,

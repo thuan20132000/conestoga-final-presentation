@@ -59,6 +59,7 @@ class Business(SoftDeleteModel):
     cost_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=0.5)
     description = models.TextField(blank=True, null=True)
     logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)
+    status = models.CharField(max_length=20, choices=BUSINESS_STATUS_CHOICES, default="active")
     
     class Meta:
         ordering = ['name']

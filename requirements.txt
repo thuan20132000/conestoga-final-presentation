@@ -7,7 +7,7 @@ anyio==4.10.0
 asgiref==3.9.2
 async-timeout==5.0.1
 attrs==25.3.0
-black
+black==25.9.0
 boto3==1.40.44
 botocore==1.40.44
 certifi==2025.8.3
@@ -46,14 +46,13 @@ jiter==0.11.0
 jmespath==1.0.1
 jsonpatch==1.33
 jsonpointer==3.0.0
-langsmith==0.1.147
 mccabe==0.7.0
 multidict==6.6.4
 mypy_extensions==1.1.0
 numpy==1.26.4
 openai==1.56.2
 orjson==3.11.3
-packaging
+packaging==25.0
 pathspec==0.12.1
 pillow==11.3.0
 platformdirs==4.4.0

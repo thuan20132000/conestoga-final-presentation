@@ -210,6 +210,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",  # Frontend dev origin
     "http://192.168.2.170:3000",  # FastAPI dev origin
     "https://192.168.2.170:3001",  # Django dev origin
+    "https://develop.d3lgvc3ld1a6bg.amplifyapp.com",
     
 
 ]

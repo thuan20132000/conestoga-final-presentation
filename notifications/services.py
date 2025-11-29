@@ -153,7 +153,7 @@ class PushService:
             # response = send_user_notification(
             #     user=user, payload=payload, ttl=1000)
             
-            response = send_group_notification(group_name="Test1", payload=payload, ttl=1000)
+            response = send_group_notification(group_name="all", payload=payload, ttl=1000)
             print(f"================= Push Response: {response}")
             # print(f"================= Push Response: {response}")
 

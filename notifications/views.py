@@ -34,6 +34,7 @@ class WebPushViewSet(BaseViewSet):
     @action(detail=False, methods=["post"], url_path="subscribe")
     def subscribe(self, request):
         try:
+            print("================= WebPush Subscribe request.data:: ", request.data)
             subscription = SubscriptionInfo.objects.create(
                 endpoint=request.data.get("endpoint"),
                 auth=request.data.get("auth"),
@@ -59,6 +60,7 @@ class WebPushViewSet(BaseViewSet):
         try:
             endpoint = request.data.get("endpoint")
             subscription = SubscriptionInfo.objects.filter(endpoint=endpoint).first()
+            print("================= WebPush Unsubscribe subscription:: ", subscription)
             if subscription:
                 PushInformation.objects.filter(subscription=subscription).delete()
                 subscription.delete()

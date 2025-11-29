@@ -35,12 +35,14 @@ class WebPushViewSet(BaseViewSet):
     def subscribe(self, request):
         try:
             print("================= WebPush Subscribe request.data:: ", request.data)
-            subscription = SubscriptionInfo.objects.create(
+            subscription = SubscriptionInfo.objects.update_or_create(
                 endpoint=request.data.get("endpoint"),
-                auth=request.data.get("auth"),
-                p256dh=request.data.get("p256dh"),
-                browser=request.data.get("browser"),
-                user_agent=request.data.get("user_agent"),
+                defaults={
+                    "auth": request.data.get("auth"),
+                    "p256dh": request.data.get("p256dh"),
+                    "browser": request.data.get("browser"),
+                    "user_agent": request.data.get("user_agent"),
+                }
             )
             
             push_information = PushInformation.objects.create(

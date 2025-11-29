@@ -13,8 +13,8 @@ staticfiles
 static
 
 # Django migrations
-*/migrations/
-!*/migrations/__init__.py
+# */migrations/
+# !*/migrations/__init__.py
 
 # VSCode
 .vscode/
@@ -71,8 +71,6 @@ coverage.xml
 # pyenv
 .python-version
 
-# pip-tools
-*.txt
 
 # SQLite
 *.sqlite3

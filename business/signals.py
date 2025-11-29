@@ -40,8 +40,8 @@ def create_business_defaults(sender, instance, created, **kwargs):
     # create business roles
     defaults_roles = [
         {
-            'name': 'Owner',
-            'description': 'Owner of the business',
+            'name': 'Technician',
+            'description': 'Technician of the business',
         },
         {
             'name': 'Manager',
@@ -55,10 +55,7 @@ def create_business_defaults(sender, instance, created, **kwargs):
             'name': 'Stylist',
             'description': 'Stylist of the business',
         },
-        {
-            'name': 'Technician',
-            'description': 'Technician of the business',
-        },
+
     ]
     for role in defaults_roles:
         BusinessRoles.objects.create(business=instance, **role)
@@ -170,6 +167,7 @@ def create_business_defaults(sender, instance, created, **kwargs):
     for service in defaults_services:
         Service.objects.create(business=instance, **service)
 
+    technician_role = BusinessRoles.objects.get(name='Technician', business=instance)
     # create business staff
     defaults_staff = [
         {
@@ -177,21 +175,28 @@ def create_business_defaults(sender, instance, created, **kwargs):
             'last_name': 'Doe',
             'email': 'john.doe@example.com',
             'phone': '1234567890',
-            'role': BusinessRoles.objects.first(),
+            'role': technician_role,
         },
         {
             'first_name': 'Jane',
             'last_name': 'Doe',
             'email': 'jill.doe@example.com',
             'phone': '1234567890',
-            'role': BusinessRoles.objects.first(),
+            'role': technician_role,
         },
         {
             'first_name': 'Jack',
             'last_name': 'Doe',
             'email': 'jack.doe@example.com',
             'phone': '1234567890',
-            'role': BusinessRoles.objects.first(),
+            'role': technician_role,
+        },
+        {
+            'first_name': 'Jill',
+            'last_name': 'Doe',
+            'email': 'jill.doe@example.com',
+            'phone': '1234567890',
+            'role': technician_role,
         },
         {
             'first_name': 'Jill',
@@ -205,14 +210,7 @@ def create_business_defaults(sender, instance, created, **kwargs):
             'last_name': 'Doe',
             'email': 'jill.doe@example.com',
             'phone': '1234567890',
-            'role': BusinessRoles.objects.first(),
-        },
-        {
-            'first_name': 'Jill',
-            'last_name': 'Doe',
-            'email': 'jill.doe@example.com',
-            'phone': '1234567890',
-            'role': BusinessRoles.objects.first(),
+            'role': technician_role,
         },
     ]
     for staff in defaults_staff:

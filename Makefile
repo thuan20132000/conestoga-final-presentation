@@ -66,7 +66,7 @@ dev: ## Run development server using composite ASGI app (Django + FastAPI)
 	@echo "Django API: http://localhost:8000"
 	@echo "FastAPI Service: http://localhost:8000/ai-service"
 	@echo "Use Ctrl+C to stop the service"
-	uvicorn main.asgi:application --host 0.0.0.0 --port 8000 --reload
+	uvicorn main.asgi:application --host 0.0.0.0 --port 8003 --reload
 
 sample-data: ## Create sample data
 	@echo "Starting development server..."

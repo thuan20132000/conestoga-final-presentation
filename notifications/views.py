@@ -48,7 +48,7 @@ class WebPushViewSet(BaseViewSet):
                 push_information = PushInformation.objects.create(
                     subscription=subscription,
                     user=request.user,
-                    group=request.data.get("group"),
+                    group=request.data.get("group","all"),
                 )
             else:
                 push_information = PushInformation.objects.filter(subscription=subscription).first()

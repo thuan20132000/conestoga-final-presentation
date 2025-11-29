@@ -34,8 +34,7 @@ class WebPushViewSet(BaseViewSet):
     @action(detail=False, methods=["post"], url_path="subscribe")
     def subscribe(self, request):
         try:
-            print("================= WebPush Subscribe request.data:: ", request.data)
-            subscription = SubscriptionInfo.objects.update_or_create(
+            subscription, created = SubscriptionInfo.objects.update_or_create(
                 endpoint=request.data.get("endpoint"),
                 defaults={
                     "auth": request.data.get("auth"),
@@ -44,13 +43,15 @@ class WebPushViewSet(BaseViewSet):
                     "user_agent": request.data.get("user_agent"),
                 }
             )
-            
-            push_information = PushInformation.objects.create(
-                subscription=subscription,
-                user=request.user,
-                group=request.data.get("group"),
-            )
-            
+            if created:
+                push_information = PushInformation.objects.create(
+                    subscription=subscription,
+                    user=request.user,
+                    group=request.data.get("group"),
+                )
+            else:
+                push_information = PushInformation.objects.filter(subscription=subscription).first()
+                
             serializer = PushInformationSerializer(push_information)
             
             return self.response_success(serializer.data)

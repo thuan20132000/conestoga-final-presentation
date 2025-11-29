@@ -30,6 +30,7 @@ class PushDeviceViewSet(viewsets.ModelViewSet):
 class WebPushViewSet(BaseViewSet):
     queryset = PushInformation.objects.all()
     serializer_class = PushInformationSerializer
+    permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=["post"], url_path="subscribe")
     def subscribe(self, request):

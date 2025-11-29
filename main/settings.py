@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'simple_history',
     'django_json_widget',
     'rest_framework_simplejwt.token_blacklist',
+    'webpush',
 ]
 
 INSTALLED_APPS += [

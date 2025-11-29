@@ -1,7 +1,7 @@
 from django.contrib import admin
+from webpush.models import SubscriptionInfo, PushInformation, Group
 
 from .models import Notification, PushDevice
-
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
@@ -17,3 +17,15 @@ class PushDeviceAdmin(admin.ModelAdmin):
     list_filter = ("provider", "active")
     search_fields = ("token",)
     readonly_fields = ("created_at",)
+
+@admin.register(SubscriptionInfo)
+class SubscriptionInfoAdmin(admin.ModelAdmin):
+    list_display = ("id", "endpoint", "auth", "p256dh", "browser", "user_agent")
+    list_filter = ("browser",)
+    search_fields = ("endpoint",)
+
+@admin.register(Group)
+class WebPushGroupAdmin(admin.ModelAdmin):
+    list_display = ("id", "name")
+    list_filter = ("name",)
+    search_fields = ("name",)

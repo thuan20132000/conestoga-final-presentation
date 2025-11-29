@@ -210,6 +210,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",  # Frontend dev origin
     "http://192.168.2.170:3000",  # FastAPI dev origin
     "http://192.168.2.170:3001",  # Django dev origin
+    
 
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -244,3 +245,15 @@ OPT_OUT_MESSAGE = config('OPT_OUT_MESSAGE', default="To opt out, reply STOP")
 AWS_REGION = config('AWS_REGION')
 AWS_LAMBDA_SEND_SMS_ARN = config('AWS_LAMBDA_SEND_SMS_ARN')
 AWS_SCHEDULER_POLICY_ARN = config('AWS_SCHEDULER_POLICY_ARN')
+
+
+# WebPush Configuration
+VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default="")
+VAPID_PUBLIC_KEY = config('VAPID_PUBLIC_KEY', default="")
+
+
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": VAPID_PUBLIC_KEY,
+    "VAPID_PRIVATE_KEY": VAPID_PRIVATE_KEY,
+    "VAPID_ADMIN_EMAIL": "ethantruong1602@gmail.com"
+}

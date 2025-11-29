@@ -7,7 +7,12 @@ from django.core.mail import send_mail
 from main import common_settings
 import boto3
 import json
+from pathlib import Path
+# from pywebpush import webpush
+from webpush import send_group_notification, send_user_notification
+
 logger = logging.getLogger(__name__)
+
 
 AWS_REGION = common_settings.AWS_REGION
 LAMBDA_SEND_SMS_ARN = common_settings.AWS_LAMBDA_SEND_SMS_ARN
@@ -26,8 +31,7 @@ class SendResult:
 
 class SMSService:
     group_name: str = "bookngon-calendar"
-    
-    
+
     def send(self, to_phone: str, body: str, business_id: Optional[int] = None) -> SendResult:
         try:
             message = f"{body} {common_settings.OPT_OUT_MESSAGE}"
@@ -48,7 +52,6 @@ class SMSService:
             result = json.loads(body_str) if body_str else {}
             # Optionally look at FunctionError or LogResult
             print(f"Result: {result}")
-
 
             if result.get('statusCode', 0) != 200:
                 print(f"Failed to send SMS: {result}")
@@ -77,15 +80,15 @@ class SMSService:
             return SendResult(ok=False, error=str(exc))
 
     def send_scheduled(
-        self, 
-        to_phone: str, 
-        body: str, 
+        self,
+        to_phone: str,
+        body: str,
         business_id: Optional[int] = None,
-        schedule_time: datetime.datetime = None, 
+        schedule_time: datetime.datetime = None,
         schedule_name: Optional[str] = None
     ) -> SendResult:
         try:
-           
+
             message = f"{body} {common_settings.OPT_OUT_MESSAGE}"
             at_expression = f"at({schedule_time.strftime('%Y-%m-%dT%H:%M:%S')})"
             response = schedule_client.create_schedule(
@@ -127,7 +130,7 @@ class SMSService:
 
     def destroy_scheduled(self, schedule_name: str) -> SendResult:
         try:
-           
+
             schedule_client.delete_schedule(
                 Name=schedule_name,
                 GroupName=self.group_name
@@ -139,12 +142,21 @@ class SMSService:
 
 
 class PushService:
-    def send(self, device_token: str, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
+    def send(self, user, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
         try:
             logger.warning(
-                f"================= Push to {device_token} - {title}")
+                f"================= Push to {user} - {title}")
             logger.warning(f"================= Body: {body}")
             logger.warning(f"================= Data: {data}")
+
+            payload = {"head": "Welcome!", "body": "Hello World"}
+            # response = send_user_notification(
+            #     user=user, payload=payload, ttl=1000)
+            
+            response = send_group_notification(group_name="Test1", payload=payload, ttl=1000)
+            print(f"================= Push Response: {response}")
+            # print(f"================= Push Response: {response}")
+
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")
@@ -157,38 +169,37 @@ class NotificationDispatcher:
         self.push = PushService()
 
     def dispatch(
-        self, 
-        channel: str, 
-        to: str, 
-        title: str, 
-        body: str, 
+        self,
+        channel: str,
+        to: str,
+        title: str,
+        body: str,
         business_id: Optional[int] = None,
         data: Optional[Dict] = None,
     ) -> SendResult:
         if channel == Notification.Channel.SMS:
-            print(f"================= Dispatching SMS to {to} - {body} - {business_id}")
+            print(
+                f"================= Dispatching SMS to {to} - {body} - {business_id}")
             return self.sms.send(to, body, business_id)
         if channel == Notification.Channel.PUSH:
             return self.push.send(to, title, body, data)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
 
-
     def dispatch_scheduled(
-        self, 
-        channel: str, 
-        to: str, 
-        title: str, 
-        body: str, 
+        self,
+        channel: str,
+        to: str,
+        title: str,
+        body: str,
         business_id: Optional[int] = None,
-        data: Optional[Dict] = None, 
+        data: Optional[Dict] = None,
         schedule_time: Optional[datetime.datetime] = None,
         schedule_name: Optional[str] = None,
     ) -> SendResult:
         if channel == Notification.Channel.SMS:
             return self.sms.send_scheduled(to, body, business_id, schedule_time, schedule_name)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
-    
-    
+
     def dispatch_destroy_scheduled(self, channel: str, schedule_name: str) -> SendResult:
         if channel == Notification.Channel.SMS:
             return self.sms.destroy_scheduled(schedule_name)

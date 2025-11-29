@@ -61,7 +61,7 @@ run-django: ## Run Django development server
 run-fastapi: ## Run FastAPI service only
 	cd ai_service && uvicorn main:app --host 0.0.0.0 --port 5050 --reload
 
-dev: ## Run development server using composite ASGI app (Django + FastAPI)
+dev2: ## Run development server using composite ASGI app (Django + FastAPI)
 	@echo "Starting development server..."
 	@echo "Django API: http://localhost:8000"
 	@echo "FastAPI Service: http://localhost:8000/ai-service"

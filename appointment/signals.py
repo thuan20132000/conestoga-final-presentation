@@ -125,15 +125,6 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         business_id=business_id,
                     )
                     
-                    # send to business
-                    dispatcher.dispatch(
-                        title="Appointment Cancelled",
-                        body=f"Appointment has been cancelled for {client_name} at {start_at_str} at {business_name}.",
-                        data=metadata,
-                        channel=Notification.Channel.PUSH,
-                        business_id=business_id,
-                        to=client_name,
-                    )
                     
                     dispatcher.dispatch(
                         title=title,

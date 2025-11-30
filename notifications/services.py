@@ -144,18 +144,10 @@ class SMSService:
 class PushService:
     def send(self, user, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
         try:
-            logger.warning(
-                f"================= Push to {user} - {title}")
-            logger.warning(f"================= Body: {body}")
-            logger.warning(f"================= Data: {data}")
+           
 
-            payload = {"head": "Welcome!", "body": "Hello World"}
-            # response = send_user_notification(
-            #     user=user, payload=payload, ttl=1000)
-            
+            payload = {"head": title, "body": body}
             response = send_group_notification(group_name="all", payload=payload, ttl=1000)
-            print(f"================= Push Response: {response}")
-            # print(f"================= Push Response: {response}")
 
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001

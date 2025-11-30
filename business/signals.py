@@ -15,10 +15,12 @@ def create_business_defaults(sender, instance, created, **kwargs):
     """
     if not created:
         return
+    
+    business = instance
 
     # create business settings
     BusinessSettings.objects.create(
-        business=instance,
+        business=business,
         advance_booking_days=30,
         min_advance_booking_hours=2,
         max_advance_booking_days=90,
@@ -58,116 +60,484 @@ def create_business_defaults(sender, instance, created, **kwargs):
 
     ]
     for role in defaults_roles:
-        BusinessRoles.objects.create(business=instance, **role)
+        BusinessRoles.objects.create(business=business, **role)
 
     # create business categories
     defaults_categories = [
         {
-            'name': 'Hair Cuts',
-            'description': 'Hair Cuts',
+            'name': 'Pedicure & Manicure',
+            'description': 'Pedicure & Manicure',
+            'color_code': '#6cd5cb',
+            'icon': 'fas fa-cut',
+            'image': 'services/hair_cuts.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 1,
         },
         {
-            'name': 'Hair Coloring',
-            'description': 'Hair Coloring',
+            'name': 'Nail Extensions',
+            'description': 'Nail Extensions',
+            'color_code': '#ffbf69',
+            'icon': 'fas fa-cut',
+            'image': 'services/hair_cuts.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 2,
         },
         {
-            'name': 'Hair Treatments',
+            'name': 'Extra',
             'description': 'Hair Treatments',
+            'color_code': '#ffbf69',
+            'icon': 'fas fa-cut',
+            'image': 'services/hair_cuts.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 3,
         },
         {
-            'name': 'Nail Services',
-            'description': 'Nail Services',
+            'name': 'Waxing',
+            'description': 'Waxing Services',
+            'color_code': '#ff00ffb8',
+            'icon': 'fas fa-cut',
+            'image': 'services/hair_cuts.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 4,
         },
         {
-            'name': 'Spa Services',
-            'description': 'Spa Services',
+            'name': 'Eyebrow Tinting',
+            'description': 'Eyebrow Tinting Services',
+            'color_code': '#ff00ffb8',
+            'icon': 'fas fa-cut',
+            'image': 'services/hair_cuts.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 5,
         },
         {
-            'name': 'Dental Services',
-            'description': 'Dental Services',
+            'name': 'Kid Service',
+            'description': 'Kid Service',
+            'color_code': '#6cd5cb',
+            'icon': 'fas fa-cut',
+            'image': 'services/hair_cuts.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 6,
         },
+        {
+            'name': 'Blocks Time',
+            'description': 'Blocks Time',
+            'color_code': '#5f4a6e',
+            'icon': 'fas fa-clock',
+            'image': 'services/blocks_time.jpg',
+            'is_online_booking': True,
+            'is_active': True,
+            'sort_order': 7,
+        }
     ]
     for category in defaults_categories:
-        ServiceCategory.objects.create(business=instance, **category)
+        ServiceCategory.objects.create(business=business, **category)
 
+    pedicure_category = ServiceCategory.objects.get(name='Pedicure & Manicure', business=business)
+    nail_extensions_category = ServiceCategory.objects.get(name='Nail Extensions', business=business)
+    extra_category = ServiceCategory.objects.get(name='Extra', business=business)
+    waxing_category = ServiceCategory.objects.get(name='Waxing', business=business)
+    eyebrow_tinting_category = ServiceCategory.objects.get(name='Eyebrow Tinting', business=business)
+    kid_service_category = ServiceCategory.objects.get(name='Kid Service', business=business)
+    blocks_time_category = ServiceCategory.objects.get(name='Blocks Time', business=business)
     # create business services
     defaults_services = [
         {
-            'name': 'Women\'s Cut & Style',
-            'description': 'Women\'s Cut & Style',
-            'category': ServiceCategory.objects.first(),
-            'duration_minutes': 60,
-            'price': 85.00,
-            'is_active': True,
-            'requires_staff': True,
-            'max_capacity': 1,
-            'is_online_booking': True,
-            'color_code': '#000000',
-            'icon': 'fas fa-cut',
-            'image': 'services/women_cut_style.jpg',
+            "name": "Pedicure",
+            "description": "",
+            "price": "40.00",
+            "duration_minutes": 40,
+            "category_id": pedicure_category.id,
         },
         {
-            'name': 'Men\'s Cut',
-            'description': 'Men\'s Cut',
-            'category': ServiceCategory.objects.first(),
-            'duration_minutes': 30,
-            'price': 45.00,
-            'is_active': True,
-            'requires_staff': True,
-            'max_capacity': 1,
-            'is_online_booking': True,
-            'color_code': '#000000',
-            'icon': 'fas fa-cut',
-            'image': 'services/men_cut.jpg',
+            "name": "Bio Gel Fill",
+            "description": "",
+            "price": "53.00",
+            "duration_minutes": 50,
+            "category_id": nail_extensions_category.id,
         },
         {
-            'name': 'Full Color',
-            'description': 'Full Color',
-            'category': ServiceCategory.objects.first(),
-            'duration_minutes': 120,
-            'price': 150.00,
-            'is_active': True,
-            'requires_staff': True,
-            'max_capacity': 1,
-            'is_online_booking': True,
-            'color_code': '#000000',
-            'icon': 'fas fa-cut',
-            'image': 'services/full_color.jpg',
+            "name": "Acrylic Full Set",
+            "description": "",
+            "price": "57.00",
+            "duration_minutes": 60,
+            "category_id": nail_extensions_category.id,
         },
         {
-            'name': 'Highlights',
-            'description': 'Highlights',
-            'category': ServiceCategory.objects.first(),
-            'duration_minutes': 90,
-            'price': 120.00,
-            'is_active': True,
-            'requires_staff': True,
-            'max_capacity': 1,
-            'is_online_booking': True,
-            'color_code': '#000000',
-            'icon': 'fas fa-cut',
-            'image': 'services/highlights.jpg',
+            "name": "Acrylic Fill",
+            "description": "",
+            "price": "50.00",
+            "duration_minutes": 50,
+            "category_id": nail_extensions_category.id,
         },
         {
-            'name': 'Deep Conditioning',
-            'description': 'Deep Conditioning',
-            'category': ServiceCategory.objects.first(),
-            'duration_minutes': 45,
-            'price': 65.00,
-            'is_active': True,
-            'requires_staff': True,
-            'max_capacity': 1,
-            'is_online_booking': True,
-            'color_code': '#000000',
-            'icon': 'fas fa-cut',
-            'image': 'services/deep_conditioning.jpg',
+            "name": "Bio Gel Full Set",
+            "description": "",
+            "price": "63.00",
+            "duration_minutes": 60,
+            "category_id": nail_extensions_category.id,
         },
+        {
+            "name": "Pedicure With Shellac",
+            "description": "",
+            "price": "52.00",
+            "duration_minutes": 45,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Bio Gel Overlay",
+            "description": "",
+            "price": "57.00",
+            "duration_minutes": 50,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Dip Powder Without Extension Lenght",
+            "description": "",
+            "price": "45.00",
+            "duration_minutes": 50,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Manicure",
+            "description": "",
+            "price": "27.00",
+            "duration_minutes": 25,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Dip Powder With Extension Length",
+            "description": "",
+            "price": "55.00",
+            "duration_minutes": 60,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Acrylic Overlay",
+            "description": "",
+            "price": "52.00",
+            "duration_minutes": 45,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Acrylic Full Set On Toe",
+            "description": "",
+            "price": "55.00",
+            "duration_minutes": 55,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "GEL-X",
+            "description": "",
+            "price": "60.00",
+            "duration_minutes": 60,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Acrylic Remove Without Service",
+            "description": "",
+            "price": "15.00",
+            "duration_minutes": 20,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Manicure With Shellac",
+            "description": "",
+            "price": "37.00",
+            "duration_minutes": 35,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Ombre White",
+            "description": "",
+            "price": "15.00",
+            "duration_minutes": 10,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Acrylic Remove With Service",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 20,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Take Off Shellac Without Service",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 10,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Shellac Polish On Finger Nails",
+            "description": "",
+            "price": "25.00",
+            "duration_minutes": 20,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Take Off Shellac With Service",
+            "description": "",
+            "price": "5.00",
+            "duration_minutes": 10,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Shellac Polish On Toe Nails",
+            "description": "",
+            "price": "30.00",
+            "duration_minutes": 25,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Regular Polish On Finger",
+            "description": "",
+            "price": "15.00",
+            "duration_minutes": 15,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Regular Polish On Toe",
+            "description": "",
+            "price": "18.00",
+            "duration_minutes": 15,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Fix",
+            "description": "",
+            "price": "0.00",
+            "duration_minutes": 15,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Finger Nails Cut",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 10,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Toe Nail Cut",
+            "description": "",
+            "price": "12.00",
+            "duration_minutes": 10,
+            "category_id": pedicure_category.id,
+        },
+        {
+            "name": "Extra Long Nail",
+            "description": "",
+            "price": "15.00",
+            "duration_minutes": 15,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Block 3 Hours",
+            "description": "",
+            "price": "0.00",
+            "duration_minutes": 180,
+            "category_id": blocks_time_category.id,
+        },
+        {
+            "name": "French Tip",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 10,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Kid Pedicure With Shellac",
+            "description": "",
+            "price": "40.00",
+            "duration_minutes": 35,
+            "category_id": kid_service_category.id,
+        },
+        {
+            "name": "Kid Regular Polish (Toes or Fingers)",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 10,
+            "category_id": kid_service_category.id,
+        },
+        {
+            "name": "Kid Manicure",
+            "description": "",
+            "price": "18.00",
+            "duration_minutes": 20,
+            "category_id": kid_service_category.id,
+        },
+        {
+            "name": "Long Nail",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 15,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Medium Nail",
+            "description": "",
+            "price": "5.00",
+            "duration_minutes": 10,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Kid Shellac Polish (Toes Or Fingers)",
+            "description": "",
+            "price": "17.00",
+            "duration_minutes": 15,
+            "category_id": kid_service_category.id,
+        },
+        {
+            "name": "Kid Manicure With Shellac",
+            "description": "",
+            "price": "26.00",
+            "duration_minutes": 30,
+            "category_id": kid_service_category.id,
+        },
+        {
+            "name": "Chrome Nail",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 10,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Ombre Color",
+            "description": "",
+            "price": "10.00",
+            "duration_minutes": 10,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Design Nail Star",
+            "description": "",
+            "price": "5.00",
+            "duration_minutes": 10,
+            "category_id": nail_extensions_category.id,
+        },
+        {
+            "name": "Eye Brow Tinting",
+            "description": "",
+            "price": "20.00",
+            "duration_minutes": 20,
+            "category_id": eyebrow_tinting_category.id,
+        },
+        {
+            "name": "Eye Brow Waxing and Tinting",
+            "description": "",
+            "price": "30.00",
+            "duration_minutes": 30,
+            "category_id": eyebrow_tinting_category.id,
+        },
+        {
+            "name": "Chin",
+            "description": "",
+            "price": "8.00",
+            "duration_minutes": 5,
+            "category_id": eyebrow_tinting_category.id,
+        },
+        {
+            "name": "Side",
+            "description": "",
+            "price": "15.00",
+            "duration_minutes": 10,
+            "category_id": eyebrow_tinting_category.id,
+        },
+        {
+            "name": "Full Leg",
+            "description": "",
+            "price": "50.00",
+            "duration_minutes": 50,
+            "category_id": waxing_category.id,
+        },
+        {
+            "name": "Half Arm",
+            "description": "",
+            "price": "30.00",
+            "duration_minutes": 25,
+            "category_id": waxing_category.id,
+        },
+        {
+            "name": "Upper Lip",
+            "description": "",
+            "price": "6.00",
+            "duration_minutes": 5,
+            "category_id": waxing_category.id,
+        },
+        {
+            "name": "Full Arm",
+            "description": "",
+            "price": "50.00",
+            "duration_minutes": 40,
+            "category_id": waxing_category.id,
+        },
+        {
+            "name": "Eye Brow",
+            "description": "",
+            "price": "12.00",
+            "duration_minutes": 10,
+            "category_id": eyebrow_tinting_category.id,
+        },
+        {
+            "name": "Kid Pedicure",
+            "description": "",
+            "price": "30.00",
+            "duration_minutes": 30,
+            "category_id": kid_service_category.id,
+        },
+        {
+            "name": "Under Arm",
+            "description": "",
+            "price": "18.00",
+            "duration_minutes": 15,
+            "category_id": waxing_category.id,
+        },
+        {
+            "name": "Full Face",
+            "description": "",
+            "price": "35.00",
+            "duration_minutes": 30,
+            "category_id": waxing_category.id,
+        },
+        {
+            "name": "Block 1 Hour",
+            "description": "",
+            "price": "0.00",
+            "duration_minutes": 60,
+            "category_id": blocks_time_category.id,
+        },
+        {
+            "name": "Block All Day",
+            "description": "",
+            "price": "0.00",
+            "duration_minutes": 600,
+            "category_id": blocks_time_category.id,
+        },
+        {
+            "name": "Block 2 Hours",
+            "description": "",
+            "price": "0.00",
+            "duration_minutes": 120,
+            "category_id": blocks_time_category.id,
+        },
+        {
+            "name": "Half Leg",
+            "description": "",
+            "price": "30.00",
+            "duration_minutes": 30,
+            "category_id": waxing_category.id,
+        }
     ]
-
     for service in defaults_services:
-        Service.objects.create(business=instance, **service)
+        Service.objects.create(business=business, **service)
 
-    technician_role = BusinessRoles.objects.get(name='Technician', business=instance)
+    technician_role = BusinessRoles.objects.get(name='Technician', business=business)
+    
     # create business staff
     defaults_staff = [
         {
@@ -203,7 +573,7 @@ def create_business_defaults(sender, instance, created, **kwargs):
             'last_name': 'Doe',
             'email': 'jill.doe@example.com',
             'phone': '1234567890',
-            'role': BusinessRoles.objects.first(),
+            'role': technician_role,
         },
         {
             'first_name': 'Jill',
@@ -214,12 +584,12 @@ def create_business_defaults(sender, instance, created, **kwargs):
         },
     ]
     for staff in defaults_staff:
-        Staff.objects.create(business=instance, **staff)
+        Staff.objects.create(business=business, **staff)
 
     # create business operating hours
     for day in range(7):
         OperatingHours.objects.create(
-            business=instance,
+            business=business,
             day_of_week=day,
             is_open=True if day < 5 else False,
             open_time=time(9, 0) if day < 5 else None,
@@ -268,4 +638,4 @@ def create_business_defaults(sender, instance, created, **kwargs):
         },
     ]
     for payment_method in defaults_payment_methods:
-        PaymentMethod.objects.create(business=instance, **payment_method)
+        PaymentMethod.objects.create(business=business, **payment_method)

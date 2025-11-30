@@ -24,6 +24,7 @@ class StaffAdmin(UserAdmin):
 
     list_display = [
         "username",
+        "first_name",
         "role",
         "is_active",
         "hire_date",

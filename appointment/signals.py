@@ -112,8 +112,29 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                     )
                 # Appointment cancelled
                 if metadata and metadata.get('is_cancelled') == True:
+                    
+                    # send to client
                     body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
                     title = f"Appointment Cancelled - {business_name}"
+                    dispatcher.dispatch(
+                        title=title,
+                        body=body_message,
+                        data=metadata,
+                        channel=Notification.Channel.SMS,
+                        to=client_phone,
+                        business_id=business_id,
+                    )
+                    
+                    # send to business
+                    dispatcher.dispatch(
+                        title="Appointment Cancelled",
+                        body=f"Appointment has been cancelled for {client_name} at {start_at_str} at {business_name}.",
+                        data=metadata,
+                        channel=Notification.Channel.PUSH,
+                        business_id=business_id,
+                        to=client_name,
+                    )
+                    
                     dispatcher.dispatch(
                         title=title,
                         body=body_message,

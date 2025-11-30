@@ -146,7 +146,7 @@ class PushService:
         try:
            
 
-            payload = {"head": title, "body": body}
+            payload = {"title": title, "body": body}
             response = send_group_notification(group_name="all", payload=payload, ttl=1000)
 
             return SendResult(ok=True)

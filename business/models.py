@@ -36,14 +36,6 @@ class Business(SoftDeleteModel):
         ('NZD', 'NZD'),
     ]
     
-    TIMEZONE_CHOICES = [
-        ('America/Toronto', 'America/Toronto'),
-        ('America/New_York', 'America/New_York'),
-        ('America/Los_Angeles', 'America/Los_Angeles'),
-        ('America/Chicago', 'America/Chicago'),
-    ]
-    
-    
     name = models.CharField(max_length=255)
     business_type = models.ForeignKey(BusinessType, on_delete=models.PROTECT, related_name='businesses')
     phone_number = models.CharField(max_length=50, blank=True, null=True)
@@ -54,7 +46,6 @@ class Business(SoftDeleteModel):
     state_province = models.CharField(max_length=100, blank=True, null=True)
     postal_code = models.CharField(max_length=20, blank=True, null=True)
     country = models.CharField(max_length=100, default="Canada")
-    timezone = models.CharField(max_length=100, choices=TIMEZONE_CHOICES, default="America/Toronto")
     currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default="USD")
     cost_per_minute = models.DecimalField(max_digits=10, decimal_places=2, default=0.5)
     description = models.TextField(blank=True, null=True)
@@ -103,8 +94,19 @@ class OperatingHours(SoftDeleteModel):
 
 
 class BusinessSettings(SoftDeleteModel):
+    TIMEZONE_CHOICES = [
+        ('America/Toronto', 'America/Toronto'),
+        ('America/New_York', 'America/New_York'),
+        ('America/Los_Angeles', 'America/Los_Angeles'),
+        ('America/Chicago', 'America/Chicago'),
+        ('America/Phoenix', 'America/Phoenix'),
+    ]
+        
     """Additional settings and preferences for the business"""
     business = models.OneToOneField(Business, on_delete=models.CASCADE, related_name='settings')
+    
+    # Timezone settings
+    timezone = models.CharField(max_length=100, choices=TIMEZONE_CHOICES, default="America/Toronto")
     
     # Booking settings
     advance_booking_days = models.PositiveIntegerField(default=30, help_text="How many days in advance can clients book")

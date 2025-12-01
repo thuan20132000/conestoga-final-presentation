@@ -33,15 +33,14 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessSettings
         fields = [
-            'id', 'advance_booking_days', 'min_advance_booking_hours', 
+            'id', 'timezone', 'advance_booking_days', 'min_advance_booking_hours', 
             'max_advance_booking_days', 'time_slot_interval', 'buffer_time_minutes',
             'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
             'send_confirmation_sms',
             'currency', 'tax_rate', 'require_payment_advance', 'allow_online_booking',
             'require_client_phone', 'require_client_email', 'auto_confirm_appointments',
-            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id']
 
 
 class BusinessSerializer(serializers.ModelSerializer):
@@ -49,7 +48,7 @@ class BusinessSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Business
-        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'timezone', 'description', 'logo', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'description', 'logo', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
@@ -77,7 +76,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
-            'country', 'timezone', 'description', 'logo', 'operating_hours',
+            'country', 'description', 'logo', 'operating_hours',
             'settings', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -93,7 +92,7 @@ class BusinessCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'name', 'business_type', 'phone_number', 'email', 'website',
             'address', 'city', 'state_province', 'postal_code', 'country',
-            'timezone', 'description', 'logo', 'operating_hours', 'settings'
+            'description', 'logo', 'operating_hours', 'settings'
         ]
     
     def create(self, validated_data):

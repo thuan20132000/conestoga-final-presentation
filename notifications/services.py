@@ -10,7 +10,11 @@ import json
 from pathlib import Path
 # from pywebpush import webpush
 from webpush import send_group_notification, send_user_notification
-
+import asyncio
+import time
+from django.contrib.auth.models import User
+import threading
+from staff.models import Staff
 logger = logging.getLogger(__name__)
 
 
@@ -142,19 +146,26 @@ class SMSService:
 
 
 class PushService:
-    def send(self, user, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
+    def send_group(self, group_name: str, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
         try:
-           
-
+            print("Sending push to group", group_name)
             payload = {"title": title, "body": body}
-            response = send_group_notification(group_name="all", payload=payload, ttl=1000)
-
+            response = send_group_notification(group_name=group_name, payload=payload, ttl=1000)
+            print("Push response", response)
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")
             return SendResult(ok=False, error=str(exc))
 
-
+    def send_user(self, user: User, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
+        try:
+            payload = {"title": title, "body": body}
+            response = send_user_notification(user=user, payload=payload, ttl=1000)
+            print("User Push response", response)
+            return SendResult(ok=True)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Push send failed")
+            return SendResult(ok=False, error=str(exc))
 class NotificationDispatcher:
     def __init__(self) -> None:
         self.sms = SMSService()
@@ -163,24 +174,48 @@ class NotificationDispatcher:
     def dispatch(
         self,
         channel: str,
-        to: str,
+        to: str | Staff,
         title: str,
         body: str,
         business_id: Optional[int] = None,
         data: Optional[Dict] = None,
+        group_name: Optional[str] = None,
     ) -> SendResult:
+        
         if channel == Notification.Channel.SMS:
-            print(
-                f"================= Dispatching SMS to {to} - {body} - {business_id}")
             return self.sms.send(to, body, business_id)
         if channel == Notification.Channel.PUSH:
-            return self.push.send(to, title, body, data)
+            print("Sending push", to)
+            if group_name:
+                return self.push.send_group(group_name, title, body, data)
+            if isinstance(to, Staff):
+                print("Sending user push", to.first_name + " " + to.last_name)
+                return self.push.send_user(to, title, body, data)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
+    
+    def dispatchAsync(
+        self,
+        channel: str,
+        to: str | Staff,
+        title: str,
+        body: str,
+        business_id: Optional[int] = None,
+        data: Optional[Dict] = None,
+        group_name: Optional[str] = None,
+    ) -> SendResult:
+        
+        def _dispatch():
+            result = self.dispatch(channel, to, title, body, business_id, data, group_name)
+            return result
+        
+        thread = threading.Thread(target=_dispatch)
+        thread.start()
+        return SendResult(ok=True)
 
     def dispatch_scheduled(
         self,
         channel: str,
-        to: str,
+        to: str | Staff,
         title: str,
         body: str,
         business_id: Optional[int] = None,

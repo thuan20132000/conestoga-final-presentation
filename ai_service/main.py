@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from ai_service.config import settings
 from ai_service.services.audio_service import AudioService
 from ai_service.routing.main import main_router
-
+from main.common_settings import CORS_ALLOWED_ORIGINS
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +43,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.socket_cors_origins,
+    allow_origins=CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

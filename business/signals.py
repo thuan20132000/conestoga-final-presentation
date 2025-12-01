@@ -6,7 +6,9 @@ from service.models import ServiceCategory, Service
 from staff.models import Staff
 from datetime import time
 from payment.models import PaymentMethod
+from webpush.models import Group, PushInformation
 
+from main.utils import get_business_managers_group_name 
 
 @receiver(post_save, sender=Business)
 def create_business_defaults(sender, instance, created, **kwargs):
@@ -639,3 +641,7 @@ def create_business_defaults(sender, instance, created, **kwargs):
     ]
     for payment_method in defaults_payment_methods:
         PaymentMethod.objects.create(business=business, **payment_method)
+
+    
+    # create business managers group
+    business_managers_group = Group.objects.create(name=get_business_managers_group_name(business.id))

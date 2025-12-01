@@ -84,7 +84,7 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
         ('Booking Settings', {
             'fields': (
                 'advance_booking_days', 'min_advance_booking_hours', 'max_advance_booking_days',
-                'time_slot_interval', 'buffer_time_minutes'
+                'time_slot_interval', 'buffer_time_minutes', 'timezone'
             )
         }),
         ('Notification Settings', {

@@ -5,8 +5,12 @@ from datetime import timedelta
 from django.utils import timezone
 from staff.models import Staff, StaffOffDay
 from django.db import transaction
-
-
+from notifications.models import Notification
+from notifications.services import NotificationDispatcher
+from business.models import BusinessSettings
+import logging
+from main.utils import get_business_managers_group_name
+logger = logging.getLogger(__name__)
 class BusinessBookingService:
     def __init__(self, business_id, interval_minutes=15):
         self.business_id = business_id
@@ -262,3 +266,190 @@ class BusinessStaffService:
             )
         except Exception as e:
             raise Exception(f"Error getting business staffs: {e}")
+
+class AppointmentBusinessService:
+    def __init__(self, business_id):
+        self.business_id = business_id
+
+    def get_business_settings(self):
+        try:
+            return BusinessSettings.objects.get(business_id=self.business_id)
+        except Exception as e:
+            raise Exception(f"Error getting business settings: {e}")
+
+class AppointmentNotificationService:
+    def __init__(self, appointment):
+        self.appointment = appointment
+        self.dispatcher = NotificationDispatcher()
+
+    def send_client_confirmation_notification(
+        self,
+        client_name,
+        client_phone,
+        business_phone,
+        business_name,
+        appointment_id,
+        start_at,
+        metadata):
+        try:
+            business_id = self.appointment.business.id
+            title = f"Appointment Confirmed - {business_name}"
+            body_message = f"Hello {client_name}, your appointment #{appointment_id} has been confirmed at {start_at} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+            
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.SMS,
+                to=client_phone,
+                business_id=business_id,
+            )
+            
+        except Exception as e:
+            logger.error(f"Error sending confirmation SMS: {e}")
+            raise Exception(f"Error sending confirmation SMS: {e}")
+
+    def send_client_reminder_notification(
+        self,
+        client_name,
+        client_phone,
+        business_phone,
+        business_name,
+        appointment_id,
+        start_at,
+        metadata,
+        schedule_name,
+        schedule_time,
+        business_id,
+    ):
+        try:
+            title = f"Appointment Reminder - {business_name}"
+            body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+            
+            self.dispatcher.dispatch_scheduled(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.SMS,
+                to=client_phone,
+                business_id=business_id,
+                schedule_name=schedule_name,
+                schedule_time=schedule_time,
+            )
+        except Exception as e:
+            logger.error(f"Error sending reminder SMS: {e}")
+            raise Exception(f"Error sending reminder SMS: {e}")
+
+    def send_client_rescheduled_notification(
+        self,
+        client_name,
+        client_phone,
+        business_phone,
+        business_name,
+        appointment_id,
+        business_id,
+        start_at_str,
+        metadata,
+    ):
+        try:
+            print("send rescheduled sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
+            body_message = f"Hello {client_name}, your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+            title = f"Appointment Rescheduled - {business_name}"
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.SMS,
+                to=client_phone,
+                business_id=business_id,
+            )
+        except Exception as e:
+            logger.error(f"Error sending rescheduled SMS: {e}")
+            raise Exception(f"Error sending rescheduled SMS: {e}")
+    
+    def send_client_cancellation_notification(
+        self,
+        client_name,
+        client_phone,
+        business_phone,
+        business_name,
+        appointment_id,
+        business_id,
+        start_at_str,
+        metadata,
+        schedule_name,
+    ):
+        try:
+            print("send cancellation sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
+            body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
+            title = f"Appointment Cancelled - {business_name}"
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.SMS,
+                to=client_phone,
+                business_id=business_id,
+            )
+            self.dispatcher.dispatch_destroy_scheduled(
+                channel=Notification.Channel.SMS,
+                schedule_name=schedule_name,
+            )
+        except Exception as e:
+            logger.error(f"Error sending cancellation SMS: {e}")
+            raise Exception(f"Error sending cancellation SMS: {e}")
+    
+    
+    # staff notifications
+    def send_staff_appointment_confirmation_notification(
+        self,
+        staff,
+        staff_name,
+        business_name,
+        client_name,
+        service_name,
+        start_time_str,
+        booking_source,
+        metadata,
+    ):  
+        try:
+            
+            body_message = f"{client_name} has booked a new appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
+            title = f"New Appointment - {business_name}"
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.PUSH,
+                to=staff,
+            )
+        except Exception as e:
+            logger.error(f"Error sending appointment confirmation Push: {e}")
+            raise Exception(f"Error sending appointment confirmation Push: {e}")
+        
+
+    def send_manager_appointment_confirmation_notification(
+        self,
+        staff,
+        staff_name,
+        business_name,
+        client_name,
+        service_name,
+        start_time_str,
+        booking_source,
+        metadata,
+        business_id,
+    ):
+        try:
+            body_message = f"{client_name} has booked a new appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
+            title = f"New Appointment - {business_name}"
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.PUSH,
+                group_name=get_business_managers_group_name(business_id),
+                to=None,
+            )
+        except Exception as e:
+            raise Exception(f"Error sending manager appointment confirmation Push: {e}")

@@ -39,8 +39,8 @@ class BusinessStaffInline(admin.TabularInline):
 
 @admin.register(Business)
 class BusinessAdmin(admin.ModelAdmin):
-    list_display = ['name', 'business_type', 'city', 'state_province', 'is_deleted', 'deleted_at']
-    list_filter = ['business_type', 'is_deleted', 'deleted_at']
+    list_display = ['name', 'business_type', 'city', 'state_province']
+    list_filter = ['business_type']
     search_fields = ['name', 'description', 'address', 'city', 'phone_number', 'email']
     ordering = ['name']
     inlines = [OperatingHoursInline, BusinessStaffInline]
@@ -54,9 +54,6 @@ class BusinessAdmin(admin.ModelAdmin):
         }),
         ('Address', {
             'fields': ('address', 'city', 'state_province', 'postal_code', 'country')
-        }),
-        ('Settings', {
-            'fields': ('logo')
         }),
         ('Soft delete', {
             'fields': ('is_deleted', 'deleted_at')

@@ -39,7 +39,8 @@ class BusinessBookingService:
             working_hours = StaffWorkingHours.objects.filter(
                 staff__id=staff_id,
                 day_of_week=weekday,
-                is_working=True
+                is_working=True,
+                staff__is_online_booking_allowed=True,
             ).first()
 
             if not working_hours:
@@ -121,7 +122,9 @@ class BusinessBookingService:
                 return time_slots
 
             staff_working_hours = self._get_staff_working_hours(
-                staff_id, appointment_date)
+                staff_id, 
+                appointment_date,
+            )
 
             if not staff_working_hours:
                 return time_slots
@@ -262,7 +265,6 @@ class BusinessStaffService:
                 is_active=True,
                 is_deleted=False,
                 is_online_booking_allowed=True,
-                role__name='Technician',
             )
         except Exception as e:
             raise Exception(f"Error getting business staffs: {e}")

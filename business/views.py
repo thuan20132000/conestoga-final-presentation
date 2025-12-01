@@ -9,7 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings
+    BusinessType, Business, OperatingHours, BusinessSettings, BusinessOnlineBooking
 )
 from .serializers import (
     BusinessTypeSerializer, 
@@ -19,7 +19,8 @@ from .serializers import (
     BusinessDashboardSerializer,
     BusinessSerializer,
     BusinessSettingsSerializer,
-    BusinessRolesSerializer
+    BusinessRolesSerializer,
+    BusinessOnlineBookingSerializer
 )
 from appointment.serializers import AppointmentDetailSerializer, AppointmentListSerializer
 from payment.serializers import PaymentSerializer
@@ -286,7 +287,7 @@ class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""
     queryset = OperatingHours.objects.select_related('business')
     serializer_class = OperatingHoursSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsBusinessManager]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['business', 'day_of_week', 'is_open']
     ordering_fields = ['day_of_week']
@@ -310,8 +311,18 @@ class BusinessSettingsViewSet(BaseModelViewSet):
     """ViewSet for BusinessSettings management"""
     queryset = BusinessSettings.objects.all()
     serializer_class = BusinessSettingsSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, IsBusinessManager]
 
     def perform_update(self, serializer):
         serializer.save(business=self.get_object().business)
         return super().perform_update(serializer)
+
+class BusinessOnlineBookingViewSet(BaseModelViewSet):
+    """ViewSet for BusinessOnlineBooking management"""
+    queryset = BusinessOnlineBooking.objects.all()
+    serializer_class = BusinessOnlineBookingSerializer
+    permission_classes = [IsAuthenticated, IsBusinessManager]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return queryset.filter(business=self.request.user.business)

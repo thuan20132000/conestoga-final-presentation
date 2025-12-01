@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db.models import Sum, Avg
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles
+    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking
 )
 
 class BusinessTypeSerializer(serializers.ModelSerializer):
@@ -65,11 +65,19 @@ class BusinessListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
+class BusinessOnlineBookingSerializer(serializers.ModelSerializer):
+    """Serializer for BusinessOnlineBooking model"""
+    class Meta:
+        model = BusinessOnlineBooking
+        fields = ['id', 'business', 'name', 'slug', 'logo', 'description', 'policy', 'interval_minutes', 'buffer_time_minutes', 'is_active', 'shareable_link']
+        read_only_fields = ['id', 'shareable_link']
+
 class BusinessDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for business detail views"""
     business_type_name = serializers.CharField(source='business_type.name', read_only=True)
     operating_hours = OperatingHoursSerializer(many=True, read_only=True)
     settings = BusinessSettingsSerializer(read_only=True)
+    online_booking = BusinessOnlineBookingSerializer(read_only=True)
     
     class Meta:
         model = Business
@@ -77,7 +85,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
             'country', 'description', 'logo', 'operating_hours',
-            'settings', 'created_at', 'updated_at'
+            'settings', 'online_booking', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

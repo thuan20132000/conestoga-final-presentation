@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Business, BusinessSettings, BusinessRoles, OperatingHours
+from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking
 from service.models import ServiceCategory, Service
 from staff.models import Staff
 from datetime import time
@@ -8,6 +8,7 @@ from payment.models import PaymentMethod
 from webpush.models import Group, PushInformation
 
 from main.utils import get_business_managers_group_name 
+from main.common_settings import ONLINE_BOOKING_URL
 
 @receiver(post_save, sender=Business)
 def create_business_defaults(sender, instance, created, **kwargs):
@@ -587,6 +588,7 @@ def create_business_defaults(sender, instance, created, **kwargs):
     for staff in defaults_staff:
         Staff.objects.create(business=business, **staff)
 
+    
     # create business operating hours
     for day in range(7):
         OperatingHours.objects.create(
@@ -644,3 +646,18 @@ def create_business_defaults(sender, instance, created, **kwargs):
     
     # create business managers group
     business_managers_group = Group.objects.create(name=get_business_managers_group_name(business.id))
+
+
+    # create business online booking
+    business_description = business.description if business.description else 'Online Booking'
+    business_policy = 'Booking policy/terms shown to clients'
+    BusinessOnlineBooking.objects.create(
+        business=business,
+        name=business.name,
+        description=business_description,
+        policy=business_policy,
+        interval_minutes=business.settings.time_slot_interval,
+        buffer_time_minutes=business.settings.buffer_time_minutes,
+        is_active=True,
+        shareable_link=f'{ONLINE_BOOKING_URL}?business_id={business.id}',
+    )

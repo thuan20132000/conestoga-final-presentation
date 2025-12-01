@@ -1,7 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles
+    BusinessType, 
+    Business, 
+    OperatingHours, 
+    BusinessSettings, 
+    BusinessRoles, 
+    BusinessOnlineBooking,
 )
 from staff.models import Staff
 
@@ -100,5 +105,24 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
                 'allow_online_booking', 'require_client_phone', 'require_client_email',
                 'auto_confirm_appointments'
             )
+        }),
+    )
+
+@admin.register(BusinessOnlineBooking)
+class BusinessOnlineBookingAdmin(admin.ModelAdmin):
+    list_display = ['business', 'name', 'slug', 'is_active', 'shareable_link']
+    list_filter = ['business', 'is_active']
+    search_fields = ['business__name', 'name', 'slug']
+    ordering = ['business__name', 'name']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'slug', 'logo', 'description', 'policy')
+        }),
+        ('Booking Settings', {
+            'fields': ('interval_minutes', 'buffer_time_minutes')
+        }),
+        ('Status and Visibility', {
+            'fields': ('is_active', 'shareable_link')
         }),
     )

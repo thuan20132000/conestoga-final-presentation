@@ -788,12 +788,6 @@ class BusinessBookingViewSet(BaseModelViewSet):
             staff_id = request.query_params.get('staff_id')
             interval_minutes = request.query_params.get('interval_minutes',0)
             
-            print(' business_id', business_id)
-            print(' service_ids', service_ids)
-            print(' duration', duration)
-            print(' date', date)
-            print(' staff_id', staff_id)
-            print(' interval_minutes', interval_minutes)
             booking_service = BusinessBookingService(
                 business_id=business_id,
                 interval_minutes=interval_minutes

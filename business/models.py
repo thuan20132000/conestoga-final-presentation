@@ -157,3 +157,77 @@ class BusinessRoles(SoftDeleteModel):
     
     def __str__(self):
         return f"{self.business.name} - {self.name}"
+    
+
+class BusinessOnlineBooking(SoftDeleteModel):
+    """Online booking configuration for the business"""
+    business = models.OneToOneField(
+        Business, 
+        on_delete=models.CASCADE, 
+        related_name='online_booking',
+        help_text="The business this online booking page belongs to"
+    )
+    name = models.CharField(max_length=255, help_text="Name of the online booking page")
+    slug = models.SlugField(
+        max_length=255, 
+        unique=True, 
+        blank=True, 
+        null=True,
+        help_text="URL-friendly identifier for the booking page"
+    )
+    logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)
+    description = models.TextField(blank=True, null=True, help_text="Description shown on the booking page")
+    policy = models.TextField(blank=True, null=True, help_text="Booking policy/terms shown to clients")
+    
+    # Booking settings
+    interval_minutes = models.PositiveIntegerField(
+        default=15, 
+        help_text="Time slot interval in minutes"
+    )
+    buffer_time_minutes = models.PositiveIntegerField(
+        default=0, 
+        help_text="Buffer time between appointments in minutes"
+    )
+    
+    # Status and visibility
+    is_active = models.BooleanField(
+        default=True, 
+        help_text="Whether the online booking page is active and accessible"
+    )
+    
+    # Shareable link
+    shareable_link = models.URLField(
+        blank=True, 
+        null=True,
+        help_text="Shareable URL for the online booking page"
+    )
+    
+    class Meta:
+        ordering = ['business__name', 'name']
+        verbose_name = 'Online Booking'
+        verbose_name_plural = 'Online Bookings'
+    
+    def __str__(self):
+        return f"{self.business.name} - {self.name or 'Online Booking'}"
+    
+    def save(self, *args, **kwargs):
+        """Save the online booking configuration"""
+        # Generate slug from name if not provided
+        if not self.slug and self.name:
+            from django.utils.text import slugify
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            # Check for existing slugs, excluding current instance if it exists
+            queryset = BusinessOnlineBooking.objects.filter(slug=slug)
+            if self.pk:
+                queryset = queryset.exclude(pk=self.pk)
+            while queryset.exists():
+                slug = f"{base_slug}-{counter}"
+                queryset = BusinessOnlineBooking.objects.filter(slug=slug)
+                if self.pk:
+                    queryset = queryset.exclude(pk=self.pk)
+                counter += 1
+            self.slug = slug
+        
+        super().save(*args, **kwargs)

@@ -259,3 +259,7 @@ WEBPUSH_SETTINGS = {
     "VAPID_PRIVATE_KEY": VAPID_PRIVATE_KEY,
     "VAPID_ADMIN_EMAIL": "ethantruong1602@gmail.com"
 }
+
+
+# Online Booking Configuration
+ONLINE_BOOKING_URL = config('ONLINE_BOOKING_URL', default='http://127.0.0.1:3000/booking')

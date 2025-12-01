@@ -56,7 +56,7 @@ class BusinessAdmin(admin.ModelAdmin):
             'fields': ('address', 'city', 'state_province', 'postal_code', 'country')
         }),
         ('Settings', {
-            'fields': ('timezone', 'logo')
+            'fields': ('logo')
         }),
         ('Soft delete', {
             'fields': ('is_deleted', 'deleted_at')

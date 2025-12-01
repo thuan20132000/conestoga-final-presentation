@@ -43,7 +43,7 @@ class BusinessAdmin(admin.ModelAdmin):
     list_filter = ['business_type']
     search_fields = ['name', 'description', 'address', 'city', 'phone_number', 'email']
     ordering = ['name']
-    inlines = [OperatingHoursInline, BusinessStaffInline]
+    # inlines = [OperatingHoursInline, BusinessStaffInline]
     
     fieldsets = (
         ('Basic Information', {

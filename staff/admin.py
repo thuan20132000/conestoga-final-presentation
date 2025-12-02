@@ -69,7 +69,7 @@ class StaffAdmin(UserAdmin):
     )
 
     readonly_fields = ["date_joined", "last_login"]
-    inlines = [StaffServiceInline, StaffWorkingHoursInline, StaffOffDayInline]
+    inlines = [StaffWorkingHoursInline, StaffOffDayInline]
     
 @admin.register(StaffService)
 class StaffServiceAdmin(admin.ModelAdmin):

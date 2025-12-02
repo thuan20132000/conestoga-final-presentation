@@ -1,4 +1,4 @@
-from appointment.models import AppointmentService, Appointment
+from appointment.models import AppointmentService, Appointment, AppointmentStatusType
 from datetime import datetime
 from staff.models import StaffService, StaffWorkingHours
 from datetime import timedelta
@@ -134,6 +134,7 @@ class BusinessBookingService:
                 staff_id=staff_id,
                 is_active=True,
                 appointment__appointment_date=appointment_date,
+                appointment__status=AppointmentStatusType.SCHEDULED.value,
             )
 
             time_zone = timezone.get_current_timezone()

@@ -105,7 +105,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                     return
 
                 # Appointment rescheduled
-                if metadata and metadata.get('is_rescheduled') == True:
+                if metadata and metadata.get('is_send_sms_rescheduled_confirmation', False) == True:
                     appointment_notification_service.send_client_rescheduled_notification(
                         client_name=client_name,
                         client_phone=client_phone,
@@ -117,7 +117,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         metadata=metadata,
                     )
                 # Appointment cancelled
-                if metadata and metadata.get('is_cancelled') == True:
+                if metadata and metadata.get('is_send_sms_cancellation_confirmation', False) == True:
                     appointment_notification_service.send_client_cancellation_notification(
                         client_name=client_name,
                         client_phone=client_phone,

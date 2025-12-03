@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 def handle_staff_post_save(sender, instance, created, **kwargs):
     """Create default working hours for a staff member"""
     if created:
-        print(f"Created: {created}")
-
         # assign all business services to the staff
         services = Service.objects.filter(business=instance.business)
         for service in services:

@@ -133,7 +133,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                     
 
     except Exception as e:
-        logger.error(f"Error handling appointment notifications: {e}")
+        # logger.error(f"Error handling appointment notifications: {e}")
         return
     finally:
         timezone.deactivate()

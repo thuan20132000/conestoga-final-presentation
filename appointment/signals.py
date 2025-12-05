@@ -7,7 +7,7 @@ from django.db import transaction
 
 from appointment.serializers import AppointmentServiceSerializer, AppointmentSerializer
 from business.models import BusinessSettings
-from .models import Appointment, AppointmentService
+from .models import Appointment, AppointmentService, AppointmentStatusType
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
 from datetime import datetime, timedelta
@@ -56,6 +56,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             hours=reminder_hours_before,
             minutes=0,
         )
+        appointment_status = appointment_data.get('status', None)
         
         appointment_notification_service = AppointmentNotificationService(instance)
 
@@ -129,8 +130,21 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         metadata=metadata,
                         schedule_name=schedule_name,
                     )
-                    # send to client
-                    
+                
+                # Appointment completed
+                if appointment_status == AppointmentStatusType.CHECKED_OUT:
+                    if metadata.get('is_send_sms_checked_out_confirmation', False) == False:
+                        return
+                    appointment_notification_service.send_client_completed_notification(
+                        client_name=client_name,
+                        client_phone=client_phone,
+                        business_phone=business_phone,
+                        business_name=business_name,
+                        appointment_id=appointment_id,
+                        business_id=business_id,
+                        metadata=metadata,
+                    )
+                
 
     except Exception as e:
         # logger.error(f"Error handling appointment notifications: {e}")

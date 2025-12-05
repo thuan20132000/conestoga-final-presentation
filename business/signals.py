@@ -659,5 +659,5 @@ def create_business_defaults(sender, instance, created, **kwargs):
         interval_minutes=business.settings.time_slot_interval,
         buffer_time_minutes=business.settings.buffer_time_minutes,
         is_active=True,
-        shareable_link=f'{ONLINE_BOOKING_URL}?business_id={business.id}',
+        shareable_link=f'{ONLINE_BOOKING_URL}/booking?business_id={business.id}',
     )

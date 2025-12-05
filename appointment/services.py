@@ -10,6 +10,8 @@ from notifications.services import NotificationDispatcher
 from business.models import BusinessSettings
 import logging
 from main.utils import get_business_managers_group_name
+from main.common_settings import ONLINE_BOOKING_URL
+
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
     def __init__(self, business_id, interval_minutes=15):
@@ -402,6 +404,32 @@ class AppointmentNotificationService:
             logger.error(f"Error sending cancellation SMS: {e}")
             raise Exception(f"Error sending cancellation SMS: {e}")
     
+    def send_client_completed_notification(
+        self,
+        client_name,
+        client_phone,
+        business_phone,
+        business_name,
+        appointment_id,
+        business_id,
+        metadata,
+    ):
+        try:
+            review_url = f"{ONLINE_BOOKING_URL}/review/?appointment_id={appointment_id}&business_id={business_id}"
+            body_message = f"Hello {client_name}, your appointment #{appointment_id} has been completed at {business_name}. Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business_phone} if you have any questions."
+            title = f"Appointment Completed - {business_name}"
+            
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.SMS,
+                to=client_phone,
+                business_id=business_id,
+            )
+        except Exception as e:
+            logger.error(f"Error sending completed SMS: {e}")
+            raise Exception(f"Error sending completed SMS: {e}")
     
     # staff notifications
     def send_staff_appointment_confirmation_notification(

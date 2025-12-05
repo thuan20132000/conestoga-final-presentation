@@ -110,7 +110,6 @@ class ReviewViewSet(BaseModelViewSet):
     def create(self, request, *args, **kwargs):
         """Create a review"""
         try:
-            print("create review request.data", request.data)
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             
@@ -239,5 +238,65 @@ class ReviewViewSet(BaseModelViewSet):
                 ReviewDetailSerializer(review).data,
                 message=f"Review visibility set to {review.is_visible}"
             )
+        except Exception as e:
+            return self.response_error(str(e))
+
+class BusinessReviewViewSet(BaseModelViewSet):
+    """ViewSet for managing business reviews"""
+    queryset = Review.objects.filter(is_deleted=False)
+    serializer_class = ReviewSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ReviewFilter
+    ordering_fields = ['reviewed_at', 'rating', 'created_at']
+    ordering = ['-reviewed_at', '-created_at']
+    # permission_classes = [IsAuthenticated]
+    
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action == 'create':
+            return ReviewCreateSerializer
+        if self.action == 'list':
+            return ReviewListSerializer
+        if self.action == 'retrieve':
+            return ReviewDetailSerializer
+        return ReviewSerializer
+    
+    def create(self, request, *args, **kwargs):
+        """Create a review"""
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            review = serializer.save()
+            return self.response_success(
+                ReviewDetailSerializer(review).data,
+                status_code=status.HTTP_201_CREATED,
+                message="Review created successfully"
+            )
+        except Exception as e:
+            return self.response_error(str(e))
+
+    
+    @action(detail=False, methods=['get'], url_path='by-business/(?P<business_id>[^/.]+)')
+    def by_business(self, request, business_id=None):
+        """Get reviews for a specific business"""
+        try:
+            reviews = self.get_queryset().filter(appointment__business_id=business_id)
+            serializer = ReviewListSerializer(reviews, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+        
+    
+    @action(detail=False, methods=['get'],url_path='appointment/(?P<appointment_id>[^/.]+)')
+    def appointment_review(self, request, appointment_id=None):
+        """Get reviews for a specific appointment"""
+        try:
+            print("appointment_id", appointment_id)
+            reviews = self.queryset.filter(appointment_id=appointment_id).first()
+            print("reviews", reviews)
+            if not reviews:
+                return self.response_error("Review not found", status_code=status.HTTP_404_NOT_FOUND)
+            serializer = ReviewDetailSerializer(reviews)
+            return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error(str(e))

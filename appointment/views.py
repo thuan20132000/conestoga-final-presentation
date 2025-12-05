@@ -701,7 +701,6 @@ class AppointmentServiceViewSet(BaseModelViewSet):
                 data=str(e),
                 message="Failed to delete appointment service"
             )
-    
 
 # Booking appointments viewset for booking pages
 class BusinessBookingViewSet(BaseModelViewSet):

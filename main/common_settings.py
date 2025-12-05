@@ -262,4 +262,4 @@ WEBPUSH_SETTINGS = {
 
 
 # Online Booking Configuration
-ONLINE_BOOKING_URL = config('ONLINE_BOOKING_URL', default='http://127.0.0.1:3000/booking')
+ONLINE_BOOKING_URL = config('ONLINE_BOOKING_URL', default='http://127.0.0.1:3000')

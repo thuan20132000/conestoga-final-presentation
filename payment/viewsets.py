@@ -87,9 +87,12 @@ class PaymentViewSet(BaseModelViewSet):
         
         try:
             request_data = request.data.copy()
-            print("payment request_data:: ", request_data)
             appointment_services = request_data.get('appointment_services', None)
             discounts = request_data.get('discounts', None)
+            metadata = request_data.get('metadata', {})
+            print("payment request_data:: ", metadata)
+            print("payment appointment_services:: ", appointment_services)
+            print("payment discounts:: ", discounts)
             
             serializer = PaymentCreateSerializer(data=request_data)
             serializer.is_valid(raise_exception=True)
@@ -99,7 +102,8 @@ class PaymentViewSet(BaseModelViewSet):
             payment = payment_service.create_payment(
                 payment_data=validated_data, 
                 discounts=discounts,
-                appointment_services=appointment_services
+                appointment_services=appointment_services,
+                metadata=metadata
             )
             
             return self.response_success(PaymentSerializer(payment).data)

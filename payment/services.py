@@ -18,6 +18,7 @@ class CreatePaymentData(TypedDict):
     amount: float
     currency: str
     external_transaction_id: str
+    metadata: dict[str, Any]
 
 
 
@@ -30,7 +31,8 @@ class PaymentService:
         self, 
         payment_data: CreatePaymentData, 
         discounts: list[PaymentDiscount] = None, 
-        appointment_services: list[AppointmentService] = None
+        appointment_services: list[AppointmentService] = None,
+        metadata: dict[str, Any] = None
     ) -> Payment:
         try:
             with transaction.atomic():
@@ -69,6 +71,7 @@ class PaymentService:
                     appointment = payment.appointment
                     appointment.payment_status = payment.status
                     appointment.status = AppointmentStatusType.CHECKED_OUT
+                    appointment.metadata = metadata or {}
                     appointment.save()
                     
                 if payment.status == PaymentStatusType.PENDING:

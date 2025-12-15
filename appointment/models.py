@@ -189,7 +189,7 @@ class AppointmentService(SoftDeleteModel):
         ordering = ['start_at']
 
     def __str__(self):
-        return f"{self.appointment} - {self.service.name} - {self.start_at} - {self.end_at}"
+        return f"{self.appointment} - {self.service} - {self.start_at} - {self.end_at}"
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

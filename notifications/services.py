@@ -148,10 +148,8 @@ class SMSService:
 class PushService:
     def send_group(self, group_name: str, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
         try:
-            print("Sending push to group", group_name)
             payload = {"title": title, "body": body}
             response = send_group_notification(group_name=group_name, payload=payload, ttl=1000)
-            print("Push response", response)
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")
@@ -161,7 +159,6 @@ class PushService:
         try:
             payload = {"title": title, "body": body}
             response = send_user_notification(user=user, payload=payload, ttl=1000)
-            print("User Push response", response)
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")

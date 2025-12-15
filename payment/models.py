@@ -140,7 +140,7 @@ class Payment(models.Model):
         null=True, blank=True
     )
     client = models.ForeignKey(
-        'client.Client', on_delete=models.CASCADE, related_name='payments',
+        'client.Client', on_delete=models.SET_NULL, related_name='payments',
         null=True, blank=True
     )
     appointment = models.ForeignKey(

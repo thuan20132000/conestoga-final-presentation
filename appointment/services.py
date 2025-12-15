@@ -76,7 +76,6 @@ class BusinessBookingService:
     ):
         time_slots = []
         appointment_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
-        print("appointment_date3", appointment_date)
         
         while (current_time + service_duration) <= next_time:
             service_end_time = current_time + service_duration
@@ -136,7 +135,8 @@ class BusinessBookingService:
                 staff_id=staff_id,
                 is_active=True,
                 appointment__appointment_date=appointment_date,
-                appointment__status=AppointmentStatusType.SCHEDULED.value,
+            ).exclude(
+                appointment__status=AppointmentStatusType.CANCELLED.value,
             )
 
             time_zone = timezone.get_current_timezone()

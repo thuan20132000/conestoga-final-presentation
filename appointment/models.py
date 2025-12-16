@@ -6,6 +6,8 @@ from simple_history.models import HistoricalRecords
 from payment.models import PaymentStatusType
 from main.models import SoftDeleteModel
 
+from payment.models import PaymentMethodType
+
 class AppointmentStatusType(models.TextChoices):
     SCHEDULED = "scheduled", "Scheduled"
     IN_SERVICE = "in_service", "In Service"
@@ -179,6 +181,15 @@ class AppointmentService(SoftDeleteModel):
         decimal_places=2, 
         null=True, 
         blank=True,
+    )
+    
+    tip_method = models.CharField(
+        max_length=50,
+        choices=PaymentMethodType.choices,
+        default=None,
+        null=True,
+        blank=True,
+        help_text="Method of tip payment"
     )
     
     metadata = models.JSONField(null=True, blank=True)

@@ -19,11 +19,11 @@ from .serializers import (
 )
 from .filters import PaymentMethodFilter
 from main.viewsets import BaseModelViewSet
-from payment.services import PaymentService
+from payment.services import PaymentService, POSPaymentService
 from django.db import transaction
 from payment.models import RefundTypeType
 from decimal import Decimal
-
+from appointment.models import Appointment
 class PaymentMethodViewSet(BaseModelViewSet):
     """ViewSet for managing payment methods"""
     queryset = PaymentMethod.objects.all()
@@ -210,4 +210,33 @@ class PaymentRefundViewSet(BaseModelViewSet):
     """ViewSet for managing payment refunds"""
     queryset = Refund.objects.all()
     serializer_class = PaymentRefundSerializer
+    
+class POSPaymentViewSet(BaseModelViewSet):
+    """ViewSet for managing POS payments"""
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    
+    # create a new appointment and payment
+    @action(detail=False, methods=['post'], url_path='create-appointment-and-payment')
+    def create_appointment_and_payment(self, request):
+        """Create a new appointment and payment"""
+        try:
+            request_data = request.data.copy()
+            appointment_data = request_data.get('appointment', None)
+            appointment_services = request_data.get('appointment_services', None)
+            print("payment appointment_data:: ", appointment_data)
+            print("payment appointment_services:: ", appointment_services)
+            pos_payment_service = POSPaymentService()
+            
+            pos_payment = pos_payment_service.create_appointment_and_payment(
+                payment_data=request_data,
+                appointment_services=appointment_services,
+                appointment_data=appointment_data,
+            )
+            print("========= pos_payment:: ", pos_payment)
+            return self.response_success(pos_payment)
+        except Exception as e:
+            print("error creating appointment and payment", e)
+            return self.response_error(str(e))
+
     

@@ -1,5 +1,5 @@
-from .viewsets import PaymentMethodViewSet, PaymentViewSet
+from .viewsets import PaymentMethodViewSet, PaymentViewSet, POSPaymentViewSet
 
 __all__ = [
-    'PaymentMethodViewSet', 'PaymentViewSet'
+    'PaymentMethodViewSet', 'PaymentViewSet', 'POSPaymentViewSet'
 ]

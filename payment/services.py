@@ -36,7 +36,6 @@ class PaymentService:
     ) -> Payment:
         try:
             with transaction.atomic():
-                
                 # create appointment services
                 if appointment_services:
                     for appointment_service in appointment_services:
@@ -53,9 +52,7 @@ class PaymentService:
                                 'appointment_id': appointment_service['appointment'],
                             }
                         )
-                payment = Payment.objects.create(
-                    **payment_data,
-                )
+                payment = Payment.objects.create(**payment_data)    
                 # create payment discounts
                 if discounts:
                     for discount in discounts:
@@ -184,3 +181,88 @@ class PaymentService:
         except Exception as e:
             raise Exception(f"Error getting payment stats: {e}")
         
+
+class POSPaymentService:
+    def create_appointment_and_payment(
+        self, 
+        appointment_data: dict[str, Any],
+        payment_data: dict[str, Any],
+        discounts: list[PaymentDiscount] = None,
+        appointment_services: list[AppointmentService] = None,
+        metadata: dict[str, Any] = None
+    ) -> dict[str, Any]:
+        try:
+            with transaction.atomic():
+                print("payment_data:: ", payment_data)
+                print("appointment_services:: ", appointment_services)
+                
+                # create appointment
+                appointment = Appointment.objects.create(
+                    business_id=appointment_data['business'],
+                    client_id=appointment_data['client'],
+                    appointment_date=appointment_data['appointment_date'],
+                    booking_source=appointment_data['booking_source'],
+                    start_at=appointment_data['start_at'],
+                    end_at=appointment_data['end_at'],
+                )
+                
+                print("appointment:: ", appointment)
+                
+                
+                # # create appointment services
+                if appointment_services:
+                    for appointment_service in appointment_services:
+                        appointment_service_obj = AppointmentService.objects.create(
+                            appointment=appointment,
+                            service_id=appointment_service['service'] or None,
+                            staff_id=appointment_service['staff'] or None,
+                            is_staff_request=appointment_service['is_staff_request'],
+                            start_at=appointment_service['start_at'],
+                            end_at=appointment_service['end_at'],
+                            custom_price=appointment_service['custom_price'] or 0,
+                            tip_amount=appointment_service['tip_amount'] or 0,
+                        )
+                        
+                        print("appointment_service_obj1111:: ", appointment_service_obj)
+                        
+                print("payment_data:: ", payment_data)
+                print("appointment.id:: ", appointment.id)
+                payment = Payment.objects.create(
+                    payment_method_id=payment_data['payment_method'],
+                    payment_method_type=payment_data['payment_method_type'],
+                    business_id=payment_data['business'],
+                    amount=payment_data['amount'],
+                    currency=payment_data['currency'],
+                    processing_fee=payment_data['processing_fee'],
+                    status=payment_data['status'],
+                    appointment_id=appointment.id,
+                )
+                
+                print("payment result:: ", payment.__dict__)
+                
+                # create payment discounts
+                if discounts:
+                    for discount in discounts:
+                        PaymentDiscount.objects.create(
+                            payment=payment, 
+                            discount_amount=discount.get('discount_amount', 0),
+                            discount_percentage=discount.get('discount_percentage', 0),
+                            discount_code=discount.get('discount_code', ''),
+                            discount_description=discount.get('discount_description', '')
+                        )
+
+                if payment.status == PaymentStatusType.COMPLETED:
+                    appointment.payment_status = payment.status
+                    appointment.status = AppointmentStatusType.CHECKED_OUT
+                    appointment.metadata = metadata or {}
+                    appointment.save()
+                    
+                if payment.status == PaymentStatusType.PENDING:
+                    appointment.payment_status = payment.status
+                    appointment.status = AppointmentStatusType.PENDING_PAYMENT
+                    appointment.save()
+                    
+                return True
+        except Exception as e:
+            print("error creating appointment and payment", e)
+            raise Exception(f"Error creating payment: {e}")

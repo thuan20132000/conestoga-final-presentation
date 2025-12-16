@@ -289,6 +289,6 @@ class BusinessBookingStaffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = [
-            'id', 'first_name', 'last_name', 'email', 'phone', 'role', 'role_name', 'is_active', 'created_at', 'photo'
+            'id', 'first_name', 'last_name','role_name'
         ]
         read_only_fields = ['id', 'created_at', 'photo', 'role_name']

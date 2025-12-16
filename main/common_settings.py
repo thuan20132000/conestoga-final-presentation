@@ -207,9 +207,9 @@ CORS_ALLOWED_ORIGINS = [
     "https://localhost:3001",  # Frontend dev origin
     "http://192.168.2.170:3000",  # Django dev origin
     "http://localhost:3001",  # Next.js dev origin
-    "http://127.0.0.1:3001",  # Frontend dev origin
+    "http://10.128.76.31:3001",  # Frontend dev origin
     "http://192.168.2.170:3000",  # FastAPI dev origin
-    "https://192.168.2.170:3001",  # Django dev origin
+    "http://192.168.2.170:3001",  # Django dev origin
     "https://develop.d3lgvc3ld1a6bg.amplifyapp.com",
     "https://master.d2cve25ion05t3.amplifyapp.com",  # Django dev origin
     

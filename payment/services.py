@@ -10,6 +10,8 @@ from business.models import Business
 from django.db.models import Sum, Count
 from datetime import datetime
 from client.models import Client
+from gift.models import GiftCardTransaction
+from gift.services import GiftCardService
 class CreatePaymentData(TypedDict):
     payment_method_id: int
     business_id: int
@@ -56,13 +58,15 @@ class PaymentService:
                 # create payment discounts
                 if discounts:
                     for discount in discounts:
-                        PaymentDiscount.objects.create(
+                        payment_discount = PaymentDiscount.objects.create(
                             payment=payment, 
                             discount_amount=discount.get('discount_amount', 0),
                             discount_percentage=discount.get('discount_percentage', 0),
                             discount_code=discount.get('discount_code', ''),
                             discount_description=discount.get('discount_description', '')
                         )
+                        print("payment_discount:: ", payment_discount.__dict__)
+                        
 
                 if payment.status == PaymentStatusType.COMPLETED:
                     appointment = payment.appointment
@@ -189,12 +193,14 @@ class POSPaymentService:
         payment_data: dict[str, Any],
         discounts: list[PaymentDiscount] = None,
         appointment_services: list[AppointmentService] = None,
+        gift_card_redemptions: list[GiftCardTransaction] = None,
         metadata: dict[str, Any] = None
     ) -> dict[str, Any]:
         try:
             with transaction.atomic():
                 print("payment_data:: ", payment_data)
                 print("appointment_services:: ", appointment_services)
+                print("gift_card_redemptions:: ", gift_card_redemptions)
                 
                 # create appointment
                 appointment = Appointment.objects.create(
@@ -243,14 +249,29 @@ class POSPaymentService:
                 # create payment discounts
                 if discounts:
                     for discount in discounts:
-                        PaymentDiscount.objects.create(
+                        payment_discount = PaymentDiscount.objects.create(
                             payment=payment, 
                             discount_amount=discount.get('discount_amount', 0),
                             discount_percentage=discount.get('discount_percentage', 0),
                             discount_code=discount.get('discount_code', ''),
                             discount_description=discount.get('discount_description', '')
                         )
-
+                        print("payment_discount:: ", payment_discount.__dict__)
+                        
+                # create gift card transactions
+                if len(gift_card_redemptions) > 0:
+                    service = GiftCardService()
+                    
+                    for gift_card_redemption in gift_card_redemptions:
+                        result = service.redeem_gift_card(
+                            card_code=gift_card_redemption['card_code'],
+                            amount=gift_card_redemption['amount'],
+                            payment_id=payment.id,
+                            appointment_id=appointment.id,
+                            description=gift_card_redemption['description'],
+                        )
+                        print("gift_card_redemption result:: ", result)
+                        
                 if payment.status == PaymentStatusType.COMPLETED:
                     appointment.payment_status = payment.status
                     appointment.status = AppointmentStatusType.CHECKED_OUT

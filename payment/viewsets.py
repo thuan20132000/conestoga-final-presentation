@@ -224,16 +224,17 @@ class POSPaymentViewSet(BaseModelViewSet):
             request_data = request.data.copy()
             appointment_data = request_data.get('appointment', None)
             appointment_services = request_data.get('appointment_services', None)
-            print("payment appointment_data:: ", appointment_data)
-            print("payment appointment_services:: ", appointment_services)
+            discounts = request_data.get('discounts', None)
+            gift_card_redemptions = request_data.get('gift_card_redemptions', None)
             pos_payment_service = POSPaymentService()
             
             pos_payment = pos_payment_service.create_appointment_and_payment(
                 payment_data=request_data,
                 appointment_services=appointment_services,
                 appointment_data=appointment_data,
+                gift_card_redemptions=gift_card_redemptions,
+                discounts=discounts,
             )
-            print("========= pos_payment:: ", pos_payment)
             return self.response_success(pos_payment)
         except Exception as e:
             print("error creating appointment and payment", e)

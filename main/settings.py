@@ -58,6 +58,7 @@ INSTALLED_APPS += [
     'client',
     'payment',
     'review',
+    'gift',
 ]
 
 # JWT Configuration

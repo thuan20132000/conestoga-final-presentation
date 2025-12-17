@@ -1,0 +1,146 @@
+from rest_framework import serializers
+from django.utils import timezone
+from .models import GiftCard, GiftCardTransaction, GiftCardStatusType, GiftCardTransactionType
+from decimal import Decimal
+
+
+class GiftCardTransactionSerializer(serializers.ModelSerializer):
+    """Serializer for gift card transactions"""
+    transaction_type_display = serializers.CharField(source='get_transaction_type_display', read_only=True)
+    
+    class Meta:
+        model = GiftCardTransaction
+        fields = [
+            'id', 'gift_card', 'transaction_type', 'transaction_type_display',
+            'amount', 'balance_before', 'balance_after', 'payment', 'appointment',
+            'description', 'created_by', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at']
+
+
+class GiftCardSerializer(serializers.ModelSerializer):
+    """Serializer for gift card model"""
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    is_redeemed = serializers.BooleanField(read_only=True)
+    business_name = serializers.CharField(source='business.name', read_only=True)
+    purchaser_name = serializers.CharField(source='purchaser.get_full_name', read_only=True)
+    transactions = GiftCardTransactionSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = GiftCard
+        fields = [
+            'id', 'card_code', 'business', 'business_name', 'purchaser', 'purchaser_name',
+            'recipient_name', 'recipient_email', 'recipient_phone',
+            'initial_amount', 'current_balance', 'currency', 'status', 'status_display',
+            'issued_at', 'expires_at', 'redeemed_at', 'payment', 'message', 'notes',
+            'is_active', 'is_expired', 'is_redeemed', 'created_at', 'updated_at',
+            'transactions'
+        ]
+        read_only_fields = ['id', 'card_code', 'created_at', 'updated_at', 'issued_at']
+
+
+class GiftCardListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for gift card lists"""
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+    business_name = serializers.CharField(source='business.name', read_only=True)
+    
+    class Meta:
+        model = GiftCard
+        fields = [
+            'id', 'card_code', 'business', 'business_name', 'purchaser',
+            'recipient_name', 'initial_amount', 'current_balance', 'currency',
+            'status', 'status_display', 'is_active', 'issued_at', 'expires_at'
+        ]
+
+
+class GiftCardCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating new gift cards"""
+    
+    class Meta:
+        model = GiftCard
+        fields = [
+            'business', 'purchaser', 'recipient_name', 'recipient_email', 'recipient_phone',
+            'initial_amount', 'currency', 'expires_at', 'message', 'notes', 'payment'
+        ]
+    
+    def validate_initial_amount(self, value):
+        """Validate initial amount"""
+        if value <= 0:
+            raise serializers.ValidationError("Initial amount must be greater than zero")
+        return value
+    
+    def validate_expires_at(self, value):
+        """Validate expiration date"""
+        if value and value <= timezone.now():
+            raise serializers.ValidationError("Expiration date must be in the future")
+        return value
+
+
+class GiftCardRedeemSerializer(serializers.Serializer):
+    """Serializer for redeeming gift cards"""
+    card_code = serializers.CharField(required=True, help_text="Gift card code to redeem")
+    amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=True,
+        help_text="Amount to redeem"
+    )
+    payment_id = serializers.IntegerField(required=False, allow_null=True, help_text="Payment ID if redeeming for a payment")
+    appointment_id = serializers.IntegerField(required=False, allow_null=True, help_text="Appointment ID if redeeming for an appointment")
+    description = serializers.CharField(required=False, allow_blank=True, help_text="Description of redemption")
+    
+    def validate_amount(self, value):
+        """Validate redemption amount"""
+        if value <= 0:
+            raise serializers.ValidationError("Redemption amount must be greater than zero")
+        return value
+    
+    def validate(self, data):
+        """Validate redemption request"""
+        card_code = data.get('card_code')
+        amount = data.get('amount')
+        
+        try:
+            gift_card = GiftCard.objects.get(card_code=card_code)
+        except GiftCard.DoesNotExist:
+            raise serializers.ValidationError({"card_code": "Gift card not found"})
+        
+        if not gift_card.is_active:
+            raise serializers.ValidationError({"card_code": "Gift card is not active"})
+        
+        if amount > gift_card.current_balance:
+            raise serializers.ValidationError({
+                "amount": f"Insufficient balance. Available balance: ${gift_card.current_balance}"
+            })
+        
+        data['gift_card'] = gift_card
+        return data
+
+
+class GiftCardValidateSerializer(serializers.Serializer):
+    """Serializer for validating gift card codes"""
+    card_code = serializers.CharField(required=True, help_text="Gift card code to validate")
+    
+    def validate(self, data):
+        """Validate gift card code"""
+        card_code = data.get('card_code')
+        
+        try:
+            gift_card = GiftCard.objects.get(card_code=card_code)
+        except GiftCard.DoesNotExist:
+            raise serializers.ValidationError({"card_code": "Gift card not found"})
+        
+        if not gift_card.is_active:
+            if gift_card.is_expired:
+                raise serializers.ValidationError({"card_code": "Gift card has expired"})
+            elif gift_card.status == GiftCardStatusType.REDEEMED:
+                raise serializers.ValidationError({"card_code": "Gift card has been fully redeemed"})
+            else:
+                raise serializers.ValidationError({"card_code": "Gift card is not active"})
+        
+        data['gift_card'] = gift_card
+        return data
+

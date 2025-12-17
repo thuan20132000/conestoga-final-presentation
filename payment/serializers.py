@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from django.utils import timezone
+from gift.serializers import GiftCardSerializer, GiftCardTransactionSerializer
 from .models import (
     PaymentMethod, Payment, PaymentDiscount, Refund
 )
+from django.db.models import Sum
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
@@ -22,9 +24,29 @@ class PaymentRefundSerializer(serializers.ModelSerializer):
         fields = ['id', 'payment', 'amount', 'status', 'created_at', 'updated_at', 'refund_type', 'refund_reason', 'notes']
         read_only_fields = ['created_at', 'updated_at']
 
+
+
+class PaymentDiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentDiscount
+        fields = ['id', 'discount_amount', 'discount_percentage', 'discount_code', 'discount_description', 'created_at']
+        read_only_fields = ['created_at']
+    
+class PaymentDiscountCreateSerializer(PaymentDiscountSerializer):
+    class Meta(PaymentDiscountSerializer.Meta):
+        fields = [
+            'discount_amount',
+            'discount_percentage',
+            'discount_code', 
+            'discount_description',
+        ]
+
 class PaymentSerializer(serializers.ModelSerializer):
     
     payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
+    discounts = PaymentDiscountSerializer(many=True, read_only=True)
+    gift_card_redemptions = serializers.SerializerMethodField()
+    service_amount = serializers.SerializerMethodField()
     class Meta:
         model = Payment
         fields = [
@@ -47,24 +69,17 @@ class PaymentSerializer(serializers.ModelSerializer):
             'processed_by',
             'notes',
             'internal_notes',
+            'gift_card_redemptions',
+            'discounts',
+            'service_amount',
         ]
         read_only_fields = ['created_at', 'updated_at']
+        
+    def get_gift_card_redemptions(self, obj):
+        return GiftCardTransactionSerializer(obj.gift_card_transactions.all(), many=True).data
 
-
-class PaymentDiscountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaymentDiscount
-        fields = ['id', 'discount_amount', 'discount_percentage', 'discount_code', 'discount_description', 'created_at']
-        read_only_fields = ['created_at']
-    
-class PaymentDiscountCreateSerializer(PaymentDiscountSerializer):
-    class Meta(PaymentDiscountSerializer.Meta):
-        fields = [
-            'discount_amount',
-            'discount_percentage',
-            'discount_code', 
-            'discount_description',
-        ]
+    def get_service_amount(self, obj):
+        return obj.appointment.appointment_services.aggregate(Sum('custom_price'))['custom_price__sum']
 
 class PaymentCreateSerializer(PaymentSerializer):
     class Meta:

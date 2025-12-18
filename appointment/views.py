@@ -35,6 +35,7 @@ from staff.serializers import BusinessBookingStaffSerializer
 from .services import BusinessBookingService
 from business.serializers import BusinessSerializer
 from appointment.services import BusinessStaffService
+from appointment.models import AppointmentStatusType
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -701,7 +702,7 @@ class AppointmentServiceViewSet(BaseModelViewSet):
                 data=str(e),
                 message="Failed to delete appointment service"
             )
-
+            
 # Booking appointments viewset for booking pages
 class BusinessBookingViewSet(BaseModelViewSet):
     """ViewSet for managing booking pages"""
@@ -881,4 +882,39 @@ class BusinessBookingViewSet(BaseModelViewSet):
             print("error", e)
             return self.response_error(str(e))
         
+
+class  POSAppointmentFilter(filters.FilterSet):
+    business_id = filters.NumberFilter(field_name='business_id', required=True)
+    appointment_date = filters.DateFilter(field_name='appointment_date', required=True)
+    status = filters.CharFilter(field_name='status')
+    booked_by = filters.NumberFilter(field_name='booked_by')
+    booking_source = filters.CharFilter(field_name='booking_source')
+    class Meta:
+        model = Appointment
+        fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source']
+        
+class POSAppointmentViewSet(BaseModelViewSet):
+    """ViewSet for managing POS appointments"""
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentDetailSerializer
+    filterset_class = POSAppointmentFilter
     
+    def get_queryset(self):
+        """Get queryset for POS appointments"""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(is_active=True, is_deleted=False)
+        return queryset
+    
+    def list(self, request):
+        """List POS appointments"""
+        try:
+            queryset = self.get_queryset()
+            appointments = self.filter_queryset(queryset)
+            serializer = AppointmentDetailSerializer(appointments, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(
+                str(e), 
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                message="Failed to retrieve POS appointments"
+            )

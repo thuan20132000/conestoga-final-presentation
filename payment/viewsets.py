@@ -13,17 +13,15 @@ from .serializers import (
     PaymentMethodSerializer,
     PaymentCreateSerializer,
     PaymentSerializer,
-    PaymentDiscountCreateSerializer,
     PaymentRefundSerializer,
-    PaymentRefundCreateSerializer,
 )
 from .filters import PaymentMethodFilter
 from main.viewsets import BaseModelViewSet
 from payment.services import PaymentService, POSPaymentService
 from django.db import transaction
 from payment.models import RefundTypeType
-from decimal import Decimal
 from appointment.models import Appointment
+from appointment.serializers import AppointmentSerializer
 class PaymentMethodViewSet(BaseModelViewSet):
     """ViewSet for managing payment methods"""
     queryset = PaymentMethod.objects.all()
@@ -213,12 +211,53 @@ class PaymentRefundViewSet(BaseModelViewSet):
     
 class POSPaymentViewSet(BaseModelViewSet):
     """ViewSet for managing POS payments"""
-    queryset = Payment.objects.all()
-    serializer_class = PaymentSerializer
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a payment"""
+        try:
+            appointment = self.get_object()
+            print("appointment:: ", appointment)
+            serializer = AppointmentSerializer(appointment).data
+            return self.response_success(serializer)
+        except Exception as e:
+            print("error retrieving appointment", e)
+            return self.response_error(str(e))
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update a payment"""
+        try:
+            appointment = self.get_object()
+            print("request.data:: ", request.data)
+            print("update appointment:: ", appointment)
+            
+            request_data = request.data.copy()
+            appointment_data = request_data.get('appointment', None)
+            appointment_services = request_data.get('appointment_services', None)
+            discounts = request_data.get('discounts', None)
+            gift_card_redemptions = request_data.get('gift_card_redemptions', None)
+            pos_payment_service = POSPaymentService()
+            pos_payment = pos_payment_service.update_appointment_and_payment(
+                appointment=appointment,
+                payment_data=request_data,
+                appointment_services=appointment_services,
+                appointment_data=appointment_data,
+                gift_card_redemptions=gift_card_redemptions,
+                discounts=discounts,
+            )
+            serializer = AppointmentSerializer(pos_payment).data
+            
+            return self.response_success(serializer)
+        except Exception as e:
+            print("error updating appointment", e)
+            return self.response_error(str(e))
+        except Exception as e:
+            print("error partial updating appointment", e)
+            return self.response_error(str(e))
     
     # create a new appointment and payment
-    @action(detail=False, methods=['post'], url_path='create-appointment-and-payment')
-    def create_appointment_and_payment(self, request):
+    def create(self, request):
         """Create a new appointment and payment"""
         try:
             request_data = request.data.copy()
@@ -235,9 +274,37 @@ class POSPaymentViewSet(BaseModelViewSet):
                 gift_card_redemptions=gift_card_redemptions,
                 discounts=discounts,
             )
-            return self.response_success(pos_payment)
+            serializer = AppointmentSerializer(pos_payment).data
+            return self.response_success(serializer)
         except Exception as e:
             print("error creating appointment and payment", e)
             return self.response_error(str(e))
 
-    
+    @action(detail=True, methods=['patch'], url_path='update-appointment-and-payment')
+    def update_appointment_and_payment(self, request, *args, **kwargs):
+        """Update an appointment and payment"""
+        try:
+            print("request.data:: ", request.data)
+            appointment = self.get_object()
+            print("update appointment:: ", appointment)
+            
+            request_data = request.data.copy()
+            appointment_data = request_data.get('appointment', None)
+            appointment_services = request_data.get('appointment_services', None)
+            discounts = request_data.get('discounts', None)
+            gift_card_redemptions = request_data.get('gift_card_redemptions', None)
+            pos_payment_service = POSPaymentService()
+            pos_payment = pos_payment_service.update_appointment_and_payment(
+                appointment=appointment,
+                payment_data=request_data,
+                appointment_services=appointment_services,
+                appointment_data=appointment_data,
+                gift_card_redemptions=gift_card_redemptions,
+                discounts=discounts,
+            )
+            serializer = AppointmentSerializer(pos_payment).data
+            
+            return self.response_success(serializer)
+        except Exception as e:
+            print("error updating appointment", e)
+            return self.response_error(str(e))

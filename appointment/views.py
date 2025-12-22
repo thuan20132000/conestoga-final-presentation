@@ -45,25 +45,24 @@ class AppointmentFilter(filters.FilterSet):
     class Meta:
         model = Appointment
         fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source']
-
+        
+    
 class AppointmentViewSet(BaseModelViewSet):
     """ViewSet for managing appointments"""
     queryset = Appointment.objects.all()
     filter_backends = [DjangoFilterBackend]
     filterset_class = AppointmentFilter
-    ordering_fields = ['appointment_date', 'created_at']
-    ordering = ['-appointment_date', '-created_at']
-    search_fields = [
-        'client__first_name', 
-        'client__last_name', 
-        'client__email', 
-        'client__phone', 
-        'booked_by__first_name', 
-        'booked_by__last_name', 
-        'booked_by__email', 
-        'booked_by__phone',
-        'business__name'
-    ]
+    # search_fields = [
+    #     'client__first_name', 
+    #     'client__last_name', 
+    #     'client__email', 
+    #     'client__phone', 
+    #     'booked_by__first_name', 
+    #     'booked_by__last_name', 
+    #     'booked_by__email', 
+    #     'booked_by__phone',
+    #     'business__name'
+    # ]
     
     
     def get_serializer_class(self):
@@ -89,8 +88,7 @@ class AppointmentViewSet(BaseModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """List appointments"""
-        appointments = self.get_queryset()
-        appointments = self.filter_queryset(appointments)
+        appointments = self.get_filtered_queryset()
         serializer = AppointmentDetailSerializer(appointments, many=True)
         return self.response_success(serializer.data)
     

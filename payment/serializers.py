@@ -5,6 +5,7 @@ from .models import (
     PaymentMethod, Payment, PaymentDiscount, Refund
 )
 from django.db.models import Sum
+from appointment.serializers import AppointmentDetailSerializer
 
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
@@ -105,10 +106,11 @@ class PaymentDetailSerializer(PaymentSerializer):
     discounts = PaymentDiscountSerializer(many=True, read_only=True)
     payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
     refund = PaymentRefundSerializer(read_only=True)
+    appointment = AppointmentDetailSerializer(read_only=True)
     class Meta(PaymentSerializer.Meta):
         model = Payment
-        fields = PaymentSerializer.Meta.fields + ['discounts', 'payment_method_name', 'refund']
-        read_only_fields = PaymentSerializer.Meta.read_only_fields + ['refund']
+        fields = PaymentSerializer.Meta.fields + ['discounts', 'payment_method_name', 'refund', 'appointment']
+        read_only_fields = PaymentSerializer.Meta.read_only_fields + ['refund', 'appointment']
         
         
 

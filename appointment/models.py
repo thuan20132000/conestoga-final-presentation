@@ -98,7 +98,7 @@ class Appointment(SoftDeleteModel):
     history = HistoricalRecords()
 
     class Meta:
-        ordering = ['appointment_date','created_at']
+        ordering = ['appointment_date']
 
     def __str__(self):
         return f"{self.id} - {self.appointment_date}"

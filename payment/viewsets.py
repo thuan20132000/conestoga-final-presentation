@@ -201,8 +201,7 @@ class PaymentViewSet(BaseModelViewSet):
         
         serializer = self.get_serializer(payment)
         return Response(serializer.data)
-
-
+    
 
 class PaymentRefundViewSet(BaseModelViewSet):
     """ViewSet for managing payment refunds"""

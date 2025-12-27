@@ -3,7 +3,7 @@ from django.db.models import Sum, Avg
 from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking
 )
-
+from payment.serializers import PaymentMethodSerializer
 class BusinessTypeSerializer(serializers.ModelSerializer):
     """Serializer for BusinessType model"""
     
@@ -205,9 +205,11 @@ class ReceptionistStatisticsSerializer(serializers.Serializer):
 class BusinessDashboardSerializer(BusinessDetailSerializer):
     """Serializer for business dashboard"""
     
+    payment_methods = PaymentMethodSerializer(many=True, read_only=True)
+    
     class Meta(BusinessDetailSerializer.Meta):
-        fields = BusinessDetailSerializer.Meta.fields 
-        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields
+        fields = BusinessDetailSerializer.Meta.fields + ['payment_methods']
+        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields + ['payment_methods']
 
 
 class BusinessRolesSerializer(serializers.ModelSerializer):

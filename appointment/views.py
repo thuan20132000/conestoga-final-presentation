@@ -33,7 +33,7 @@ from payment.serializers import PaymentSerializer, PaymentDetailSerializer
 from service.serializers import BusinessBookingServiceCategorySerializer
 from staff.serializers import BusinessBookingStaffSerializer
 from .services import BusinessBookingService
-from business.serializers import BusinessSerializer
+from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
 from appointment.models import AppointmentStatusType
 class AppointmentFilter(filters.FilterSet):
@@ -696,12 +696,32 @@ class AppointmentServiceViewSet(BaseModelViewSet):
                 message="Failed to delete appointment service"
             )
             
-# Booking appointments viewset for booking pages
+# Booking appointments viewset for client's booking pages
 class BusinessBookingViewSet(BaseModelViewSet):
     """ViewSet for managing booking pages"""
     
     
     http_method_names = ['get', 'post']
+    
+    @action(detail=False, methods=['get'], url_path='business-info')
+    def business_info(self, request):
+        """Get business info"""
+        try:
+            business_id = request.query_params.get('business_id')
+            if not business_id:
+                return self.response_error(
+                    {'error': 'business_id parameter is required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST)
+            business = Business.objects.filter(is_deleted=False, id=business_id).first()
+            if not business:
+                return self.response_error(
+                    {'error': 'Business not found'}, 
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            serializer = BusinessInfoSerializer(business)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message="Failed to retrieve business info")
     
     @action(
         detail=False, 
@@ -779,11 +799,11 @@ class BusinessBookingViewSet(BaseModelViewSet):
             duration = request.query_params.get('duration')
             date = request.query_params.get('date')
             staff_id = request.query_params.get('staff_id')
-            interval_minutes = request.query_params.get('interval_minutes',0)
+            interval_minutes = request.query_params.get('interval_minutes',15)
             
             booking_service = BusinessBookingService(
                 business_id=business_id,
-                interval_minutes=interval_minutes
+                interval_minutes=int(interval_minutes)
             )
             
             if staff_id:

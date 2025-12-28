@@ -76,7 +76,6 @@ class BusinessBookingService:
     ):
         time_slots = []
         appointment_date = datetime.strptime(appointment_date, '%Y-%m-%d').date()
-        
         while (current_time + service_duration) <= next_time:
             service_end_time = current_time + service_duration
 
@@ -103,7 +102,7 @@ class BusinessBookingService:
                 'end_time': end_time,
                 'staff_id': staff_id,
             })
-            current_time = service_end_time + \
+            current_time = current_time + \
                 timedelta(minutes=interval_minutes)
 
         return time_slots

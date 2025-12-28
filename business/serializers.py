@@ -218,3 +218,34 @@ class BusinessRolesSerializer(serializers.ModelSerializer):
         model = BusinessRoles
         fields = ['id', 'name', 'description']
         read_only_fields = ['id']
+        
+
+class BusinessInfoSerializer(serializers.ModelSerializer):
+    """Serializer for BusinessInfo model"""
+    
+    operating_hours = OperatingHoursSerializer(many=True, read_only=True)
+    settings = BusinessSettingsSerializer(read_only=True)
+    online_booking = BusinessOnlineBookingSerializer(read_only=True)
+    class Meta:
+        model = Business
+        fields = [
+            'id', 
+            'name', 
+            'phone_number', 
+            'email', 
+            'website', 
+            'address', 
+            'city', 
+            'state_province', 
+            'postal_code', 
+            'country', 
+            'description', 
+            'logo',
+            'currency',
+            'cost_per_minute',
+            'status',
+            'operating_hours',
+            'settings',
+            'online_booking'
+        ]
+        read_only_fields = ['id']

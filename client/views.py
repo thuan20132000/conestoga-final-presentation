@@ -64,11 +64,20 @@ class ClientViewSet(BaseModelViewSet):
         self.paginator.page_size = request.query_params.get('page_size', 20)
         page = self.paginate_queryset(queryset)
         
+        total_vip_clients = queryset.filter(is_vip=True).count()
+        total_clients = queryset.count()
+        
+        metadata = {
+            "total_vip_clients": total_vip_clients,
+            "total_clients": total_clients
+        }
+        
         if page is not None:
             serializer = ClientListSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+            return self.get_paginated_response(serializer.data, metadata=metadata)
+        
         serializer = ClientListSerializer(queryset, many=True)
-        return self.response_success(serializer.data)
+        return self.response_success(serializer.data, metadata=metadata)
     
     def create(self, request, *args, **kwargs):
         try:

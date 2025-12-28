@@ -55,7 +55,10 @@ class StaffSerializer(serializers.ModelSerializer):
             'is_payment_processing_allowed',
             'hire_date', 'bio', 'photo',
             'staff_salary_settings',
-            'created_at', 'updated_at'
+            'created_at', 
+            'updated_at', 
+            'business_id', 
+            'is_deleted'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

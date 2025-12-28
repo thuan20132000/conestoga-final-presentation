@@ -15,13 +15,13 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from staff.permissions import IsBusinessManager
 from django_filters import rest_framework as filters
+from rest_framework.pagination import PageNumberPagination
 
 class ClientFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='primary_business_id', required=True)
     search = filters.CharFilter(field_name='search', lookup_expr='icontains', required=False, method='filter_search')
     is_active = filters.BooleanFilter(field_name='is_active', required=False)
     is_vip = filters.BooleanFilter(field_name='is_vip', required=False)
-    
     class Meta:
         model = Client
         fields = ['business_id', 'search', 'is_active', 'is_vip']
@@ -37,6 +37,14 @@ class ClientFilter(filters.FilterSet):
             Q(postal_code__icontains=value) |
             Q(country__icontains=value)
         )
+    
+    
+    def filter_is_active(self, queryset, name, value):
+        return queryset.filter(is_active=value)
+    
+    def filter_is_vip(self, queryset, name, value):
+        return queryset.filter(is_vip=value)
+    
 class ClientViewSet(BaseModelViewSet):
     """ViewSet for managing clients"""
     queryset = Client.objects.all()
@@ -48,10 +56,17 @@ class ClientViewSet(BaseModelViewSet):
         """Get queryset for clients"""
         print("self.request.user", self.request.user)
         return self.filter_queryset(super().get_queryset())
+    
 
     def list(self, request, *args, **kwargs):
         print("request.user", request.user)
         queryset = self.get_queryset()
+        self.paginator.page_size = request.query_params.get('page_size', 20)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = ClientListSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = ClientListSerializer(queryset, many=True)
         return self.response_success(serializer.data)
     

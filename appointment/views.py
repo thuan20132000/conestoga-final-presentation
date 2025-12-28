@@ -50,19 +50,8 @@ class AppointmentFilter(filters.FilterSet):
 class AppointmentViewSet(BaseModelViewSet):
     """ViewSet for managing appointments"""
     queryset = Appointment.objects.all()
-    filter_backends = [DjangoFilterBackend]
     filterset_class = AppointmentFilter
-    # search_fields = [
-    #     'client__first_name', 
-    #     'client__last_name', 
-    #     'client__email', 
-    #     'client__phone', 
-    #     'booked_by__first_name', 
-    #     'booked_by__last_name', 
-    #     'booked_by__email', 
-    #     'booked_by__phone',
-    #     'business__name'
-    # ]
+    ordering = ['-updated_at']
     
     
     def get_serializer_class(self):
@@ -89,6 +78,13 @@ class AppointmentViewSet(BaseModelViewSet):
     def list(self, request, *args, **kwargs):
         """List appointments"""
         appointments = self.get_filtered_queryset()
+        self.paginator.page_size = request.query_params.get('page_size', 5)
+        
+        page = self.paginate_queryset(appointments)
+        if page is not None:
+            serializer = AppointmentDetailSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
         serializer = AppointmentDetailSerializer(appointments, many=True)
         return self.response_success(serializer.data)
     
@@ -102,7 +98,6 @@ class AppointmentViewSet(BaseModelViewSet):
         """Partial update an appointment"""
         try:
             instance = self.get_object()   
-            print(f"================= request.data: {request.data}")
             serializer = AppointmentUpdateSerializer(instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             updated_appointment = serializer.update(instance, serializer.validated_data)

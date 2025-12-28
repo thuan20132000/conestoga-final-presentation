@@ -18,16 +18,37 @@ from .serializers import (
     RegisterSerializer,
     UserProfileSerializer,
 )
+from django_filters import rest_framework as filters
 from business.serializers import BusinessRolesSerializer
 from main.viewsets import BaseModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
 from staff.permissions import IsBusinessManager
+
+class StaffFilter(filters.FilterSet):
+    """Filter for Staff"""
+    business_id = filters.NumberFilter(field_name='business_id', lookup_expr='exact', required=True)
+    role_name = filters.CharFilter(field_name='role__name', lookup_expr='exact', required=False)
+    is_payment_processing_allowed = filters.BooleanFilter(field_name='is_payment_processing_allowed', lookup_expr='exact', required=False)
+    class Meta:
+        model = Staff
+        fields = ['business_id', 'role_name', 'is_payment_processing_allowed']
+
 class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
-    queryset = Staff.objects.select_related('business').filter(is_deleted=False)
+    queryset = Staff.objects.filter(is_deleted=False)
     permission_classes = [IsAuthenticated, IsBusinessManager]
+    filterset_class = StaffFilter
+    
+    def list(self, request, *args, **kwargs):
+        """List staff"""
+        try:
+            queryset = self.filter_queryset(self.queryset.filter(business_id=request.user.business_id))
+            serializer = StaffSerializer(queryset, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
 
     def destroy(self, request, *args, **kwargs):
         """Destroy a staff"""

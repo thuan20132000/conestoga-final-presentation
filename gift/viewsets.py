@@ -17,6 +17,8 @@ from .serializers import (
 )
 from .services import GiftCardService
 from main.viewsets import BaseModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from staff.permissions import IsBusinessManager
 
 
 class GiftCardViewSet(BaseModelViewSet):
@@ -27,6 +29,7 @@ class GiftCardViewSet(BaseModelViewSet):
     search_fields = ['card_code', 'recipient_name', 'recipient_email', 'recipient_phone']
     ordering_fields = ['created_at', 'issued_at', 'expires_at', 'current_balance', 'initial_amount']
     ordering = ['-created_at']
+    permission_classes = [IsAuthenticated, IsBusinessManager]
     
     def get_serializer_class(self):
         """Return appropriate serializer class"""

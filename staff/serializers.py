@@ -269,7 +269,7 @@ class UserProfileSerializer(StaffSerializer):
     def get_business(self, obj):
         """Get business"""
         try:
-            if obj.role.name in ['Owner', 'Manager']:
+            if obj.role.name in ['Owner', 'Manager','Receptionist','Stylist','Technician']:
                 return BusinessSerializer(obj.business).data
             else:
                 return None

@@ -36,6 +36,8 @@ from .services import BusinessBookingService
 from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
 from appointment.models import AppointmentStatusType
+from staff.permissions import IsBusinessManager
+
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -52,6 +54,7 @@ class AppointmentViewSet(BaseModelViewSet):
     queryset = Appointment.objects.all()
     filterset_class = AppointmentFilter
     ordering = ['-updated_at']
+    permission_classes = [IsAuthenticated]
     
     
     def get_serializer_class(self):
@@ -73,6 +76,12 @@ class AppointmentViewSet(BaseModelViewSet):
         """Get queryset for appointments"""
         queryset = self.get_queryset()
         queryset = self.filter_queryset(queryset)
+        return queryset
+    
+    # get only appointments for a specific staff
+    def get_staff_appointments(self, user):
+        """Get staff appointments"""
+        queryset = self.get_filtered_queryset().filter(appointment_services__staff_id=user.id)
         return queryset
     
     def list(self, request, *args, **kwargs):
@@ -244,6 +253,8 @@ class AppointmentViewSet(BaseModelViewSet):
         try:
             business_id = request.query_params.get('business_id')
             appointment_date = request.query_params.get('appointment_date')
+            auth_user = request.user
+            
             if not business_id or not appointment_date:
                 return self.response_error(
                     {'error': 'business_id and appointment_date parameters are required'}, 
@@ -253,14 +264,20 @@ class AppointmentViewSet(BaseModelViewSet):
             weekday = datetime.strptime(appointment_date, '%Y-%m-%d').weekday()
             
             # Get staff with role and who are working on the appointment date
-            business_staffs = Staff.objects.filter(
-                business_id=business_id,
-                is_active=True,
-                is_online_booking_allowed=True,
-                working_hours__is_working=True,
-                working_hours__day_of_week=weekday,
-                role__name__in=['Technician', 'Stylist'],
-            )
+            if auth_user.role.name in ['Manager', 'Owner']:
+                business_staffs = Staff.objects.filter(
+                    business_id=business_id,
+                    is_active=True,
+                    is_online_booking_allowed=True,
+                    working_hours__is_working=True,
+                    working_hours__day_of_week=weekday,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+            else:
+                business_staffs = Staff.objects.filter(
+                    id=auth_user.id,
+                )
+            
             
             # Get staff who have an off day on the appointment date
             staff_off_days = StaffOffDay.objects.filter(
@@ -315,149 +332,16 @@ class AppointmentViewSet(BaseModelViewSet):
     def calendar_appointments(self, request):
         """Get today's appointments"""
         try:
-            all_appointments = self.get_filtered_queryset()
-            appointments_statistics = self._get_appointments_statistics(all_appointments)
-            appointments_data = AppointmentDetailSerializer(all_appointments, many=True).data
+            user = request.user
+            appointments = self.get_filtered_queryset()
+            if user.role.name in ['Technician', 'Stylist']:
+                appointments = self.get_staff_appointments(user)
+            appointments_statistics = self._get_appointments_statistics(appointments)
+            appointments_data = AppointmentDetailSerializer(appointments, many=True).data
             return self.response_success(appointments_data, metadata=appointments_statistics)
         
         except Exception as e:
             return self.response_error(str(e))
-    
-    @action(detail=False, methods=['get'])
-    def upcoming(self, request):
-        """Get upcoming appointments"""
-        today = timezone.now().date()
-        appointments = self.get_queryset().filter(
-            appointment_date__gte=today,
-            status__name__in=['scheduled', 'confirmed']
-        )
-        serializer = self.get_serializer(appointments, many=True)
-        return self.response_success(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def by_staff(self, request):
-        """Get appointments by staff member"""
-        staff_id = request.query_params.get('staff_id')
-        if not staff_id:
-            return self.response_error(
-                {'error': 'staff_id parameter is required'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        appointments = self.get_queryset().filter(staff_id=staff_id)
-        serializer = self.get_serializer(appointments, many=True)
-        return self.response_success(serializer.data)
-    
-    @action(detail=False, methods=['get'])
-    def by_client(self, request):
-        """Get appointments by client"""
-        client_id = request.query_params.get('client_id')
-        if not client_id:
-            return self.response_error(
-                {'error': 'client_id parameter is required'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        appointments = self.get_queryset().filter(client_id=client_id)
-        serializer = self.get_serializer(appointments, many=True)
-        return self.response_success(serializer.data)
-    
-    @action(detail=False, methods=['post'])
-    def check_availability(self, request):
-        """Check appointment availability"""
-        serializer = AppointmentAvailabilitySerializer(data=request.data)
-        if serializer.is_valid():
-            business = serializer.validated_data['business']
-            service = serializer.validated_data['service']
-            appointment_date = serializer.validated_data['appointment_date']
-            staff = serializer.validated_data.get('staff')
-            
-            # Get available time slots
-            available_slots = self._get_available_time_slots(
-                business, service, appointment_date, staff
-            )
-            
-            return self.response_success({
-                'available_slots': available_slots,
-                'business_hours': self._get_business_hours(business, appointment_date)
-            })
-        
-        return self.response_error(serializer.errors)
-    
-    @action(detail=True, methods=['post'])
-    def confirm(self, request, pk=None):
-        """Confirm an appointment"""
-        appointment = self.get_object()
-        
-        if appointment.status.name != 'scheduled':
-            return self.response_error(
-                {'error': 'Only scheduled appointments can be confirmed'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        confirmed_status = AppointmentStatus.objects.filter(name='confirmed').first()
-        if confirmed_status:
-            appointment.status = confirmed_status
-            appointment.confirmed_at = timezone.now()
-            appointment.save()
-            
-            serializer = self.get_serializer(appointment)
-            return self.response_success(serializer.data)
-        
-        return self.response_error(
-            {'error': 'Confirmed status not found'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    
-    @action(detail=True, methods=['post'])
-    def cancel(self, request, pk=None):
-        """Cancel an appointment"""
-        appointment = self.get_object()
-        
-        if appointment.status.name in ['completed', 'cancelled']:
-            return self.response_error(
-                {'error': 'Cannot cancel completed or already cancelled appointments'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        cancelled_status = AppointmentStatus.objects.filter(name='cancelled').first()
-        if cancelled_status:
-            appointment.status = cancelled_status
-            appointment.cancelled_at = timezone.now()
-            appointment.save()
-            
-            serializer = self.get_serializer(appointment)
-            return self.response_success(serializer.data)
-        
-        return self.response_error(
-            {'error': 'Cancelled status not found'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    
-    @action(detail=True, methods=['post'])
-    def complete(self, request, pk=None):
-        """Mark appointment as completed"""
-        appointment = self.get_object()
-        
-        if appointment.status.name in ['completed', 'cancelled']:
-            return self.response_error(
-                {'error': 'Cannot complete already completed or cancelled appointments'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        completed_status = AppointmentStatus.objects.filter(name='completed').first()
-        if completed_status:
-            appointment.status = completed_status
-            appointment.completed_at = timezone.now()
-            appointment.save()
-            
-            serializer = self.get_serializer(appointment)
-            return self.response_success(serializer.data)
-        
-        return self.response_error(
-            {'error': 'Completed status not found'}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
     
     # payments
     @action(detail=True, methods=['get'], url_path='payments')

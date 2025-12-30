@@ -37,6 +37,8 @@ from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
 from appointment.models import AppointmentStatusType
 from staff.permissions import IsBusinessManager
+from appointment.services import TicketReportService
+from appointment.serializers import BusinessTicketReportSerializer, StaffTicketReportSerializer
 
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.NumberFilter(field_name='business_id')
@@ -815,3 +817,114 @@ class POSAppointmentViewSet(BaseModelViewSet):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
                 message="Failed to retrieve POS appointments"
             )
+            
+class SalesReportFilter(filters.FilterSet):
+    business_id = filters.NumberFilter(field_name='business_id', required=True)
+    appointment_date = filters.DateFilter(field_name='appointment_date', required=True)
+    status = filters.CharFilter(field_name='status')
+    booked_by = filters.NumberFilter(field_name='booked_by')
+    booking_source = filters.CharFilter(field_name='booking_source')
+    class Meta:
+        model = AppointmentService
+        fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source']
+class SalesReportViewSet(BaseModelViewSet):
+    """ViewSet for managing sales reports"""
+    http_method_names = ['get']
+    permission_classes = [IsAuthenticated]
+    filterset_class = SalesReportFilter
+    queryset = AppointmentService.objects.all()
+    
+    def get_queryset(self):
+        """Get queryset for sales reports"""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(appointment__business_id=self.request.user.business_id)
+        return queryset
+    
+    def list(self, request):
+        """List sales reports"""
+        try:
+            queryset = self.get_queryset()
+            sales_report = self.filter_queryset(queryset)
+            serializer = AppointmentServiceSerializer(sales_report, many=True)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+        
+class TicketReportFilter(filters.FilterSet):
+    business_id = filters.NumberFilter(field_name='business_id', required=True)
+    appointment_date = filters.DateFilter(field_name='appointment_date', required=True)
+    status = filters.CharFilter(field_name='status')
+    booked_by = filters.NumberFilter(field_name='booked_by')
+    booking_source = filters.CharFilter(field_name='booking_source')
+    class Meta:
+        model = AppointmentService
+        fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source']
+        
+class TicketReportViewSet(BaseModelViewSet):
+    """ViewSet for managing ticket reports"""
+    http_method_names = ['get']
+    permission_classes = [IsAuthenticated]
+    filterset_class = TicketReportFilter
+    queryset = AppointmentService.objects.all()
+    
+    def get_queryset(self):
+        """Get queryset for ticket reports"""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(appointment__business_id=self.request.user.business_id)
+        return queryset
+    
+    
+    def list(self, request):
+        """List ticket reports"""
+        try:
+            from_date = request.query_params.get('from_date')
+            to_date = request.query_params.get('to_date')
+            staff_id = request.query_params.get('staff_id')
+            
+            user = self.request.user
+            if not IsBusinessManager().has_permission(self.request, self):
+                staff_id = user.id
+            
+            ticket_report = TicketReportService(self.request.user.business_id)
+            ticket_report_data = ticket_report.get_ticket_report_summary(from_date, to_date, staff_id)
+            
+            print("ticket_report_data", ticket_report_data)
+            serializer = BusinessTicketReportSerializer(ticket_report_data)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+        
+    @action(detail=False, methods=['get'], url_path='by-dates', permission_classes=[IsAuthenticated])
+    def ticket_report_by_dates(self, request):
+        """Get ticket report by dates"""
+        try:    
+            staff_id = request.query_params.get('staff_id')
+            from_date = request.query_params.get('from_date')
+            to_date = request.query_params.get('to_date')
+            
+            ticket_report = TicketReportService(self.request.user.business_id)
+            ticket_report_data = ticket_report.get_ticket_report_by_dates(from_date, to_date, staff_id)
+            serializer = BusinessTicketReportSerializer(ticket_report_data)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+        
+    @action(detail=False, methods=['get'], url_path='by-date', permission_classes=[IsAuthenticated])
+    def ticket_report_by_date(self, request):
+        """Get ticket report by staff"""
+        try:
+            staff_id = request.query_params.get('staff_id')
+            date = request.query_params.get('date')
+            
+            if not staff_id or not date:
+                return self.response_error(
+                    {'error': 'staff_id and date parameters are required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+                
+            ticket_report = TicketReportService(self.request.user.business_id)
+            ticket_report_data = ticket_report.get_ticket_report_by_date(staff_id, date)
+            serializer = StaffTicketReportSerializer(ticket_report_data)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))

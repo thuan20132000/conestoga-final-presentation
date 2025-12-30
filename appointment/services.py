@@ -1,5 +1,6 @@
 from appointment.models import AppointmentService, Appointment, AppointmentStatusType
 from datetime import datetime
+from payment.models import PaymentMethodType
 from staff.models import StaffService, StaffWorkingHours
 from datetime import timedelta
 from django.utils import timezone
@@ -11,6 +12,7 @@ from business.models import BusinessSettings
 import logging
 from main.utils import get_business_managers_group_name
 from main.common_settings import ONLINE_BOOKING_URL
+from django.db.models import Sum, Count, Value, DateField, F
 
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
@@ -483,3 +485,132 @@ class AppointmentNotificationService:
             )
         except Exception as e:
             raise Exception(f"Error sending manager appointment confirmation Push: {e}")
+class TicketReportService():
+    def __init__(self, business_id):
+        self.business_id = business_id
+    
+    def get_ticket_report_summary(self, from_date, to_date, staff_id):
+        try:
+            queryset = AppointmentService.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date__gte=from_date,
+                appointment__appointment_date__lte=to_date,
+                appointment__status=AppointmentStatusType.CHECKED_OUT.value,
+            )
+            
+            if staff_id:
+                queryset = queryset.filter(staff_id=staff_id)
+                
+            staff_sales = queryset.values('staff').annotate(
+                staff_first_name=F('staff__first_name'),
+                staff_last_name=F('staff__last_name'),
+                total_service_sales=Sum('custom_price'),
+                total_service_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+                from_date=Value(from_date, output_field=DateField()),
+                to_date=Value(to_date, output_field=DateField()),
+            )
+            
+            summary = queryset.aggregate(
+                total_sales=Sum('custom_price'),
+                total_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+            )
+            summary['from_date'] = from_date
+            summary['to_date'] = to_date
+            summary['total_staffs'] = staff_sales.count()
+            
+            
+            return {
+                'summary': summary,
+                'data': staff_sales,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting ticket report: {e}")
+        
+    def get_ticket_report_by_dates(self, from_date, to_date, staff_id):
+        try:
+            queryset = AppointmentService.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date__gte=from_date,
+                appointment__appointment_date__lte=to_date,
+                appointment__status=AppointmentStatusType.CHECKED_OUT.value,
+                staff_id=staff_id,
+            )
+            
+            queryset = queryset.order_by('-appointment__appointment_date')
+            staff_sales = queryset.values('appointment__appointment_date').annotate(
+                staff_first_name=F('staff__first_name'),
+                staff_last_name=F('staff__last_name'),
+                staff=F('staff__id'),
+                total_service_sales=Sum('custom_price'),
+                total_service_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+                appointment_date=F('appointment__appointment_date'),
+            )
+            total_tips = queryset.aggregate(total_tips=Sum('tip_amount'))['total_tips'] or 0
+            total_tips_by_cash = queryset.filter(tip_method=PaymentMethodType.CASH.value).aggregate(total_tips=Sum('tip_amount'))['total_tips'] or 0
+            total_tips_by_card = total_tips - total_tips_by_cash
+            
+            summary = queryset.aggregate(
+                total_sales=Sum('custom_price'),
+                total_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+            )
+            summary['total_cash_tips'] = total_tips_by_cash
+            summary['total_card_tips'] = total_tips_by_card
+            summary['from_date'] = from_date
+            summary['to_date'] = to_date
+                
+            return {
+                'summary': summary,
+                'data': staff_sales,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting staff ticket report summary: {e}")
+        
+    def get_ticket_report_by_date(self, staff_id, date) -> dict:
+        try:
+            queryset = AppointmentService.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date=date,
+                appointment__status=AppointmentStatusType.CHECKED_OUT.value,
+                staff_id=staff_id,
+            )
+            
+            queryset = queryset.order_by('-updated_at')
+            staff_sales = queryset.values('appointment__appointment_date').annotate(
+                staff_first_name=F('staff__first_name'),
+                staff_last_name=F('staff__last_name'),
+                staff=F('staff__id'),
+                appointment_id=F('appointment__id'),
+                service_id=F('service__id'),
+                service_name=F('service__name'),
+                service_duration=F('service__duration_minutes'),
+                custom_price=F('custom_price'),
+                tip_amount=F('tip_amount'),
+                tip_method=F('tip_method'),
+                client_name=F('appointment__client__first_name'),
+                updated_at=F('appointment__updated_at'),
+                created_at=F('appointment__created_at'),
+            )
+            
+            # total tips
+            total_tips = queryset.aggregate(total_tips=Sum('tip_amount'))['total_tips'] or 0
+            total_cash_tips = queryset.filter(tip_method=PaymentMethodType.CASH.value).aggregate(total_tips=Sum('tip_amount'))['total_tips'] or 0
+            total_card_tips = total_tips - total_cash_tips
+            
+            summary = queryset.aggregate(
+                total_sales=Sum('custom_price'),
+                total_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+            )
+            summary['total_cash_tips'] = total_cash_tips
+            summary['total_card_tips'] = total_card_tips
+            
+            return {
+                'summary': summary,
+                'data': staff_sales,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting ticket report by date: {e}")

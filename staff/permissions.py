@@ -41,7 +41,6 @@ class IsBusinessManager(permissions.BasePermission):
         user = request.user
         business_id = request.query_params.get('business_id')
         
-        print("user.role", user.role.name)
         role = user.role.name if user.role else None
         if role not in ['Manager', 'Owner']:
             return False

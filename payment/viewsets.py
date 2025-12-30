@@ -217,7 +217,6 @@ class POSPaymentViewSet(BaseModelViewSet):
         """Retrieve a payment"""
         try:
             appointment = self.get_object()
-            print("appointment:: ", appointment)
             serializer = AppointmentSerializer(appointment).data
             return self.response_success(serializer)
         except Exception as e:

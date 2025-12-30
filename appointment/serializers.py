@@ -251,3 +251,58 @@ class AppointmentHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment.history.model
         fields = '__all__'
+
+class BusinessTicketReportSummarySerializer(serializers.Serializer):
+    """Serializer for ticket report summary"""
+    total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_tips = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_cash_tips = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_card_tips = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_services = serializers.IntegerField()
+    total_staffs = serializers.IntegerField( required=False )
+    from_date = serializers.DateField( required=False )
+    to_date = serializers.DateField( required=False )
+
+class StaffTicketReportSummarySerializer(serializers.Serializer):
+    """Serializer for staff ticket report summary"""
+    total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_tips = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_cash_tips = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_card_tips = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_services = serializers.IntegerField()
+
+class TicketReportDataSerializer(serializers.Serializer):
+    """Serializer for ticket report data"""
+    staff =serializers.IntegerField()
+    staff_first_name = serializers.CharField()
+    staff_last_name = serializers.CharField()
+    total_service_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_service_tips = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_services = serializers.IntegerField()
+    appointment_date = serializers.DateField( required=False )
+    
+class TicketReportStaffDataSerializer(serializers.Serializer):
+    """Serializer for ticket report staff data"""
+    staff = serializers.IntegerField()
+    staff_first_name = serializers.CharField()
+    staff_last_name = serializers.CharField()
+    appointment_id = serializers.IntegerField( required=False )
+    service_id = serializers.IntegerField( required=False )
+    service_name = serializers.CharField( required=False )
+    service_duration = serializers.IntegerField( required=False )
+    custom_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False )
+    tip_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False )
+    tip_method = serializers.CharField( required=False )
+    client_name = serializers.CharField( required=False )
+    updated_at = serializers.DateTimeField( required=False )
+    created_at = serializers.DateTimeField( required=False )
+    
+class BusinessTicketReportSerializer(serializers.Serializer):
+    """Serializer for ticket report summary"""
+    summary = BusinessTicketReportSummarySerializer()
+    data = TicketReportDataSerializer(many=True)
+    
+class StaffTicketReportSerializer(serializers.Serializer):
+    """Serializer for staff ticket report"""
+    summary = StaffTicketReportSummarySerializer()
+    data = TicketReportStaffDataSerializer(many=True)

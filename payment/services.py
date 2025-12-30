@@ -218,10 +218,6 @@ class POSPaymentService:
     ) -> dict[str, Any]:
         try:
             with transaction.atomic():
-                print("payment_data:: ", payment_data)
-                print("appointment_services:: ", appointment_services)
-                print("gift_card_redemptions:: ", gift_card_redemptions)
-                print("appointment_data:: ", appointment_data)
                 # create appointment
                 appointment = Appointment.objects.create(
                     business_id=appointment_data['business'],
@@ -246,6 +242,7 @@ class POSPaymentService:
                             end_at=appointment_service['end_at'],
                             custom_price=appointment_service['custom_price'] or 0,
                             tip_amount=appointment_service['tip_amount'] or 0,
+                            tip_method=appointment_service['tip_method'] or None,
                         )
 
                         print("appointment_service_obj1111:: ",

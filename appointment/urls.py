@@ -6,12 +6,13 @@ from .views import (
     POSAppointmentViewSet,
     AppointmentServiceViewSet
 )
-
+from .views import SalesReportViewSet, TicketReportViewSet
 router = DefaultRouter()
 router.register(r'appointments', AppointmentViewSet, basename='appointment')
 router.register(r'business-booking', BusinessBookingViewSet, basename='business-booking')
 router.register(r'appointment-services', AppointmentServiceViewSet, basename='appointment-service')
 router.register(r'pos-appointments', POSAppointmentViewSet, basename='pos-appointments')
+router.register(r'ticket-report', TicketReportViewSet, basename='ticket-report')
 urlpatterns = [
     path('', include(router.urls)),
 ]

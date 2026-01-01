@@ -88,10 +88,7 @@ class PaymentViewSet(BaseModelViewSet):
             appointment_services = request_data.get('appointment_services', None)
             discounts = request_data.get('discounts', None)
             metadata = request_data.get('metadata', {})
-            print("payment request_data:: ", metadata)
-            print("payment appointment_services:: ", appointment_services)
-            print("payment discounts:: ", discounts)
-            
+         
             serializer = PaymentCreateSerializer(data=request_data)
             serializer.is_valid(raise_exception=True)
             validated_data = serializer.validated_data
@@ -267,10 +264,10 @@ class POSPaymentViewSet(BaseModelViewSet):
             
             pos_payment = pos_payment_service.create_appointment_and_payment(
                 payment_data=request_data,
-                appointment_services=appointment_services,
                 appointment_data=appointment_data,
-                gift_card_redemptions=gift_card_redemptions,
+                appointment_services=appointment_services,
                 discounts=discounts,
+                gift_card_redemptions=gift_card_redemptions,
             )
             serializer = AppointmentSerializer(pos_payment).data
             return self.response_success(serializer)

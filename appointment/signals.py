@@ -43,13 +43,11 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
         send_confirmation_sms = business_settings.send_confirmation_sms if business_settings else False
         reminder_hours_before = business_settings.reminder_hours_before if business_settings else 2
         business_timezone = business_settings.timezone
-        
         timezone.activate(business_timezone)
 
         start_at = appointment_data.get('start_at')
         start_at_obj = datetime.fromisoformat(start_at)
         start_at_str = start_at_obj.strftime("%I:%M %p on %B %d, %Y")
-        
         metadata = instance.metadata
         schedule_name = f"reminder-sms-{business_id}-{appointment_id}"
         schedule_time = start_at_obj - timedelta(
@@ -57,17 +55,18 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             minutes=0,
         )
         appointment_status = appointment_data.get('status', None)
-        
-        appointment_notification_service = AppointmentNotificationService(instance)
+
+        appointment_notification_service = AppointmentNotificationService(
+            instance)
 
         with transaction.atomic():
             if created:
-
+                # Client notifications
                 if not client_phone:
                     return
                 # send confirmation sms
                 if metadata and metadata.get('is_send_confirmation_sms', False) == True:
-                    
+
                     if send_confirmation_sms == False:
                         return
 
@@ -130,7 +129,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         metadata=metadata,
                         schedule_name=schedule_name,
                     )
-                
+
                 # Appointment completed
                 if appointment_status == AppointmentStatusType.CHECKED_OUT:
                     if metadata.get('is_send_sms_checked_out_confirmation', False) == False:
@@ -144,7 +143,6 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         business_id=business_id,
                         metadata=metadata,
                     )
-                
 
     except Exception as e:
         # logger.error(f"Error handling appointment notifications: {e}")
@@ -157,6 +155,8 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 def handle_appointment_service_added(sender, instance, created, **kwargs):
     """Handle notifications for appointment service changes"""
 
+    metadata = instance.metadata
+
     appointment = AppointmentSerializer(instance.appointment).data
     booking_source = appointment.get('booking_source', '')
     appointment_service = AppointmentServiceSerializer(instance).data
@@ -166,21 +166,21 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
     business_name = appointment.get('business_name', 'Unknown Business')
     business_id = appointment.get('business', None)
     staff_name = appointment_service.get('staff_name', 'Unknown Staff')
-    
+
     staff_id = appointment_service.get('staff', None)
     start_time_obj = datetime.fromisoformat(
         appointment_service.get('start_at'))
     start_time_str = start_time_obj.strftime("%I:%M %p on %B %d, %Y")
     is_staff_request = appointment_service.get('is_staff_request')
-    metadata = instance.metadata
-    staff_name = f"❤️ {staff_name}" if is_staff_request else "Anyone"
     booking_source = f"from {booking_source}" if booking_source else ""
     staff_obj = Staff.objects.get(id=staff_id)
-    
     appointment_notification_service = AppointmentNotificationService(instance)
-    
+
     if created:
 
+        staff_name = f"❤️ {staff_name}" if is_staff_request else "Anyone"
+
+        # Staff appointment confirmation notifications
         appointment_notification_service.send_staff_appointment_confirmation_notification(
             staff=staff_obj,
             staff_name=staff_name,

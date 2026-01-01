@@ -485,6 +485,36 @@ class AppointmentNotificationService:
             )
         except Exception as e:
             raise Exception(f"Error sending manager appointment confirmation Push: {e}")
+        
+    def send_staff_and_manager_payment_notification(
+        self,
+        title,
+        body_message,
+        metadata,
+        staff,
+        business_id,
+    ):
+        try:
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.PUSH,
+                to=staff,
+            )
+            
+            self.dispatcher.dispatchAsync(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.PUSH,
+                group_name=get_business_managers_group_name(business_id),
+                to=None,
+            )
+        except Exception as e:
+            logger.error(f"Error sending staff payment notification: {e}")
+            raise Exception(f"Error sending staff payment notification: {e}")
+        
 class TicketReportService():
     def __init__(self, business_id):
         self.business_id = business_id

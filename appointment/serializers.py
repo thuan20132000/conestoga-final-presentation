@@ -107,7 +107,7 @@ class AppointmentServiceSerializer(serializers.ModelSerializer):
     service_color_code = serializers.CharField(
         source='service.color_code', read_only=True)
     staff_name = serializers.CharField(
-        source='staff.get_full_name', read_only=True)
+        source='staff.first_name', read_only=True)
     client_name = serializers.CharField(
         source='appointment.client.get_full_name', read_only=True)
 

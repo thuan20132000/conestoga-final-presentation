@@ -209,15 +209,16 @@ class PaymentService:
 class POSPaymentService:
     def create_appointment_and_payment(
         self,
-        appointment_data: dict[str, Any],
         payment_data: dict[str, Any],
-        discounts: list[PaymentDiscount] = None,
+        appointment_data: dict[str, Any],
         appointment_services: list[AppointmentService] = None,
+        discounts: list[PaymentDiscount] = None,
         gift_card_redemptions: list[GiftCardTransaction] = None,
-        metadata: dict[str, Any] = None
     ) -> dict[str, Any]:
         try:
             with transaction.atomic():
+                
+                metadata = appointment_data['metadata'] or {}
                 # create appointment
                 appointment = Appointment.objects.create(
                     business_id=appointment_data['business'],
@@ -226,9 +227,12 @@ class POSPaymentService:
                     booking_source=appointment_data['booking_source'],
                     start_at=appointment_data['start_at'],
                     end_at=appointment_data['end_at'],
+                    payment_status=payment_data['status'],
+                    metadata=metadata,
                 )
+                
+                
 
-                print("appointment:: ", appointment)
 
                 # # create appointment services
                 if appointment_services:
@@ -243,13 +247,11 @@ class POSPaymentService:
                             custom_price=appointment_service['custom_price'] or 0,
                             tip_amount=appointment_service['tip_amount'] or 0,
                             tip_method=appointment_service['tip_method'] or None,
+                            metadata=metadata,
                         )
 
-                        print("appointment_service_obj1111:: ",
-                              appointment_service_obj)
 
-                print("payment_data:: ", payment_data)
-                print("appointment.id:: ", appointment.id)
+
                 payment = Payment.objects.create(
                     payment_method_id=payment_data['payment_method'],
                     payment_method_type=payment_data['payment_method_type'],
@@ -261,7 +263,6 @@ class POSPaymentService:
                     appointment_id=appointment.id,
                 )
 
-                print("payment result:: ", payment.__dict__)
 
                 # create payment discounts
                 if discounts:
@@ -275,7 +276,6 @@ class POSPaymentService:
                             discount_description=discount.get(
                                 'discount_description', '')
                         )
-                        print("payment_discount:: ", payment_discount.__dict__)
 
                 # create gift card transactions
                 if gift_card_redemptions and len(gift_card_redemptions) > 0:
@@ -296,7 +296,7 @@ class POSPaymentService:
                 if payment.status == PaymentStatusType.COMPLETED:
                     appointment.payment_status = payment.status
                     appointment.status = AppointmentStatusType.CHECKED_OUT
-                    appointment.metadata = metadata or {}
+                    appointment.metadata = metadata
                     appointment.save()
 
                 if payment.status == PaymentStatusType.PENDING:

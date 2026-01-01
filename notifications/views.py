@@ -37,6 +37,7 @@ class WebPushViewSet(BaseViewSet):
         try:
             subscription, created = SubscriptionInfo.objects.update_or_create(
                 endpoint=request.data.get("endpoint"),
+                auth=request.data.get("auth"),
                 defaults={
                     "auth": request.data.get("auth"),
                     "p256dh": request.data.get("p256dh"),
@@ -44,11 +45,12 @@ class WebPushViewSet(BaseViewSet):
                     "user_agent": request.data.get("user_agent"),
                 }
             )
+           
             if created:
                 push_information = PushInformation.objects.create(
                     subscription=subscription,
                     user=request.user,
-                    group_id=request.data.get("group",1),
+                    group_id=request.data.get("group",None),
                 )
             else:
                 push_information = PushInformation.objects.filter(subscription=subscription).first()

@@ -200,7 +200,6 @@ class NotificationDispatcher:
         data: Optional[Dict] = None,
         group_name: Optional[str] = None,
     ) -> SendResult:
-        
         def _dispatch():
             result = self.dispatch(channel, to, title, body, business_id, data, group_name)
             return result

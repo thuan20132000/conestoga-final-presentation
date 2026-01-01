@@ -25,6 +25,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
     """Handle notifications for appointment creation and updates"""
 
     try:
+        print("appointment instance:: ", instance)
         appointment_data = AppointmentSerializer(instance).data
         client_name = appointment_data.get('client_name', 'A client')
         client_phone = appointment_data.get('client_phone', None)
@@ -43,11 +44,14 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
         send_confirmation_sms = business_settings.send_confirmation_sms if business_settings else False
         reminder_hours_before = business_settings.reminder_hours_before if business_settings else 2
         business_timezone = business_settings.timezone
+
         timezone.activate(business_timezone)
 
         start_at = appointment_data.get('start_at')
         start_at_obj = datetime.fromisoformat(start_at)
         start_at_str = start_at_obj.strftime("%I:%M %p on %B %d, %Y")
+        payment_status = appointment_data.get('payment_status', None)
+
         metadata = instance.metadata
         schedule_name = f"reminder-sms-{business_id}-{appointment_id}"
         schedule_time = start_at_obj - timedelta(
@@ -155,6 +159,10 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 def handle_appointment_service_added(sender, instance, created, **kwargs):
     """Handle notifications for appointment service changes"""
 
+    # POS payment notifications
+    if metadata and metadata.get('is_pos_payment', False) == True:
+        return
+      
     metadata = instance.metadata
 
     appointment = AppointmentSerializer(instance.appointment).data
@@ -174,7 +182,9 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
     is_staff_request = appointment_service.get('is_staff_request')
     booking_source = f"from {booking_source}" if booking_source else ""
     staff_obj = Staff.objects.get(id=staff_id)
+
     appointment_notification_service = AppointmentNotificationService(instance)
+
 
     if created:
 

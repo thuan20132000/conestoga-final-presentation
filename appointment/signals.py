@@ -159,11 +159,12 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 def handle_appointment_service_added(sender, instance, created, **kwargs):
     """Handle notifications for appointment service changes"""
 
+      
+    metadata = instance.metadata
+    
     # POS payment notifications
     if metadata and metadata.get('is_pos_payment', False) == True:
         return
-      
-    metadata = instance.metadata
 
     appointment = AppointmentSerializer(instance.appointment).data
     booking_source = appointment.get('booking_source', '')

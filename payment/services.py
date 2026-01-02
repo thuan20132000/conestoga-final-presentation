@@ -322,15 +322,14 @@ class POSPaymentService:
         try:
             with transaction.atomic():
              
-                metadata = appointment_data['metadata'] or {}
 
+                metadata = appointment_data.get('metadata', appointment.metadata) or {}
                 # update appointment
                 appointment.client_id = appointment_data['client']
                 appointment.appointment_date = appointment_data['appointment_date']
                 appointment.booking_source = appointment_data['booking_source']
                 appointment.start_at = appointment_data['start_at']
                 appointment.end_at = appointment_data['end_at']
-                appointment.metadata = metadata
                 appointment.save()
 
                 # update appointment services

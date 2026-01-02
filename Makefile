@@ -47,7 +47,7 @@ createsuperuser: ## Create Django superuser
 
 fake-data: ## Create sample data for testing
 	python manage.py create_business_types
-	python manage.py create_sample_businesses
+	python manage.py create_sample_businesses --name "Luxenails"
 
 clear-data: ## Clear all sample data
 	python manage.py create_sample_data --clear-existing

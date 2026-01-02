@@ -20,7 +20,7 @@ class PaymentFilter(django_filters.FilterSet):
     transaction_type = django_filters.CharFilter(field_name='transaction_type')
     
     # Related entity filters
-    business_id = django_filters.NumberFilter(field_name='business_id')
+    business_id = django_filters.UUIDFilter(field_name='business_id')
     client_id = django_filters.NumberFilter(field_name='client_id')
     appointment_id = django_filters.NumberFilter(field_name='appointment_id')
     payment_method_id = django_filters.NumberFilter(field_name='payment_method_id')
@@ -82,7 +82,7 @@ class PaymentMethodFilter(django_filters.FilterSet):
     payment_type = django_filters.CharFilter(field_name='payment_type')
     is_active = django_filters.BooleanFilter(field_name='is_active')
     is_default = django_filters.BooleanFilter(field_name='is_default')
-    business_id = django_filters.NumberFilter(field_name='business_id')
+    business_id = django_filters.UUIDFilter(field_name='business_id')
     
     class Meta:
         model = PaymentMethod
@@ -107,7 +107,7 @@ class RefundFilter(django_filters.FilterSet):
     
     # Related entity filters
     payment_id = django_filters.NumberFilter(field_name='payment_id')
-    business_id = django_filters.NumberFilter(field_name='payment__business_id')
+    business_id = django_filters.UUIDFilter(field_name='payment__business_id')
     client_id = django_filters.NumberFilter(field_name='payment__client_id')
     
     class Meta:

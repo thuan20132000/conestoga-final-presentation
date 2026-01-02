@@ -18,7 +18,7 @@ from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
 
 class ClientFilter(filters.FilterSet):
-    business_id = filters.NumberFilter(field_name='primary_business_id', required=True)
+    business_id = filters.UUIDFilter(field_name='primary_business_id', required=True)
     search = filters.CharFilter(field_name='search', lookup_expr='icontains', required=False, method='filter_search')
     is_active = filters.BooleanFilter(field_name='is_active', required=False)
     is_vip = filters.BooleanFilter(field_name='is_vip', required=False)

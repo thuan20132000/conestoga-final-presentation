@@ -28,7 +28,7 @@ from staff.permissions import IsBusinessManager
 
 class StaffFilter(filters.FilterSet):
     """Filter for Staff"""
-    business_id = filters.NumberFilter(field_name='business_id', lookup_expr='exact', required=True)
+    business_id = filters.UUIDFilter(field_name='business_id', lookup_expr='exact', required=True)
     role_name = filters.CharFilter(field_name='role__name', lookup_expr='exact', required=False)
     is_payment_processing_allowed = filters.BooleanFilter(field_name='is_payment_processing_allowed', lookup_expr='exact', required=False)
     class Meta:

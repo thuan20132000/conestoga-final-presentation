@@ -41,7 +41,7 @@ from appointment.services import TicketReportService
 from appointment.serializers import BusinessTicketReportSerializer, StaffTicketReportSerializer
 
 class AppointmentFilter(filters.FilterSet):
-    business_id = filters.NumberFilter(field_name='business_id')
+    business_id = filters.UUIDFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
     status = filters.CharFilter(field_name='status')
     booked_by = filters.NumberFilter(field_name='booked_by')
@@ -783,7 +783,7 @@ class BusinessBookingViewSet(BaseModelViewSet):
         
 
 class  POSAppointmentFilter(filters.FilterSet):
-    business_id = filters.NumberFilter(field_name='business_id', required=True)
+    business_id = filters.UUIDFilter(field_name='business_id', required=True)
     appointment_date = filters.DateFilter(field_name='appointment_date', required=True)
     status = filters.CharFilter(field_name='status')
     booked_by = filters.NumberFilter(field_name='booked_by')
@@ -819,7 +819,7 @@ class POSAppointmentViewSet(BaseModelViewSet):
             )
             
 class SalesReportFilter(filters.FilterSet):
-    business_id = filters.NumberFilter(field_name='business_id', required=True)
+    business_id = filters.UUIDFilter(field_name='business_id', required=True)
     appointment_date = filters.DateFilter(field_name='appointment_date', required=True)
     status = filters.CharFilter(field_name='status')
     booked_by = filters.NumberFilter(field_name='booked_by')
@@ -851,7 +851,7 @@ class SalesReportViewSet(BaseModelViewSet):
             return self.response_error(str(e))
         
 class TicketReportFilter(filters.FilterSet):
-    business_id = filters.NumberFilter(field_name='business_id', required=True)
+    business_id = filters.UUIDFilter(field_name='business_id', required=True)
     appointment_date = filters.DateFilter(field_name='appointment_date', required=True)
     status = filters.CharFilter(field_name='status')
     booked_by = filters.NumberFilter(field_name='booked_by')

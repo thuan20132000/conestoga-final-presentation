@@ -24,7 +24,7 @@ from appointment.models import Appointment
 class ReviewFilter(filters.FilterSet):
     """Filter for Review model"""
     appointment_id = filters.NumberFilter(field_name='appointment_id')
-    business_id = filters.NumberFilter(field_name='appointment__business_id')
+    business_id = filters.UUIDFilter(field_name='appointment__business_id')
     rating = filters.NumberFilter(field_name='rating')
     min_rating = filters.NumberFilter(field_name='rating', lookup_expr='gte')
     max_rating = filters.NumberFilter(field_name='rating', lookup_expr='lte')

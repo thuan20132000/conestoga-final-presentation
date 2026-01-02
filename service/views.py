@@ -17,7 +17,7 @@ from staff.permissions import IsBusinessManager
 
 class ServiceCategoryFilter(filters.FilterSet):
     is_active = filters.BooleanFilter(field_name='is_active')
-    business_id = filters.NumberFilter(field_name='business_id',required=True)
+    business_id = filters.UUIDFilter(field_name='business_id',required=True)
     class Meta:
         model = ServiceCategory
         fields = ['is_active', 'business_id']
@@ -79,7 +79,7 @@ class ServiceCategoryViewSet(BaseModelViewSet):
     
 
 class ServiceFilter(filters.FilterSet):
-    business_id = filters.NumberFilter(field_name='business_id')
+    business_id = filters.UUIDFilter(field_name='business_id')
     category_id = filters.NumberFilter(field_name='category_id')
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     description = filters.CharFilter(field_name='description', lookup_expr='icontains')

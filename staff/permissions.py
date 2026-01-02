@@ -48,7 +48,7 @@ class IsBusinessManager(permissions.BasePermission):
         if not business_id:
             return False
         
-        return user.business_id == int(business_id)
+        return str(user.business_id) == str(business_id)
 
 class IsEmployee(permissions.BasePermission):
     """

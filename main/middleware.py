@@ -10,9 +10,6 @@ class TimezoneMiddleware:
         user_tz = request.headers.get('X-Timezone', 'UTC')
         
         timezone.activate(user_tz)
-        print("user_tz", user_tz)
-        print("timezone.now()", timezone.now())
-        print("timezone.localtime(timezone.now())", timezone.localtime(timezone.now()))
         response = self.get_response(request)
         timezone.deactivate()
         return response

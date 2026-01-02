@@ -1,5 +1,5 @@
 from django.db import models
-
+import uuid
 from service.models import ServiceCategory, Service
 from payment.models import PaymentMethod
 from main.models import SoftDeleteModel
@@ -35,7 +35,7 @@ class Business(SoftDeleteModel):
         ('AUD', 'AUD'),
         ('NZD', 'NZD'),
     ]
-    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     business_type = models.ForeignKey(BusinessType, on_delete=models.PROTECT, related_name='businesses')
     phone_number = models.CharField(max_length=50, blank=True, null=True)

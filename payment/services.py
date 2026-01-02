@@ -321,10 +321,8 @@ class POSPaymentService:
     ) -> dict[str, Any]:
         try:
             with transaction.atomic():
-                print("appointment:: ", appointment)
-                print("payment_data:: ", payment_data)
-                print("appointment_services:: ", appointment_services)
-                print("gift_card_redemptions:: ", gift_card_redemptions)
+             
+                metadata = appointment_data['metadata'] or {}
 
                 # update appointment
                 appointment.client_id = appointment_data['client']
@@ -332,7 +330,7 @@ class POSPaymentService:
                 appointment.booking_source = appointment_data['booking_source']
                 appointment.start_at = appointment_data['start_at']
                 appointment.end_at = appointment_data['end_at']
-
+                appointment.metadata = metadata
                 appointment.save()
 
                 # update appointment services
@@ -350,6 +348,7 @@ class POSPaymentService:
                                 'custom_price': appointment_service['custom_price'] or 0,
                                 'tip_amount': appointment_service['tip_amount'] or 0,
                                 'appointment_id': appointment.id,
+                                'metadata': metadata,
                             }
                         )
                 # update payment

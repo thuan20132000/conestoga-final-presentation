@@ -106,7 +106,7 @@ class BookingClientSerializer(serializers.ModelSerializer):
         
 class BookingClientCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating a booking client for a specific business"""
-    primary_business_id = serializers.IntegerField(required=True)
+    primary_business_id = serializers.UUIDField(required=True)
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     phone = serializers.CharField(required=True)

@@ -78,12 +78,14 @@ class Command(BaseCommand):
                     try:
                         # Parse and validate data
                         first_name = row.get('fullname', '').strip()
+                        last_name = ''
                         phone = row.get('tel', '').strip()
                         email = row.get('email', '').strip()
                         
                         # create client
                         client = Client.objects.create(
                             first_name=first_name,
+                            last_name=last_name,
                             email=email,
                             phone=phone,
                             primary_business=business,

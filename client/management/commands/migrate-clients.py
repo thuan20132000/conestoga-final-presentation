@@ -77,17 +77,16 @@ class Command(BaseCommand):
                 for row_num, row in enumerate(reader, start=2):  # Start at 2 because row 1 is header
                     try:
                         # Parse and validate data
-                        first_name = row.get('first_name', '').strip()
-                        last_name = row.get('last_name', '').strip()
+                        first_name = row.get('fullname', '').strip()
                         phone = row.get('tel', '').strip()
                         email = row.get('email', '').strip()
                         
                         # create client
                         client = Client.objects.create(
                             first_name=first_name,
-                            last_name=last_name,
                             email=email,
                             phone=phone,
+                            primary_business=business,
                         )
                         created_count += 1
 

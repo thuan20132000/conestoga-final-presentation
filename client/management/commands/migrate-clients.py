@@ -1,4 +1,4 @@
-
+import uuid
 import csv
 import os
 from django.core.management.base import BaseCommand
@@ -16,7 +16,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             '--business-id',
-            type=int,
+            type=uuid.UUID,
             required=True,
             help='Business ID to associate clients with'
         )

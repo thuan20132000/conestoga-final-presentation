@@ -20,7 +20,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     client_phone = serializers.CharField(source='client.phone', read_only=True)
     business_phone_number = serializers.CharField(
         source='business.phone_number', read_only=True)
-
+    business_twilio_phone_number = serializers.CharField(
+        source='business.twilio_phone_number', read_only=True)
     class Meta:
         model = Appointment
         fields = [
@@ -28,6 +29,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'business',
             'business_name',
             'business_phone_number',
+            'business_twilio_phone_number',
             'client',
             'client_name',
             'client_email',

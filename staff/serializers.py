@@ -9,6 +9,8 @@ class StaffServiceSerializer(serializers.ModelSerializer):
     service_name = serializers.SerializerMethodField()
     service_duration = serializers.IntegerField(source='service.duration_minutes', read_only=True)
     service_price = serializers.DecimalField(source='service.price', read_only=True, max_digits=10, decimal_places=2)
+    service_category_name = serializers.CharField(source='service.category.name', read_only=True)
+    service_category_id = serializers.IntegerField(source='service.category_id', read_only=True)
     
     class Meta:
         model = StaffService
@@ -18,6 +20,8 @@ class StaffServiceSerializer(serializers.ModelSerializer):
             'service_name', 
             'service_duration',
             'service_price',
+            'service_category_name',
+            'service_category_id',
             'is_primary', 
             'custom_price',
             'custom_duration',

@@ -25,7 +25,6 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
     """Handle notifications for appointment creation and updates"""
 
     try:
-        print("appointment instance:: ", instance)
         appointment_data = AppointmentSerializer(instance).data
         client_name = appointment_data.get('client_name', 'A client')
         client_phone = appointment_data.get('client_phone', None)
@@ -33,6 +32,8 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             'business_phone_number', 'Unknown')
         business_name = appointment_data.get(
             'business_name', 'A business')
+        business_twilio_phone_number = appointment_data.get(
+            'business_twilio_phone_number', None)
 
         appointment_id = appointment_data.get('id', None)
         business_id = appointment_data.get('business', None)
@@ -83,6 +84,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         appointment_id=appointment_id,
                         start_at=start_at_str,
                         metadata=metadata,
+                        business_twilio_phone_number=business_twilio_phone_number,
                     )
 
                 if metadata and metadata.get('is_send_reminder_sms', False) == True:
@@ -103,6 +105,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         metadata=metadata,
                         schedule_name=schedule_name,
                         schedule_time=schedule_time,
+                        business_twilio_phone_number=business_twilio_phone_number,
                     )
             else:
                 if not client_phone:
@@ -119,6 +122,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         business_id=business_id,
                         start_at_str=start_at_str,
                         metadata=metadata,
+                        business_twilio_phone_number=business_twilio_phone_number,
                     )
                 # Appointment cancelled
                 if metadata and metadata.get('is_send_sms_cancellation_confirmation', False) == True:
@@ -132,6 +136,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         start_at_str=start_at_str,
                         metadata=metadata,
                         schedule_name=schedule_name,
+                        business_twilio_phone_number=business_twilio_phone_number,
                     )
 
                 # Appointment completed
@@ -146,6 +151,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         appointment_id=appointment_id,
                         business_id=business_id,
                         metadata=metadata,
+                        business_twilio_phone_number=business_twilio_phone_number,
                     )
 
     except Exception as e:

@@ -36,26 +36,34 @@ class SendResult:
 class SMSService:
     group_name: str = "bookngon-calendar"
 
-    def send(self, to_phone: str, body: str, business_id: Optional[int] = None) -> SendResult:
+    def send(
+        self, 
+        to_phone: str, 
+        body: str, 
+        business_id: Optional[int] = None, 
+        business_twilio_phone_number: Optional[str] = None,
+    ) -> SendResult:
         try:
             message = f"{body} {common_settings.OPT_OUT_MESSAGE}"
+            from_phone_number = common_settings.SMS_DEFAULT_SENDER
+            if business_twilio_phone_number:
+                from_phone_number = business_twilio_phone_number
+                
             payload = {
                 "phone_number": to_phone,
                 "message": message,
-                "from_phone_number": common_settings.SMS_DEFAULT_SENDER
+                "from_phone_number": from_phone_number
             }
             response = lambda_client.invoke(
                 FunctionName=LAMBDA_SEND_SMS_ARN,
                 InvocationType='RequestResponse',
                 Payload=json.dumps(payload).encode('utf-8')
             )
-            print(f"Response: {response}")
             # Body is a StreamingBody; decode to string then JSON
             body_bytes = response["Payload"].read()
             body_str = body_bytes.decode("utf-8")
             result = json.loads(body_str) if body_str else {}
             # Optionally look at FunctionError or LogResult
-            print(f"Result: {result}")
 
             if result.get('statusCode', 0) != 200:
                 print(f"Failed to send SMS: {result}")
@@ -89,12 +97,17 @@ class SMSService:
         body: str,
         business_id: Optional[int] = None,
         schedule_time: datetime.datetime = None,
-        schedule_name: Optional[str] = None
+        schedule_name: Optional[str] = None,
+        business_twilio_phone_number: Optional[str] = None,
     ) -> SendResult:
         try:
 
             message = f"{body} {common_settings.OPT_OUT_MESSAGE}"
             at_expression = f"at({schedule_time.strftime('%Y-%m-%dT%H:%M:%S')})"
+            from_phone_number = common_settings.SMS_DEFAULT_SENDER
+            if business_twilio_phone_number:
+                from_phone_number = business_twilio_phone_number
+                
             response = schedule_client.create_schedule(
                 Name=schedule_name,
                 ScheduleExpression=at_expression,
@@ -109,7 +122,7 @@ class SMSService:
                     "Input": json.dumps({
                         "phone_number": to_phone,
                         "message": message,
-                        "from_phone_number": common_settings.SMS_DEFAULT_SENDER
+                        "from_phone_number": from_phone_number
                     })
                 },
                 ScheduleExpressionTimezone="America/Toronto",
@@ -177,10 +190,11 @@ class NotificationDispatcher:
         business_id: Optional[int] = None,
         data: Optional[Dict] = None,
         group_name: Optional[str] = None,
+        business_twilio_phone_number: Optional[str] = None,
     ) -> SendResult:
         
         if channel == Notification.Channel.SMS:
-            return self.sms.send(to, body, business_id)
+            return self.sms.send(to, body, business_id, business_twilio_phone_number)
         if channel == Notification.Channel.PUSH:
             print("Sending push", to)
             if group_name:
@@ -199,9 +213,19 @@ class NotificationDispatcher:
         business_id: Optional[int] = None,
         data: Optional[Dict] = None,
         group_name: Optional[str] = None,
+        business_twilio_phone_number: Optional[str] = None,
     ) -> SendResult:
         def _dispatch():
-            result = self.dispatch(channel, to, title, body, business_id, data, group_name)
+            result = self.dispatch(
+                channel, 
+                to, 
+                title, 
+                body, 
+                business_id, 
+                data, 
+                group_name, 
+                business_twilio_phone_number,
+            )
             return result
         
         thread = threading.Thread(target=_dispatch)
@@ -218,9 +242,10 @@ class NotificationDispatcher:
         data: Optional[Dict] = None,
         schedule_time: Optional[datetime.datetime] = None,
         schedule_name: Optional[str] = None,
+        business_twilio_phone_number: Optional[str] = None,
     ) -> SendResult:
         if channel == Notification.Channel.SMS:
-            return self.sms.send_scheduled(to, body, business_id, schedule_time, schedule_name)
+            return self.sms.send_scheduled(to, body, business_id, schedule_time, schedule_name, business_twilio_phone_number)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
 
     def dispatch_destroy_scheduled(self, channel: str, schedule_name: str) -> SendResult:

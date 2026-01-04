@@ -296,7 +296,9 @@ class AppointmentNotificationService:
         business_name,
         appointment_id,
         start_at,
-        metadata):
+        metadata,
+        business_twilio_phone_number,
+    ):
         try:
             business_id = self.appointment.business.id
             title = f"Appointment Confirmed - {business_name}"
@@ -309,6 +311,7 @@ class AppointmentNotificationService:
                 channel=Notification.Channel.SMS,
                 to=client_phone,
                 business_id=business_id,
+                business_twilio_phone_number=business_twilio_phone_number,
             )
             
         except Exception as e:
@@ -327,6 +330,7 @@ class AppointmentNotificationService:
         schedule_name,
         schedule_time,
         business_id,
+        business_twilio_phone_number,
     ):
         try:
             title = f"Appointment Reminder - {business_name}"
@@ -341,6 +345,7 @@ class AppointmentNotificationService:
                 business_id=business_id,
                 schedule_name=schedule_name,
                 schedule_time=schedule_time,
+                business_twilio_phone_number=business_twilio_phone_number,
             )
         except Exception as e:
             logger.error(f"Error sending reminder SMS: {e}")
@@ -355,7 +360,8 @@ class AppointmentNotificationService:
         appointment_id,
         business_id,
         start_at_str,
-        metadata,
+        metadata,   
+        business_twilio_phone_number,
     ):
         try:
             print("send rescheduled sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
@@ -368,6 +374,7 @@ class AppointmentNotificationService:
                 channel=Notification.Channel.SMS,
                 to=client_phone,
                 business_id=business_id,
+                business_twilio_phone_number=business_twilio_phone_number,
             )
         except Exception as e:
             logger.error(f"Error sending rescheduled SMS: {e}")
@@ -384,6 +391,7 @@ class AppointmentNotificationService:
         start_at_str,
         metadata,
         schedule_name,
+        business_twilio_phone_number,
     ):
         try:
             print("send cancellation sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
@@ -396,6 +404,7 @@ class AppointmentNotificationService:
                 channel=Notification.Channel.SMS,
                 to=client_phone,
                 business_id=business_id,
+                business_twilio_phone_number=business_twilio_phone_number,
             )
             self.dispatcher.dispatch_destroy_scheduled(
                 channel=Notification.Channel.SMS,
@@ -414,6 +423,7 @@ class AppointmentNotificationService:
         appointment_id,
         business_id,
         metadata,
+        business_twilio_phone_number,
     ):
         try:
             review_url = f"{ONLINE_BOOKING_URL}/review/?appointment_id={appointment_id}&business_id={business_id}"
@@ -427,6 +437,7 @@ class AppointmentNotificationService:
                 channel=Notification.Channel.SMS,
                 to=client_phone,
                 business_id=business_id,
+                business_twilio_phone_number=business_twilio_phone_number,
             )
         except Exception as e:
             logger.error(f"Error sending completed SMS: {e}")

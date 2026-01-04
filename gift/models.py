@@ -174,8 +174,8 @@ class GiftCard(models.Model):
         """Generate a unique gift card code"""
         while True:
             # Generate a code: 4 letters + 8 digits (e.g., GIFT12345678)
-            letters = ''.join(secrets.choice(string.ascii_uppercase) for _ in range(4))
-            digits = ''.join(secrets.choice(string.digits) for _ in range(8))
+            letters = ''.join(secrets.choice(string.ascii_uppercase) for _ in range(2))
+            digits = ''.join(secrets.choice(string.digits) for _ in range(4))
             code = f"{letters}{digits}"
             
             if not GiftCard.objects.filter(card_code=code).exists():

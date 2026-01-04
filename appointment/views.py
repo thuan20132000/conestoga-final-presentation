@@ -89,7 +89,7 @@ class AppointmentViewSet(BaseModelViewSet):
     def list(self, request, *args, **kwargs):
         """List appointments"""
         appointments = self.get_filtered_queryset()
-        self.paginator.page_size = request.query_params.get('page_size', 5)
+        self.paginator.page_size = request.query_params.get('page_size', 100)
         
         page = self.paginate_queryset(appointments)
         if page is not None:

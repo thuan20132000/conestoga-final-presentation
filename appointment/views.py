@@ -152,7 +152,6 @@ class AppointmentViewSet(BaseModelViewSet):
     @action(detail=False, methods=['post'], url_path='appointment-services')
     def create_appointment_services(self, request):
         """Create appointment with appointment services"""
-        print("request.data", request.data)
         try:
             with transaction.atomic():
                 appointment_services = request.data['appointment_services']

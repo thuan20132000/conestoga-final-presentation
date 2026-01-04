@@ -54,7 +54,6 @@ class SMSService:
                 "message": message,
                 "from_phone_number": from_phone_number
             }
-            print(f"SMS Payload: {payload}")
             
             response = lambda_client.invoke(
                 FunctionName=LAMBDA_SEND_SMS_ARN,
@@ -198,11 +197,9 @@ class NotificationDispatcher:
         if channel == Notification.Channel.SMS:
             return self.sms.send(to, body, business_id, business_twilio_phone_number)
         if channel == Notification.Channel.PUSH:
-            print("Sending push", to)
             if group_name:
                 return self.push.send_group(group_name, title, body, data)
             if isinstance(to, Staff):
-                print("Sending user push", to.first_name + " " + to.last_name)
                 return self.push.send_user(to, title, body, data)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
     

@@ -300,7 +300,7 @@ class AppointmentNotificationService:
         try:
             business_id = self.appointment.business.id
             title = f"Appointment Confirmed - {business_name}"
-            body_message = f"Hello {client_name}, your appointment #{appointment_id} has been confirmed at {start_at} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+            body_message = f"Your appointment #{appointment_id} has been confirmed at {start_at} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
             
             self.dispatcher.dispatchAsync(
                 title=title,
@@ -330,7 +330,7 @@ class AppointmentNotificationService:
     ):
         try:
             title = f"Appointment Reminder - {business_name}"
-            body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+            body_message = f"Your appointment #{appointment_id} at {start_at} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
             
             self.dispatcher.dispatch_scheduled(
                 title=title,
@@ -359,7 +359,7 @@ class AppointmentNotificationService:
     ):
         try:
             print("send rescheduled sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
-            body_message = f"Hello {client_name}, your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
+            body_message = f"Your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
             title = f"Appointment Rescheduled - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
@@ -387,7 +387,7 @@ class AppointmentNotificationService:
     ):
         try:
             print("send cancellation sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
-            body_message = f"Hello {client_name}, your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
+            body_message = f"Your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
             title = f"Appointment Cancelled - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
@@ -417,7 +417,7 @@ class AppointmentNotificationService:
     ):
         try:
             review_url = f"{ONLINE_BOOKING_URL}/review/?appointment_id={appointment_id}&business_id={business_id}"
-            body_message = f"Hello {client_name}, your appointment #{appointment_id} has been completed at {business_name}. Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business_phone} if you have any questions."
+            body_message = f"Your appointment #{appointment_id} has been completed at {business_name}. Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business_phone} if you have any questions."
             title = f"Appointment Completed - {business_name}"
             
             self.dispatcher.dispatchAsync(

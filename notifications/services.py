@@ -54,6 +54,8 @@ class SMSService:
                 "message": message,
                 "from_phone_number": from_phone_number
             }
+            print(f"SMS Payload: {payload}")
+            
             response = lambda_client.invoke(
                 FunctionName=LAMBDA_SEND_SMS_ARN,
                 InvocationType='RequestResponse',

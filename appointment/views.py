@@ -779,7 +779,85 @@ class BusinessBookingViewSet(BaseModelViewSet):
         except Exception as e:
             print("error", e)
             return self.response_error(str(e))
+    
+    @action(detail=False, methods=['get'], url_path='verify-client')
+    def verify_client(self, request):
+        """Verify client"""
+        try:
+            phone = request.query_params.get('phone')
+            business_id = request.query_params.get('business_id')
+            booking_service = BusinessBookingService(business_id=business_id)
+            client = booking_service.find_client_by_phone(phone)
+            if not client:
+                return self.response_error(
+                    {'error': 'Client not found'}, 
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            return self.response_success(BookingClientSerializer(client).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=False, methods=['get'], url_path='client-by-id')
+    def client_by_id(self, request):
+        """Get client"""
+        try:
+            client_id = request.query_params.get('client_id')
+            business_id = request.query_params.get('business_id')
+            if not business_id:
+                return self.response_error(
+                    {'error': 'business_id parameter is required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            client = Client.objects.filter(
+                id=client_id, 
+                is_active=True, 
+                is_deleted=False,
+                primary_business_id=business_id
+            ).first()
+            
+            if not client:
+                return self.response_error(
+                    {'error': 'Client not found'}, 
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            return self.response_success(BookingClientSerializer(client).data)
+        except Exception as e:
+            return self.response_error(str(e))
         
+    @action(detail=False, methods=['get'], url_path='upcoming-appointments')
+    def upcoming_appointments(self, request):
+        """Get upcoming appointments"""
+        try:
+            business_id = request.query_params.get('business_id')
+            client_id = request.query_params.get('client_id')
+            if not client_id:
+                return self.response_error(
+                    {'error': 'client_id parameter is required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            booking_service = BusinessBookingService(business_id=business_id)
+            appointments = booking_service.find_my_upcoming_appointments(client_id)
+            return self.response_success(AppointmentDetailSerializer(appointments, many=True).data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=False, methods=['post'], url_path='cancel-appointment')
+    def cancel_appointment(self, request):
+        """Cancel an appointment"""
+        try:
+            appointment_id = request.data.get('appointment_id')
+            business_id = request.data.get('business_id')
+            client_id = request.data.get('client_id')
+            if not business_id or not client_id:
+                return self.response_error(
+                    {'error': 'business_id and client_id parameters are required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            booking_service = BusinessBookingService(business_id=business_id)
+            appointment = booking_service.cancel_appointment(appointment_id, client_id)
+            return self.response_success(AppointmentDetailSerializer(appointment).data)
+        except Exception as e:
+            return self.response_error(str(e))
 
 class  POSAppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id', required=True)

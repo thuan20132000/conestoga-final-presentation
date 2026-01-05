@@ -13,6 +13,7 @@ import logging
 from main.utils import get_business_managers_group_name
 from main.common_settings import ONLINE_BOOKING_URL
 from django.db.models import Sum, Count, Value, DateField, F
+from client.models import Client
 
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
@@ -258,7 +259,52 @@ class BusinessBookingService:
         except Exception as e:
             raise Exception(f"Error creating appointment services: {e}")
 
+    def find_my_upcoming_appointments(self, client_id) -> list[Appointment]:
+        try:
+            appointments = Appointment.objects.filter(
+                client_id=client_id, 
+                appointment_date__gte=timezone.now().date(),
+                is_active=True,
+                status=AppointmentStatusType.SCHEDULED.value,
+                business_id=self.business_id
+            ).order_by('appointment_date')
+            
+            return appointments
+        except Exception as e:
+            raise Exception(f"Error finding my appointments: {e}")
+        
+    def find_client_by_phone(self, phone) -> Client | None:
+        try:
+            client = Client.objects.filter(
+                phone=phone, 
+                is_active=True, 
+                is_deleted=False,
+                primary_business_id=self.business_id
+            ).first()
+            if not client:
+                return None
+            return client
+        except Exception as e:
+            raise Exception(f"Error finding client by phone: {e}")
 
+    def cancel_appointment(self, appointment_id, client_id) -> Appointment | None:
+        try:
+            appointment = Appointment.objects.filter(
+                id=appointment_id,
+                client_id=client_id,
+                is_active=True,
+                status=AppointmentStatusType.SCHEDULED.value,
+                business_id=self.business_id
+            ).first()
+            
+            if not appointment:
+                return None
+            appointment.status = AppointmentStatusType.CANCELLED.value
+            appointment.cancelled_at = timezone.now()
+            appointment.save()
+            return appointment
+        except Exception as e:
+            raise Exception(f"Error canceling appointment: {e}")
 class BusinessStaffService:
     def __init__(self, business_id):
         self.business_id = business_id

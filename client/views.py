@@ -129,6 +129,6 @@ class ClientViewSet(BaseModelViewSet):
     def booking_history(self, request, pk=None):
         """Get booking history for a client."""
         client = self.get_object()
-        clients_appointments = Appointment.objects.filter(client=client).order_by('-appointment_date')
+        clients_appointments = Appointment.objects.filter(client=client, is_active=True).order_by('-appointment_date')
         serializer = AppointmentDetailSerializer(clients_appointments, many=True)
         return self.response_success(serializer.data)

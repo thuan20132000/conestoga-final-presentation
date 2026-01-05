@@ -136,6 +136,7 @@ class BusinessBookingService:
                 staff_id=staff_id,
                 is_active=True,
                 appointment__appointment_date=appointment_date,
+                appointment__is_active=True
             ).exclude(
                 appointment__status=AppointmentStatusType.CANCELLED.value,
             )

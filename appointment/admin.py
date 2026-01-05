@@ -13,7 +13,16 @@ class AppointmentServiceInlineAdmin(admin.TabularInline):
 
 @admin.register(Appointment)    
 class AppointmentAdmin(SimpleHistoryAdmin):
-    list_display = ['client', 'business', 'appointment_date', 'status', 'booking_source', 'created_at', 'updated_at']
+    list_display = [
+        'client', 
+        'business', 
+        'appointment_date', 
+        'status', 
+        'booking_source', 
+        'created_at', 
+        'updated_at',
+        'is_active',
+    ]
     list_filter = ['status', 'business', 'booking_source']
     list_per_page = 20
     list_editable = ['status']
@@ -21,7 +30,7 @@ class AppointmentAdmin(SimpleHistoryAdmin):
     list_select_related = ['client', 'business']
     readonly_fields = ['created_at', 'updated_at']
     fieldsets = [
-        (None, {'fields': ['client', 'business', 'appointment_date', 'status', 'booked_by', 'booking_source', 'created_at', 'updated_at']}),
+        (None, {'fields': ['client', 'business', 'appointment_date', 'status', 'booked_by', 'booking_source', 'created_at', 'updated_at', 'is_active']}),
     ]
     inlines = [AppointmentServiceInlineAdmin]
     

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
 from django.contrib.auth.admin import UserAdmin
 from time import time
 
@@ -39,7 +39,7 @@ class StaffAdmin(UserAdmin):
 
     fieldsets = (
         (None, {"fields": ("username", "password")}),
-        ("Personal info", {"fields": ("first_name", "last_name", "email", "phone", "bio")}),
+        ("Personal info", {"fields": ("first_name", "last_name", "email", "phone", "bio", "staff_code")}),
         ("Business Info", {"fields": ("role", "business", "hire_date", "photo", "is_online_booking_allowed", "is_payment_processing_allowed")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
@@ -62,6 +62,7 @@ class StaffAdmin(UserAdmin):
                     "business",
                     "hire_date",
                     "bio",
+                    "staff_code",
                     "photo",
                 ),
             },
@@ -78,3 +79,10 @@ class StaffServiceAdmin(admin.ModelAdmin):
     search_fields = ['staff__username', 'staff__business']
     ordering = ['staff__business__name', 'staff__username', 'service', 'id']
     
+
+@admin.register(TimeEntry)
+class TimeEntryAdmin(admin.ModelAdmin):
+    list_display = ['staff', 'clock_in', 'clock_out', 'total_minutes', 'overtime_minutes', 'status', 'created_at', 'updated_at']
+    list_filter = ['status', 'created_at', 'staff__business']
+    search_fields = ['staff__username', 'staff__business']
+    ordering = ['staff__business__name', 'staff__username', 'clock_in', 'id']

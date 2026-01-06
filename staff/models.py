@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 import uuid
 from main.models import SoftDeleteModel
+import secrets
 
 
 class Staff(AbstractUser, SoftDeleteModel):
@@ -25,6 +26,7 @@ class Staff(AbstractUser, SoftDeleteModel):
     hire_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
     bio = models.TextField(blank=True, null=True)
     photo = models.ImageField(upload_to='staff_photos/', blank=True, null=True)
+    staff_code = models.IntegerField(blank=True, null=True, unique=True)
     
     
     def get_full_name(self):
@@ -42,6 +44,11 @@ class Staff(AbstractUser, SoftDeleteModel):
     def save(self, *args, **kwargs):
         if not self.username:
             self.username = str(uuid.uuid4())
+            
+        if not self.staff_code:
+            self.staff_code = secrets.choice(range(10000, 99999))
+            while Staff.objects.filter(staff_code=self.staff_code).exists():
+                self.staff_code = secrets.choice(range(10000, 99999))
             
         super().save(*args, **kwargs)
         
@@ -115,3 +122,38 @@ class StaffOffDay(SoftDeleteModel):
     
     class Meta:
         unique_together = ['staff', 'start_date', 'end_date']
+
+class TimeEntry(SoftDeleteModel):
+    STATUS_CHOICES = (
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('ADJUSTED', 'Adjusted'),
+        ('AUTO_CLOSED', 'Auto Closed'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
+    clock_in = models.DateTimeField()
+    clock_out = models.DateTimeField(null=True, blank=True)
+
+    break_minutes = models.PositiveIntegerField(default=0)
+    total_minutes = models.PositiveIntegerField(null=True, blank=True)
+    overtime_minutes = models.PositiveIntegerField(null=True, blank=True)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['staff', 'clock_out']),
+        ]
+
+    def calculate_totals(self):
+        """No floats. Minutes only."""
+        worked = int((self.clock_out - self.clock_in).total_seconds() // 60)
+        worked -= self.break_minutes
+        self.total_minutes = max(worked, 0)
+
+        regular = 8 * 60
+        self.overtime_minutes = max(self.total_minutes - regular, 0)

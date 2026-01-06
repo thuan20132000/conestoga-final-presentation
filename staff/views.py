@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
 from .serializers import (
     StaffSerializer,
     StaffCreateUpdateSerializer,
@@ -17,6 +17,7 @@ from .serializers import (
     LoginSerializer,
     RegisterSerializer,
     UserProfileSerializer,
+    TimeEntrySerializer,
 )
 from django_filters import rest_framework as filters
 from business.serializers import BusinessRolesSerializer
@@ -25,6 +26,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
 from staff.permissions import IsBusinessManager
+from staff.services import TimeEntryService
+from django.db.models import Sum
 
 class StaffFilter(filters.FilterSet):
     """Filter for Staff"""
@@ -324,3 +327,66 @@ class TokenVerifyViewCustom(TokenVerifyView):
                 'message': 'Error during token verification',
                 'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    
+class TimeEntryFilter(filters.FilterSet):
+    """Filter for TimeEntry"""
+    business_id = filters.UUIDFilter(field_name='staff__business_id', lookup_expr='exact', required=True)
+    clock_in_date_from = filters.DateFilter(field_name='clock_in', lookup_expr='date__gte', required=False)
+    clock_in_date_to = filters.DateFilter(field_name='clock_in', lookup_expr='date__lte', required=False)
+    staff_id = filters.NumberFilter(field_name='staff_id', lookup_expr='exact', required=False)
+    class Meta:
+        model = TimeEntry
+        fields = ['business_id', 'clock_in_date_from', 'clock_in_date_to', 'staff_id']
+
+class TimeEntryViewSet(BaseModelViewSet):
+    """ViewSet for TimeEntry"""
+    queryset = TimeEntry.objects.filter(is_deleted=False)
+    permission_classes = [IsAuthenticated, IsBusinessManager]
+    filterset_class = TimeEntryFilter
+    
+    def get_serializer_class(self):
+        return TimeEntrySerializer
+    
+    
+    def list(self, request, *args, **kwargs):
+        """List time entries"""
+        try:
+            queryset = self.filter_queryset(self.queryset)
+            
+            summary = {
+                "total_time_entries": queryset.count(),
+                "total_minutes": queryset.aggregate(total_minutes=Sum('total_minutes'))['total_minutes'],
+                "total_overtime_minutes": queryset.aggregate(total_overtime_minutes=Sum('overtime_minutes'))['total_overtime_minutes'],
+            }
+            serializer = TimeEntrySerializer(queryset, many=True)
+            results = {
+                "data": serializer.data,
+                "summary": summary
+            }
+            return self.response_success(results)
+        except Exception as e:
+            return self.response_error(str(e))
+        
+    @action(detail=False, methods=['post'], url_path='clock-in')
+    def clock_in(self, request, *args, **kwargs):
+        """Clock in"""
+        try:
+            staff_code = request.data.get("staff_code")
+            staff = Staff.objects.get(staff_code=staff_code, business_id=request.user.business_id)
+            entry = TimeEntryService.clock_in(staff)
+            return self.response_success(TimeEntrySerializer(entry).data)
+        except Exception as e:
+            return self.response_error(str(e),message=str(e))
+        
+    @action(detail=False, methods=['post'], url_path='clock-out')
+    def clock_out(self, request, *args, **kwargs):
+        """Clock out"""
+        try:
+            staff_code = request.data.get("staff_code")
+            break_minutes = int(request.data.get("break_minutes", 0))
+            staff = Staff.objects.get(staff_code=staff_code, business_id=request.user.business_id)
+            entry = TimeEntryService.clock_out(staff, break_minutes)
+            return self.response_success(TimeEntrySerializer(entry).data)
+        except Exception as e:
+            return self.response_error(str(e),message=str(e))

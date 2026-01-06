@@ -11,6 +11,7 @@ from .views import (
     TokenRefreshViewCustom,
     TokenVerifyViewCustom,
     StaffServiceViewSet,
+    TimeEntryViewSet,
 )
 # Create a router and register our viewsets with it
 router = DefaultRouter()
@@ -18,6 +19,7 @@ router.register(r'staff', StaffViewSet, basename='staff')
 router.register(r'working-hours', StaffWorkingHoursViewSet, basename='staff-working-hours')
 router.register(r'off-days', StaffOffDayViewSet, basename='staff-off-days')
 router.register(r'staff-services', StaffServiceViewSet, basename='staff-services')
+router.register(r'time-entries', TimeEntryViewSet, basename='time-entries')
 # The API URLs are now determined automatically by the router
 urlpatterns = [
     path('', include(router.urls)),

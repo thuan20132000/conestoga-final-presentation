@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
 from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
 
 
@@ -54,6 +54,7 @@ class StaffSerializer(serializers.ModelSerializer):
             'last_name', 
             'full_name', 'email', 'phone',
             'role','role_name', 
+            'staff_code',
             'is_active',
             'is_online_booking_allowed', 
             'is_payment_processing_allowed',
@@ -74,6 +75,7 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
         model = Staff
         fields = [
             'first_name', 'last_name', 'email', 'phone', 'role',
+            'staff_code',
             'is_active',
             'is_online_booking_allowed',
             'is_payment_processing_allowed',
@@ -255,6 +257,7 @@ class UserProfileSerializer(StaffSerializer):
             'phone',
             'role',
             'role_name',
+            'staff_code',
             'business',
             'is_active',
             'is_online_booking_allowed', 
@@ -299,3 +302,33 @@ class BusinessBookingStaffSerializer(serializers.ModelSerializer):
             'id', 'first_name', 'last_name','role_name'
         ]
         read_only_fields = ['id', 'created_at', 'photo', 'role_name']
+        
+
+
+class TimeEntrySerializer(serializers.ModelSerializer):
+    """Serializer for TimeEntry model"""
+    staff_name = serializers.CharField(source='staff.first_name', read_only=True)
+    staff_phone = serializers.CharField(source='staff.phone', read_only=True)
+    class Meta:
+        model = TimeEntry
+        fields = "__all__"
+        read_only_fields = (
+            'clock_in',
+            'clock_out',
+            'total_minutes',
+            'overtime_minutes',
+            'status',
+            'staff_name',
+            'staff_phone'
+        )
+
+class TimeEntrySummarySerializer(serializers.Serializer):
+    """Serializer for time entry summary"""
+    total_time_entries = serializers.IntegerField()
+    total_minutes = serializers.IntegerField()
+    total_overtime_minutes = serializers.IntegerField()
+
+class TimeEntryListSerializer(serializers.Serializer):
+    """Serializer for time entry list"""
+    data = TimeEntrySerializer(many=True)
+    summary = TimeEntrySummarySerializer()

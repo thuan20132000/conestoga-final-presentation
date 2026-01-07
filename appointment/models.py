@@ -80,6 +80,9 @@ class Appointment(SoftDeleteModel):
         default=BookingSourceType.ONLINE,
         help_text="Source of the booking"
     )
+    
+    # send review request to client
+    send_review_request = models.BooleanField(default=False)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

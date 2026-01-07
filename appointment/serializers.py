@@ -48,10 +48,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'completed_at',
             'cancelled_at',
             'is_active',
-            'payment_status'
+            'payment_status',
+            'send_review_request'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at',
-                            'confirmed_at', 'completed_at', 'cancelled_at', 'is_active']
+                            'confirmed_at', 'completed_at', 'cancelled_at', 'is_active', 'send_review_request']
 
     def validate(self, data):
         """Validate appointment data"""

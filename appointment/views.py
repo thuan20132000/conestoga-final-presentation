@@ -39,7 +39,7 @@ from appointment.models import AppointmentStatusType
 from staff.permissions import IsBusinessManager
 from appointment.services import TicketReportService
 from appointment.serializers import BusinessTicketReportSerializer, StaffTicketReportSerializer
-
+from appointment.services import AppointmentNotificationService
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -520,7 +520,24 @@ class AppointmentViewSet(BaseModelViewSet):
         
         return {'is_open': False}
 
-
+    @action(detail=True, methods=['post'], url_path='review-request')
+    def send_review_request(self, request, pk=None):
+        """Send review request to client"""
+        try:
+            appointment = self.get_object()
+            if not appointment:
+                return self.response_error(
+                    {'error': 'Appointment not found'}, 
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            AppointmentNotificationService.send_client_review_request(appointment)
+            appointment.send_review_request = True
+            appointment.save()
+            
+            return self.response_success(data=True, message="Review request sent successfully")
+        except Exception as e:
+            return self.response_error(str(e), message="Failed to send review request")
 class AppointmentServiceViewSet(BaseModelViewSet):
     """ViewSet for managing appointment services"""
     queryset = AppointmentService.objects.all()

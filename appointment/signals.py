@@ -138,21 +138,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         schedule_name=schedule_name,
                         business_twilio_phone_number=business_twilio_phone_number,
                     )
-
-                # Appointment completed
-                if appointment_status == AppointmentStatusType.CHECKED_OUT:
-                    if metadata.get('is_send_sms_checked_out_confirmation', False) == False:
-                        return
-                    appointment_notification_service.send_client_completed_notification(
-                        client_name=client_name,
-                        client_phone=client_phone,
-                        business_phone=business_phone,
-                        business_name=business_name,
-                        appointment_id=appointment_id,
-                        business_id=business_id,
-                        metadata=metadata,
-                        business_twilio_phone_number=business_twilio_phone_number,
-                    )
+   
     except Exception as e:
         # logger.error(f"Error handling appointment notifications: {e}")
         print("Error handling appointment notifications", e)

@@ -461,35 +461,6 @@ class AppointmentNotificationService:
             logger.error(f"Error sending cancellation SMS: {e}")
             raise Exception(f"Error sending cancellation SMS: {e}")
     
-    def send_client_completed_notification(
-        self,
-        client_name,
-        client_phone,
-        business_phone,
-        business_name,
-        appointment_id,
-        business_id,
-        metadata,
-        business_twilio_phone_number,
-    ):
-        try:
-            review_url = f"{ONLINE_BOOKING_URL}/review/?appointment_id={appointment_id}&business_id={business_id}"
-            body_message = f"Your appointment #{appointment_id} has been completed at {business_name}. Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business_phone} if you have any questions."
-            title = f"Appointment Completed - {business_name}"
-            
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
-        except Exception as e:
-            logger.error(f"Error sending completed SMS: {e}")
-            raise Exception(f"Error sending completed SMS: {e}")
-    
     # staff notifications
     def send_staff_appointment_confirmation_notification(
         self,
@@ -572,7 +543,34 @@ class AppointmentNotificationService:
         except Exception as e:
             logger.error(f"Error sending staff payment notification: {e}")
             raise Exception(f"Error sending staff payment notification: {e}")
-        
+    
+    @staticmethod
+    def send_client_review_request(appointment: Appointment):
+        try:
+            metadata = appointment.metadata or {}
+            business = appointment.business
+            review_url = f"{ONLINE_BOOKING_URL}/review/?appointment_id={appointment.id}&business_id={business.id}"
+            body_message = f"Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business.phone_number} if you have any questions."
+            
+            title = f"Leave a Review - {business.name}"
+            schedule_name = f"leave-review-sms3-{business.id}-{appointment.id}"
+            schedule_time = datetime.now() + timedelta(seconds=10)
+            print("sending review request sms", appointment.client.phone, business.id, metadata)
+            print("schedule time", schedule_time)
+            
+            NotificationDispatcher().dispatch_scheduled(
+                title=title,
+                body=body_message,
+                data=metadata,
+                channel=Notification.Channel.SMS,
+                to=appointment.client.phone,
+                business_id=business.id,
+                business_twilio_phone_number=business.twilio_phone_number,
+                schedule_name=schedule_name,
+                schedule_time=schedule_time,
+            )
+        except Exception as e:
+            raise Exception(f"Error sending review request Push: {e}")
 class TicketReportService():
     def __init__(self, business_id):
         self.business_id = business_id

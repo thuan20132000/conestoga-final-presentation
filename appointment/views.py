@@ -875,6 +875,23 @@ class BusinessBookingViewSet(BaseModelViewSet):
             return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
             return self.response_error(str(e))
+    
+    @action(detail=False, methods=['get'], url_path='appointment')
+    def appointment(self, request):
+        """Get an appointment"""
+        try:
+            appointment_id = request.query_params.get('appointment_id')
+            business_id = request.query_params.get('business_id')
+            if not appointment_id or not business_id:
+                return self.response_error(
+                    {'error': 'appointment_id and business_id parameters are required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            booking_service = BusinessBookingService(business_id=business_id)
+            appointment = booking_service.get_appointment(appointment_id)
+            return self.response_success(AppointmentDetailSerializer(appointment).data)
+        except Exception as e:
+            return self.response_error(str(e))
 
 class  POSAppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id', required=True)

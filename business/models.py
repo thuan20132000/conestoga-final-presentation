@@ -40,6 +40,7 @@ class Business(SoftDeleteModel):
     business_type = models.ForeignKey(BusinessType, on_delete=models.PROTECT, related_name='businesses')
     phone_number = models.CharField(max_length=50, blank=True, null=True)
     twilio_phone_number = models.CharField(max_length=50, blank=True, null=True)
+    google_review_url = models.URLField(blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
     website = models.URLField(blank=True, null=True)
     address = models.TextField(blank=True, null=True)

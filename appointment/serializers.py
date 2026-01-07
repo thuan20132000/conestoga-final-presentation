@@ -22,6 +22,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
         source='business.phone_number', read_only=True)
     business_twilio_phone_number = serializers.CharField(
         source='business.twilio_phone_number', read_only=True)
+    business_google_review_url = serializers.URLField(
+        source='business.google_review_url', read_only=True)
     class Meta:
         model = Appointment
         fields = [
@@ -30,6 +32,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'business_name',
             'business_phone_number',
             'business_twilio_phone_number',
+            'business_google_review_url',
             'client',
             'client_name',
             'client_email',

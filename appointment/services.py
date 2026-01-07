@@ -305,6 +305,17 @@ class BusinessBookingService:
             return appointment
         except Exception as e:
             raise Exception(f"Error canceling appointment: {e}")
+    
+    def get_appointment(self, appointment_id) -> Appointment | None:
+        try:
+            appointment = Appointment.objects.get(
+                id=appointment_id,
+                is_active=True,
+                business_id=self.business_id,
+            )
+            return appointment
+        except Exception as e:
+            raise Exception(f"Error getting appointment: {e}")
 class BusinessStaffService:
     def __init__(self, business_id):
         self.business_id = business_id

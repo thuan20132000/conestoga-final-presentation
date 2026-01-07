@@ -48,7 +48,7 @@ class BusinessSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Business
-        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'description', 'logo', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'description', 'logo', 'google_review_url', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
@@ -84,7 +84,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
-            'country', 'description', 'logo', 'operating_hours',
+            'country', 'description', 'logo', 'google_review_url', 'operating_hours',
             'settings', 'online_booking', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -100,7 +100,7 @@ class BusinessCreateUpdateSerializer(serializers.ModelSerializer):
         fields = [
             'name', 'business_type', 'phone_number', 'email', 'website',
             'address', 'city', 'state_province', 'postal_code', 'country',
-            'description', 'logo', 'operating_hours', 'settings'
+            'description', 'logo', 'google_review_url', 'operating_hours', 'settings'
         ]
     
     def create(self, validated_data):
@@ -241,6 +241,7 @@ class BusinessInfoSerializer(serializers.ModelSerializer):
             'country', 
             'description', 
             'logo',
+            'google_review_url',
             'currency',
             'cost_per_minute',
             'status',

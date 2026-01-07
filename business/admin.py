@@ -52,7 +52,7 @@ class BusinessAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'business_type', 'description', 'cost_per_minute', 'twilio_phone_number')
+            'fields': ('name', 'business_type', 'description', 'cost_per_minute', 'twilio_phone_number', 'google_review_url')
         }),
         ('Contact Information', {
             'fields': ('phone_number', 'email', 'website')

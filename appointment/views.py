@@ -876,8 +876,8 @@ class BusinessBookingViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
     
-    @action(detail=False, methods=['get'], url_path='appointment')
-    def appointment(self, request):
+    @action(detail=False, methods=['get'], url_path='client-appointment')
+    def client_appointment(self, request):
         """Get an appointment"""
         try:
             appointment_id = request.query_params.get('appointment_id')

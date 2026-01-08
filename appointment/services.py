@@ -582,6 +582,28 @@ class AppointmentNotificationService:
             )
         except Exception as e:
             raise Exception(f"Error sending review request Push: {e}")
+    
+    @staticmethod
+    def send_manager_cancellation_appointment_notification(
+        client_name: str, 
+        start_time_str: str,
+        business_name: str,
+        business_id: int,
+    ):
+        try:
+            body_message = f"{client_name} has cancelled their appointment at {start_time_str} at {business_name}."
+            title = f"Appointment Cancelled - {business_name}"
+            
+            NotificationDispatcher().dispatchAsync(
+                title=title,
+                body=body_message,
+                channel=Notification.Channel.PUSH,
+                group_name=get_business_managers_group_name(business_id),
+                to=None,
+            )
+        except Exception as e:
+            raise Exception(f"Error sending cancellation appointment notification: {e}")
+
 class TicketReportService():
     def __init__(self, business_id):
         self.business_id = business_id

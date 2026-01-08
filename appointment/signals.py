@@ -108,6 +108,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         business_twilio_phone_number=business_twilio_phone_number,
                     )
             else:
+
                 if not client_phone:
                     return
 
@@ -138,7 +139,15 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         schedule_name=schedule_name,
                         business_twilio_phone_number=business_twilio_phone_number,
                     )
-   
+                
+                if appointment_status == AppointmentStatusType.CANCELLED.value:
+                    appointment_notification_service.send_manager_cancellation_appointment_notification(
+                        business_name=business_name,
+                        business_id=business_id,
+                        client_name=client_name,
+                        start_time_str=start_at_str,
+                    )
+
     except Exception as e:
         # logger.error(f"Error handling appointment notifications: {e}")
         print("Error handling appointment notifications", e)

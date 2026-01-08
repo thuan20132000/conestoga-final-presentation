@@ -359,7 +359,7 @@ class AppointmentNotificationService:
     ):
         try:
             business_id = self.appointment.business.id
-            title = f"Appointment Confirmed - {business_name}"
+            title = f"🔔 Appointment Confirmed - {business_name}"
             body_message = f"Your appointment #{appointment_id} has been confirmed at {start_at} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
             
             self.dispatcher.dispatchAsync(
@@ -391,7 +391,7 @@ class AppointmentNotificationService:
         business_twilio_phone_number,
     ):
         try:
-            title = f"Appointment Reminder - {business_name}"
+            title = f"🔔 Appointment Reminder - {business_name}"
             body_message = f"Your appointment #{appointment_id} at {start_at} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
             
             self.dispatcher.dispatch_scheduled(
@@ -422,9 +422,8 @@ class AppointmentNotificationService:
         business_twilio_phone_number,
     ):
         try:
-            print("send rescheduled sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
             body_message = f"Your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            title = f"Appointment Rescheduled - {business_name}"
+            title = f"🔔 Appointment Rescheduled - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
                 body=body_message,
@@ -486,8 +485,8 @@ class AppointmentNotificationService:
     ):  
         try:
             
-            body_message = f"{client_name} has booked a new appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
-            title = f"New Appointment - {business_name}"
+            body_message = f"{client_name} has booked an appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
+            title = f"🔔 New Appointment - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
                 body=body_message,
@@ -513,8 +512,8 @@ class AppointmentNotificationService:
         business_id,
     ):
         try:
-            body_message = f"{client_name} has booked a new appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
-            title = f"New Appointment - {business_name}"
+            body_message = f"{client_name} has booked an appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
+            title = f"🔔 New Appointment - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
                 body=body_message,
@@ -561,7 +560,7 @@ class AppointmentNotificationService:
             metadata = appointment.metadata or {}
             business = appointment.business
             review_url = f"{ONLINE_BOOKING_URL}/review/?appointment_id={appointment.id}&business_id={business.id}"
-            body_message = f"Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business.phone_number} if you have any questions."
+            body_message = f"🤗 Thank you for choosing us. Please leave a review to help us improve our services at {review_url} and contact us at {business.phone_number} if you have any questions."
             
             title = f"Leave a Review - {business.name}"
             schedule_name = f"leave-review-sms3-{business.id}-{appointment.id}"
@@ -592,7 +591,7 @@ class AppointmentNotificationService:
     ):
         try:
             body_message = f"{client_name} has cancelled their appointment at {start_time_str} at {business_name}."
-            title = f"Appointment Cancelled - {business_name}"
+            title = f"❌ Appointment Cancelled - {business_name}"
             
             NotificationDispatcher().dispatchAsync(
                 title=title,

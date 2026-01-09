@@ -59,7 +59,6 @@ class ClientViewSet(BaseModelViewSet):
     
 
     def list(self, request, *args, **kwargs):
-        print("request.user", request.user)
         queryset = self.get_queryset()
         self.paginator.page_size = request.query_params.get('page_size', 20)
         page = self.paginate_queryset(queryset)

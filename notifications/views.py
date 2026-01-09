@@ -8,16 +8,89 @@ from .services import NotificationDispatcher
 from webpush.models import SubscriptionInfo, PushInformation, Group
 from main.viewsets import BaseViewSet
 from .serializers import PushInformationSerializer, PushGroupSerializer, PushSubscriptionSerializer
+from main.viewsets import BaseModelViewSet
+from django_filters import rest_framework as filters
+from staff.permissions import IsBusinessManager
+from rest_framework.pagination import PageNumberPagination
+
 dispatcher = NotificationDispatcher()
 
 
-class NotificationViewSet(viewsets.ModelViewSet):
-    queryset = Notification.objects.all().order_by("-created_at")
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-    filterset_fields = ["channel", "status", "user"]
-    search_fields = ["to", "title", "body"]
+class NotificationFilter(filters.FilterSet):
+    class Meta:
+        model = Notification
+        fields = ["channel", "status", "business"]
 
+class NotificationViewSet(BaseModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    filterset_class = NotificationFilter
+    search_fields = ["to", "title", "body"]
+    permission_classes = [IsAuthenticated, IsBusinessManager]
+    pagination_class = PageNumberPagination
+    page_size = 100
+    page_size_query_param = "page_size"
+    max_page_size = 1000
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        self.paginator.page_size = request.query_params.get('page_size', 100)
+        page = self.paginate_queryset(queryset)
+        
+        
+        if page is not None:
+            serializer = NotificationSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = NotificationSerializer(queryset, many=True)
+        return self.response_success(serializer.data)
+
+class SMSNotificationFilter(filters.FilterSet):
+    
+    created_date_from = filters.DateFilter(field_name="created_at", lookup_expr="date__gte")
+    created_date_to = filters.DateFilter(field_name="created_at", lookup_expr="date__lte")
+    recipient = filters.CharFilter(field_name="to", lookup_expr="icontains")
+    
+    class Meta:
+        model = Notification
+        fields = ["status", "business", "created_date_from", "created_date_to", "recipient"]
+
+class SMSNotificationViewSet(BaseModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated, IsBusinessManager]
+    filterset_class = SMSNotificationFilter
+    search_fields = ["to", "title", "body"]
+    pagination_class = PageNumberPagination
+    page_size = 100
+    page_size_query_param = "page_size"
+    max_page_size = 1000
+
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.filter(channel=Notification.Channel.SMS).order_by("-created_at")
+        return self.filter_queryset(queryset)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        self.paginator.page_size = request.query_params.get('page_size', 20)
+        page = self.paginate_queryset(queryset)
+        
+        total_sms_notifications = queryset.count()
+        PER_SMS_COST = 0.0083 * 2 # 2 SMS per notification
+        total_sms_cost = total_sms_notifications * PER_SMS_COST
+        metadata = {
+            "total_notifications": total_sms_notifications,
+            "total_cost": total_sms_cost,
+            "per_notification_cost": PER_SMS_COST,
+        }
+        if page is not None:
+            serializer = NotificationSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data, metadata=metadata)
+        
+        serializer = NotificationSerializer(queryset, many=True)
+        return self.response_success(serializer.data, metadata=metadata)
 
 class PushDeviceViewSet(viewsets.ModelViewSet):
     queryset = PushDevice.objects.all().order_by("-created_at")
@@ -76,3 +149,4 @@ class WebPushViewSet(BaseViewSet):
                 return self.response_error(data=None, message="Subscription not found")
         except Exception as e:
             return self.response_error(data=None, message=str(e))
+        

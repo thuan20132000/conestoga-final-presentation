@@ -5,7 +5,7 @@ from .models import Notification
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ("id", "channel", "business", "to", "status", "created_at", "sent_at")
-    list_filter = ("channel", "status", "created_at", "business", "user")
+    list_filter = ("channel", "status","business")
     search_fields = ("to", "title", "body")
     readonly_fields = ("created_at", "sent_at")
 

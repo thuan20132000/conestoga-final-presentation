@@ -64,53 +64,44 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
         appointment_notification_service = AppointmentNotificationService(
             instance)
 
+        if not client_phone:
+            return
+
         with transaction.atomic():
             if created:
-                # Client notifications
-                if not client_phone:
-                    return
                 # send confirmation sms
                 if metadata and metadata.get('is_send_confirmation_sms', False) == True:
 
-                    if send_confirmation_sms == False:
-                        return
-
-                    # New appointment created
-                    appointment_notification_service.send_client_confirmation_notification(
-                        client_name=client_name,
-                        client_phone=client_phone,
-                        business_phone=business_phone,
-                        business_name=business_name,
-                        appointment_id=appointment_id,
-                        start_at=start_at_str,
-                        metadata=metadata,
-                        business_twilio_phone_number=business_twilio_phone_number,
-                    )
+                    if send_confirmation_sms == True:
+                        # New appointment created
+                        appointment_notification_service.send_client_confirmation_notification(
+                            client_name=client_name,
+                            client_phone=client_phone,
+                            business_phone=business_phone,
+                            business_name=business_name,
+                            appointment_id=appointment_id,
+                            start_at=start_at_str,
+                            metadata=metadata,
+                            business_twilio_phone_number=business_twilio_phone_number,
+                        )
 
                 if metadata and metadata.get('is_send_reminder_sms', False) == True:
                     # New appointment created
-                    if business_settings.send_reminder_sms == False:
-                        return
-
-                    if schedule_time <= timezone.now():
-                        return
-                    appointment_notification_service.send_client_reminder_notification(
-                        client_name=client_name,
-                        client_phone=client_phone,
-                        business_phone=business_phone,
-                        business_name=business_name,
-                        appointment_id=appointment_id,
-                        business_id=business_id,
-                        start_at=start_at_str,
-                        metadata=metadata,
-                        schedule_name=schedule_name,
-                        schedule_time=schedule_time,
-                        business_twilio_phone_number=business_twilio_phone_number,
-                    )
+                    if business_settings.send_reminder_sms == True and schedule_time > timezone.now():
+                        appointment_notification_service.send_client_reminder_notification(
+                            client_name=client_name,
+                            client_phone=client_phone,
+                            business_phone=business_phone,
+                            business_name=business_name,
+                            appointment_id=appointment_id,
+                            business_id=business_id,
+                            start_at=start_at_str,
+                            metadata=metadata,
+                            schedule_name=schedule_name,
+                            schedule_time=schedule_time,
+                            business_twilio_phone_number=business_twilio_phone_number,
+                        )
             else:
-
-                if not client_phone:
-                    return
 
                 # Appointment rescheduled
                 if metadata and metadata.get('is_send_sms_rescheduled_confirmation', False) == True:

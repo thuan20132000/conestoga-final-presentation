@@ -50,10 +50,11 @@ class SMSNotificationFilter(filters.FilterSet):
     created_date_from = filters.DateFilter(field_name="created_at", lookup_expr="date__gte")
     created_date_to = filters.DateFilter(field_name="created_at", lookup_expr="date__lte")
     recipient = filters.CharFilter(field_name="to", lookup_expr="icontains")
+    business = filters.UUIDFilter(field_name="business_id", lookup_expr="exact", required=True)
     
     class Meta:
         model = Notification
-        fields = ["status", "business", "created_date_from", "created_date_to", "recipient"]
+        fields = ["status", "created_date_from", "created_date_to", "recipient", "business"]
 
 class SMSNotificationViewSet(BaseModelViewSet):
     queryset = Notification.objects.all()

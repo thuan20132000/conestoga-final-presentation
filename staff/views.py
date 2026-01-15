@@ -367,6 +367,23 @@ class TimeEntryViewSet(BaseModelViewSet):
             return self.response_success(results)
         except Exception as e:
             return self.response_error(str(e))
+    
+    @action(detail=False, methods=['get'], url_path='staff-detail')
+    def staff_detail_by_code(self, request, *args, **kwargs):
+        """Staff detail by code"""
+        try:
+            staff_code = request.query_params.get("staff_code")
+            if not staff_code:
+                return self.response_error(
+                    {'error': 'staff_code is required'}, 
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+                
+            staff = Staff.objects.get(staff_code=staff_code, business_id=request.user.business_id)
+            serializer = StaffSerializer(staff)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
         
     @action(detail=False, methods=['post'], url_path='clock-in')
     def clock_in(self, request, *args, **kwargs):

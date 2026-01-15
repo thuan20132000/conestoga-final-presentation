@@ -166,6 +166,20 @@ class AppointmentService(SoftDeleteModel):
         blank=True,
     )
     
+    discount_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+    )
+    
+    discount_percentage = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2, 
+        null=True, 
+        blank=True,
+    )
+    
     custom_duration = models.IntegerField(
         help_text="Duration in minutes", 
         null=True, 

@@ -287,7 +287,6 @@ class AppointmentViewSet(BaseModelViewSet):
                 end_date__gte=appointment_date,
             )
             
-            
             # Get staff who are available for the appointment date
             if staff_off_days.exists():
                 staff_on_leave_ids = staff_off_days.values_list('staff__id', flat=True)
@@ -295,9 +294,9 @@ class AppointmentViewSet(BaseModelViewSet):
                     staff_id__in=staff_on_leave_ids,
                     appointment__appointment_date=appointment_date,
                 )
-                staff_on_leave_with_appointments = staff_off_day_appointments.values_list('staff_id', flat=True)
+                staff_on_leave_with_appointments = staff_off_day_appointments.values_list('staff__id', flat=True)
                 
-                staff_on_leave_without_appointments = staff_on_leave_ids.exclude(id__in=list(staff_on_leave_with_appointments))
+                staff_on_leave_without_appointments = staff_on_leave_ids.exclude(staff__id__in=list(staff_on_leave_with_appointments))
                 
                 available_staffs = business_staffs.exclude(id__in=staff_on_leave_without_appointments)
             else:

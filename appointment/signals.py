@@ -25,6 +25,9 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
     """Handle notifications for appointment creation and updates"""
 
     try:
+        if instance.is_active == False:
+            return
+        
         appointment_data = AppointmentSerializer(instance).data
         client_name = appointment_data.get('client_name', 'A client')
         client_phone = appointment_data.get('client_phone', None)

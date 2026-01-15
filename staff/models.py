@@ -119,9 +119,7 @@ class StaffOffDay(SoftDeleteModel):
 
     def __str__(self):
         return f"{self.staff} - {self.start_date} to {self.end_date} - {self.reason}"
-    
-    class Meta:
-        unique_together = ['staff', 'start_date', 'end_date']
+
 
 class TimeEntry(SoftDeleteModel):
     STATUS_CHOICES = (

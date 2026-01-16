@@ -176,7 +176,7 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
         appointment_service.get('start_at'))
     start_time_str = start_time_obj.strftime("%I:%M %p on %B %d, %Y")
     is_staff_request = appointment_service.get('is_staff_request')
-    booking_source = f"from {booking_source}" if booking_source else ""
+    booking_source = f"({booking_source})" if booking_source else ""
     staff_obj = Staff.objects.get(id=staff_id)
 
     appointment_notification_service = AppointmentNotificationService(instance)

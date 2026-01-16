@@ -47,6 +47,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
         )
         send_confirmation_sms = business_settings.send_confirmation_sms if business_settings else False
         reminder_hours_before = business_settings.reminder_hours_before if business_settings else 2
+        send_cancellation_sms = business_settings.send_cancellation_sms if business_settings else False
         business_timezone = business_settings.timezone
 
         timezone.activate(business_timezone)
@@ -121,18 +122,19 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                     )
                 # Appointment cancelled
                 if metadata and metadata.get('is_send_sms_cancellation_confirmation', False) == True:
-                    appointment_notification_service.send_client_cancellation_notification(
-                        client_name=client_name,
-                        client_phone=client_phone,
-                        business_phone=business_phone,
-                        business_name=business_name,
-                        appointment_id=appointment_id,
-                        business_id=business_id,
-                        start_at_str=start_at_str,
-                        metadata=metadata,
-                        schedule_name=schedule_name,
-                        business_twilio_phone_number=business_twilio_phone_number,
-                    )
+                    if send_cancellation_sms == True:
+                        appointment_notification_service.send_client_cancellation_notification(
+                            client_name=client_name,
+                            client_phone=client_phone,
+                            business_phone=business_phone,
+                            business_name=business_name,
+                            appointment_id=appointment_id,
+                            business_id=business_id,
+                            start_at_str=start_at_str,
+                            metadata=metadata,
+                            schedule_name=schedule_name,
+                            business_twilio_phone_number=business_twilio_phone_number,
+                        )
                 
                 if appointment_status == AppointmentStatusType.CANCELLED.value:
                     appointment_notification_service.send_manager_cancellation_appointment_notification(

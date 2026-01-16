@@ -36,7 +36,7 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
             'id', 'timezone', 'advance_booking_days', 'min_advance_booking_hours', 
             'max_advance_booking_days', 'time_slot_interval', 'buffer_time_minutes',
             'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
-            'send_confirmation_sms',
+            'send_confirmation_sms', 'send_cancellation_sms',
             'currency', 'tax_rate', 'require_payment_advance', 'allow_online_booking',
             'require_client_phone', 'require_client_email', 'auto_confirm_appointments',
         ]

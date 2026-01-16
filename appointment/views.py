@@ -998,7 +998,6 @@ class TicketReportViewSet(BaseModelViewSet):
             ticket_report = TicketReportService(self.request.user.business_id)
             ticket_report_data = ticket_report.get_ticket_report_summary(from_date, to_date, staff_id)
             
-            print("ticket_report_data", ticket_report_data)
             serializer = BusinessTicketReportSerializer(ticket_report_data)
             return self.response_success(serializer.data)
         except Exception as e:

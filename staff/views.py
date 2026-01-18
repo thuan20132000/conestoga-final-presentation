@@ -26,7 +26,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
 from staff.permissions import IsBusinessManager
-from staff.services import TimeEntryService
+from staff.services import TimeEntryService, StaffCredentialService
+from django.db import transaction
 from django.db.models import Sum
 
 class StaffFilter(filters.FilterSet):
@@ -106,6 +107,16 @@ class StaffViewSet(BaseModelViewSet):
             services = staff.staff_services.all()
             serializer = StaffServiceSerializer(services, many=True)
             return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=True, methods=['post'], url_path='reset-credentials')
+    def reset_credentials(self, request, *args, **kwargs):
+        """Reset staff credentials"""
+        try:
+            staff = self.get_object()
+            credentials = StaffCredentialService.create_or_reset_credentials(staff, send_sms=True)
+            return self.response_success(credentials)
         except Exception as e:
             return self.response_error(str(e))
                 

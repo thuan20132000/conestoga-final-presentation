@@ -1,6 +1,10 @@
 from django.db import transaction
 from django.utils import timezone
-from .models import TimeEntry
+import secrets
+import string
+from .models import TimeEntry, Staff
+from notifications.services import SMSService
+from main.common_settings import CALENDAR_LOGIN_URL
 
 
 class TimeEntryService:
@@ -42,3 +46,70 @@ class TimeEntryService:
     @transaction.atomic
     def get_time_entry(staff):
         return TimeEntry.objects.get(staff=staff, clock_out__isnull=True)
+
+
+class StaffCredentialService:
+    DEFAULT_PASSWORD_LENGTH = 10
+    PASSWORD_CHARS = string.ascii_letters + string.digits
+
+    @staticmethod
+    def _normalize_phone(phone: str) -> str:
+        if not phone:
+            raise ValueError("Staff phone is required")
+        normalized = "".join(char for char in phone if char.isdigit())
+        if not normalized:
+            raise ValueError("Invalid staff phone number")
+        return normalized
+
+    @staticmethod
+    def _generate_unique_username(phone: str, staff_id: int | None = None) -> str:
+        base_username = StaffCredentialService._normalize_phone(phone)
+        username = base_username
+        counter = 1
+        while Staff.objects.filter(username=username).exclude(pk=staff_id).exists():
+            username = f"{base_username}{counter}"
+            counter += 1
+        return username
+
+    @staticmethod
+    def _generate_password(length: int | None = None) -> str:
+        length = length or StaffCredentialService.DEFAULT_PASSWORD_LENGTH
+        if length < 8:
+            length = 8
+        return "".join(secrets.choice(StaffCredentialService.PASSWORD_CHARS) for _ in range(length))
+
+    @staticmethod
+    def _send_credentials_sms(staff: Staff, username: str, password: str) -> None:
+        sms_service = SMSService()
+        business_twilio_phone_number = None
+        business_id = None
+        if staff.business:
+            business_id = staff.business_id
+            business_twilio_phone_number = getattr(staff.business, "twilio_phone_number", None)
+
+        message = f"{staff.first_name}, your credentials are ready in {staff.business.name}. Username: {username}. Password: {password}."
+        message += f"Please login to your account at {CALENDAR_LOGIN_URL}."
+        
+        result = sms_service.send(
+            staff.phone,
+            message,
+            business_id=business_id,
+            business_twilio_phone_number=business_twilio_phone_number
+        )
+        if not result.ok:
+            raise ValueError(result.error or "Failed to send SMS")
+
+    @staticmethod
+    @transaction.atomic
+    def create_or_reset_credentials(staff: Staff, send_sms: bool = False) -> dict:
+        username = StaffCredentialService._generate_unique_username(staff.phone, staff.pk)
+        password = StaffCredentialService._generate_password()
+        staff.username = username
+        staff.set_password(password)
+        staff.save()
+
+        if send_sms:
+            StaffCredentialService._send_credentials_sms(staff, username, password)
+
+        return {"username": username, "password": password}
+

@@ -7,7 +7,9 @@ from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
-
+from django.utils import timezone
+from business.models import BusinessSettings
+from datetime import datetime
 dispatcher = NotificationDispatcher()
 
 logger = logging.getLogger(__name__)
@@ -54,9 +56,18 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
         business_name = instance.staff.business.name
         first_name = instance.staff.first_name
         
+        business_settings = BusinessSettings.objects.get(business_id=business_id)
+        if not business_settings:
+            business_timezone = timezone.get_current_timezone()
+        else:
+            business_timezone = business_settings.timezone
+        
+        timezone.activate(business_timezone)
+        
         if instance.status == 'IN_PROGRESS':
             title = f"🔔 Staff Clocked In - {business_name}"
-            body = f"{first_name} has clocked in at {instance.clock_in.strftime('%Y-%m-%d %H:%M:%S')}."
+            clock_in_time = timezone.localtime(instance.clock_in).strftime('%I:%M %p on %B %d, %Y')
+            body = f"{first_name} has clocked in at {clock_in_time}."
             
             dispatcher.dispatchAsync(
                 title=title,
@@ -68,7 +79,8 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
             
         if instance.status == 'COMPLETED':
             title = f"🔔 Staff Clocked Out - {business_name}"
-            body = f"{first_name} has clocked out at {instance.clock_out.strftime('%Y-%m-%d %H:%M:%S')}."
+            clock_out_time = timezone.localtime(instance.clock_out).strftime('%I:%M %p on %B %d, %Y')
+            body = f"{first_name} has clocked out at {clock_out_time}."
             
             dispatcher.dispatchAsync(
                 title=title,
@@ -80,3 +92,5 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
     except Exception as e:
         print(f"Error sending time entry notification: {e}")
         return
+    finally:
+        timezone.deactivate()

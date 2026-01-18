@@ -1,10 +1,15 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import Staff, StaffService
+from .models import Staff, StaffService, TimeEntry
 from service.models import Service
 import logging
 from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
+from notifications.models import Notification
+from notifications.services import NotificationDispatcher
+
+dispatcher = NotificationDispatcher()
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,3 +43,40 @@ def handle_staff_post_save(sender, instance, created, **kwargs):
                 push_information.save()
         except Exception as e:
             print(f"Error updating staff group: {e}")
+
+
+# signal to send push notification to managers when a staff is clocked in or clocked out
+@receiver(post_save, sender=TimeEntry)
+def handle_time_entry_post_save(sender, instance, created, **kwargs):
+    """Send push notification to managers when a staff is clocked in or clocked out"""
+    try:
+        business_id = instance.staff.business.id
+        business_name = instance.staff.business.name
+        first_name = instance.staff.first_name
+        
+        if instance.status == 'IN_PROGRESS':
+            title = f"🔔 Staff Clocked In - {business_name}"
+            body = f"{first_name} has clocked in at {instance.clock_in.strftime('%Y-%m-%d %H:%M:%S')}."
+            
+            dispatcher.dispatchAsync(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                group_name=get_business_managers_group_name(business_id),
+            )
+            
+        if instance.status == 'COMPLETED':
+            title = f"🔔 Staff Clocked Out - {business_name}"
+            body = f"{first_name} has clocked out at {instance.clock_out.strftime('%Y-%m-%d %H:%M:%S')}."
+            
+            dispatcher.dispatchAsync(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                group_name=get_business_managers_group_name(business_id),
+            )
+    except Exception as e:
+        print(f"Error sending time entry notification: {e}")
+        return

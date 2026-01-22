@@ -5,6 +5,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
 from decimal import Decimal
+from django.conf import settings
+from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import GiftCard, GiftCardTransaction, GiftCardStatusType
 from .serializers import (
@@ -19,6 +23,17 @@ from .services import GiftCardService
 from main.viewsets import BaseModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from staff.permissions import IsBusinessManager
+
+from .serializers import GiftCardOnlinePaymentIntentSerializer
+from .services import GiftCardOnlinePaymentService
+from payment.stripe_service import StripeService
+from main.viewsets import BaseViewSet
+
+from rest_framework.permissions import AllowAny
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class GiftCardViewSet(BaseModelViewSet):
@@ -338,3 +353,61 @@ class GiftCardTransactionViewSet(BaseModelViewSet):
         
         return queryset.select_related('gift_card', 'payment', 'appointment', 'created_by')
 
+
+
+class GiftCardOnlinePaymentIntentViewSet(BaseViewSet):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def create(self, request):
+        print(request.data)
+        serializer = GiftCardOnlinePaymentIntentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            service = GiftCardOnlinePaymentService()
+            result = service.create_stripe_payment_intent(serializer.validated_data)
+            payment_intent = result["payment_intent"]
+            payment = result["payment"]
+        except Exception as exc:
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        
+        return self.response_success(
+            {
+                "client_secret": payment_intent.client_secret,
+                "payment_intent_id": payment_intent.id,
+                "payment_id": payment.id,
+                "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
+            },
+            status_code=status.HTTP_201_CREATED,
+        )
+
+@method_decorator(csrf_exempt, name="dispatch")
+class GiftCardStripeWebhookViewSet(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+        payload = request.body
+        
+        # logger.info("payload:: %s", payload)
+        # logger.info("signature:: %s", signature)
+
+        try:
+            stripe_service = StripeService()
+            event = stripe_service.construct_event(payload, signature)
+        except Exception as exc:
+            logger.error("error constructing event:: %s", exc)
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # logger.info("webhook received:: %s", event)
+        GiftCardOnlinePaymentService().handle_stripe_event(event)
+        return Response({"status": "success"})

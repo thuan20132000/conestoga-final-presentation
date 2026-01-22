@@ -2,6 +2,8 @@ from rest_framework import serializers
 from django.utils import timezone
 from .models import GiftCard, GiftCardTransaction, GiftCardStatusType, GiftCardTransactionType
 from decimal import Decimal
+from business.models import Business
+from client.models import Client
 
 
 class GiftCardTransactionSerializer(serializers.ModelSerializer):
@@ -74,6 +76,36 @@ class GiftCardCreateSerializer(serializers.ModelSerializer):
     
     def validate_expires_at(self, value):
         """Validate expiration date"""
+        if value and value <= timezone.now():
+            raise serializers.ValidationError("Expiration date must be in the future")
+        return value
+
+
+class GiftCardOnlinePaymentIntentSerializer(serializers.Serializer):
+    business = serializers.PrimaryKeyRelatedField(queryset=Business.objects.all())
+    purchaser = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    recipient_name = serializers.CharField(required=False, allow_blank=True)
+    recipient_email = serializers.EmailField(required=False, allow_blank=True)
+    recipient_phone = serializers.CharField(required=False, allow_blank=True)
+    initial_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    currency = serializers.ChoiceField(
+        choices=GiftCard._meta.get_field("currency").choices,
+        required=False,
+    )
+    expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    message = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_initial_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Initial amount must be greater than zero")
+        return value
+
+    def validate_expires_at(self, value):
         if value and value <= timezone.now():
             raise serializers.ValidationError("Expiration date must be in the future")
         return value

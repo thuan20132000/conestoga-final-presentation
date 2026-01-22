@@ -12,7 +12,7 @@ from payment.models import (
 )
 from payment.stripe_service import StripeService
 from business.models import Business
-from main.utils import money_quantize
+from main.utils import money_quantize, send_html_email
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -281,6 +281,31 @@ class GiftCardService:
 class GiftCardOnlinePaymentService:
     """Service for online gift card payments"""
 
+    def _send_gift_card_email(self, gift_card: GiftCard) -> None:
+        recipient_email = gift_card.recipient_email
+        if not recipient_email:
+            return
+
+        business_name = gift_card.business.name if gift_card.business_id else "our business"
+        recipient_name = gift_card.recipient_name or "there"
+        subject = f"You've received a gift card from {business_name}"
+
+        expires_at = None
+        if gift_card.expires_at:
+            expires_at = timezone.localtime(gift_card.expires_at).strftime("%Y-%m-%d")
+
+        result = send_html_email(subject, recipient_email, "emails/gift_card.html", {
+            "recipient_name": recipient_name,
+            "business_name": business_name,
+            "code": gift_card.card_code,
+            "balance": gift_card.current_balance,
+            "currency": gift_card.currency,
+            "message": gift_card.message,
+            "expires_at": expires_at,
+        })
+        if result is False:
+            logger.error("Failed to send gift card email to %s", recipient_email)
+
     def _get_online_payment_method(self, business_id: int) -> Optional[PaymentMethod]:
         return (
             PaymentMethod.objects.filter(
@@ -483,7 +508,7 @@ class GiftCardOnlinePaymentService:
         amount = money_quantize(Decimal(amount_value))
         currency = (metadata.get("currency") or payment.currency).upper()
 
-        GiftCardService().create_gift_card(
+        gift_card = GiftCardService().create_gift_card(
             business_id=payment.business_id,
             initial_amount=amount,
             currency=currency,
@@ -496,6 +521,7 @@ class GiftCardOnlinePaymentService:
             notes=metadata.get("notes"),
             payment_id=payment.id,
         )
+        self._send_gift_card_email(gift_card)
 
     def _handle_payment_failed(self, payment_intent: Any) -> None:
         payment = self._get_or_create_payment_from_intent(payment_intent)

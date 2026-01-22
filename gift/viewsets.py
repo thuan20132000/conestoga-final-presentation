@@ -375,7 +375,6 @@ class GiftCardOnlinePaymentIntentViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        
         return self.response_success(
             {
                 "client_secret": payment_intent.client_secret,

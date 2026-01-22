@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Your Gift Card from {{ business_name }}</title>
+    <style>
+      body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #fafbfc;
+      }
+      .container {
+        max-width: 420px;
+        margin: 40px auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.11);
+        padding: 32px 28px 26px 28px;
+      }
+      h2 {
+        color: #255a46;
+        font-weight: 600;
+        letter-spacing: 0.1px;
+        margin: 0 0 8px 0;
+        font-size: 24px;
+      }
+      .subtitle {
+        margin-top: 0;
+        color: #4d4d4d;
+        font-size: 16px;
+      }
+      .card-block {
+        background: #f1f7f4;
+        border-radius: 8px;
+        padding: 20px 18px;
+        margin: 24px 0 18px 0;
+        text-align: center;
+        border: 1.5px solid #b0e1d2;
+      }
+      .label {
+        color: #38654a;
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        margin-bottom: 4px;
+      }
+      .giftcode {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.13em;
+        color: #3e426b;
+        background: #e9ecef;
+        border-radius: 4px;
+        padding: 6px 16px;
+        margin: 6px 0 10px;
+        display: inline-block;
+      }
+      .amount {
+        font-size: 19px;
+        font-weight: 600;
+        color: #1b693f;
+        margin: 8px 0 0 0;
+      }
+      .expiration {
+        color: #a87a26;
+        background: #fff7e1;
+        border-radius: 3px;
+        font-size: 14px;
+        padding: 5px 12px;
+        display: inline-block;
+        margin-top: 10px;
+      }
+      .message-block {
+        margin: 20px 0 8px 0;
+        padding: 12px 18px;
+        background: #fcf6ef;
+        border-left: 3px solid #edc578;
+        color: #955605;
+        border-radius: 5px;
+        font-style: italic;
+        font-size: 15px;
+      }
+      .footer {
+        margin-top: 26px;
+        color: #797979;
+        font-size: 13px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>You received a gift card 🎁</h2>
+      <p class="subtitle">
+        Hello {{ recipient_name|default:"there" }},
+        <br />
+        You received a gift card for <strong>{{ business_name }}</strong>!
+      </p>
+
+      <div class="card-block">
+        <div class="label">Gift Card Code</div>
+        <span class="giftcode">{{ code }}</span>
+        <div class="label" style="margin-top:14px;">Balance</div>
+        <div class="amount">{{ balance }} {{ currency }}</div>
+        {% if expires_at %}
+          <div class="expiration">Expires: {{ expires_at }}</div>
+        {% endif %}
+      </div>
+
+      {% if message %}
+        <div class="message-block">
+          "{{ message }}"
+        </div>
+      {% endif %}
+
+      <div style="margin-top:22px;">
+        <p style="margin:0 0 8px 0;">Redeem this gift card when booking your next appointment.</p>
+        <p style="margin:2px 0 0 0;">Simply bring this code or apply it online at checkout.</p>
+      </div>
+
+      <div class="footer">
+        Thank you for choosing {{ business_name }}.<br/>
+        <span style="color:#c5cfcc;">·</span> Powered by Our Gift Card Service
+      </div>
+    </div>
+  </body>
+</html>

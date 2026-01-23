@@ -12,8 +12,10 @@ from payment.models import (
 )
 from payment.stripe_service import StripeService
 from business.models import Business
+from main.common_settings import ONLINE_BOOKING_URL
 from main.utils import money_quantize, send_html_email
-
+from notifications.services import EmailService, NotificationDispatcher
+from notifications.models import Notification
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -280,12 +282,29 @@ class GiftCardService:
 
 class GiftCardOnlinePaymentService:
     """Service for online gift card payments"""
+    
+    def __init__(self, stripe_service: StripeService):
+        self.stripe_service = stripe_service
+        
+    def handle_stripe_event(self, event: Any) -> None:
+        event_type = event.get("type")
+        data_object = event.get("data", {}).get("object", {})
+        
+        if event_type == "checkout.session.completed":
+            logger.info("checkout.session.completed:: %s", data_object)
+            self._handle_payment_succeeded(data_object)
+        elif event_type == "checkout.session.expired":
+            logger.info("checkout.session.expired:: %s", data_object)
+            # self._handle_payment_failed(data_object)
 
     def _send_gift_card_email(self, gift_card: GiftCard) -> None:
         recipient_email = gift_card.recipient_email
         if not recipient_email:
             return
 
+        booking_url = ONLINE_BOOKING_URL
+        if gift_card.business_id:
+            booking_url = f"{ONLINE_BOOKING_URL}/?business_id={gift_card.business_id}"
         business_name = gift_card.business.name if gift_card.business_id else "our business"
         recipient_name = gift_card.recipient_name or "there"
         subject = f"You've received a gift card from {business_name}"
@@ -293,8 +312,9 @@ class GiftCardOnlinePaymentService:
         expires_at = None
         if gift_card.expires_at:
             expires_at = timezone.localtime(gift_card.expires_at).strftime("%Y-%m-%d")
-
-        result = send_html_email(subject, recipient_email, "emails/gift_card.html", {
+        logger.info("Sending gift card email to %s", recipient_email)
+        email_service = EmailService()
+        email_service.send(subject, recipient_email, "emails/gift_card.html", {
             "recipient_name": recipient_name,
             "business_name": business_name,
             "code": gift_card.card_code,
@@ -302,9 +322,27 @@ class GiftCardOnlinePaymentService:
             "currency": gift_card.currency,
             "message": gift_card.message,
             "expires_at": expires_at,
+            "booking_url": booking_url,
         })
-        if result is False:
-            logger.error("Failed to send gift card email to %s", recipient_email)
+    
+    def _send_gift_card_sms(self, gift_card: GiftCard) -> None:
+        recipient_phone = gift_card.recipient_phone
+        if not recipient_phone:
+            return
+
+        business_id = gift_card.business_id
+        business_name = gift_card.business.name if gift_card.business_id else "our business"
+        business_twilio_phone_number = gift_card.business.twilio_phone_number
+        body = f"Hi {gift_card.recipient_name}, you've received a gift card with code {gift_card.card_code} and balance {gift_card.current_balance} available for use at {business_name}. Redeem this gift card when making payments."
+        dispatcher = NotificationDispatcher()
+        dispatcher.dispatchAsync(
+            channel=Notification.Channel.SMS,
+            to=recipient_phone,
+            title="Gift Card Received",
+            body=body,
+            business_id=business_id,
+            business_twilio_phone_number=business_twilio_phone_number,
+        )
 
     def _get_online_payment_method(self, business_id: int) -> Optional[PaymentMethod]:
         return (
@@ -426,30 +464,53 @@ class GiftCardOnlinePaymentService:
             print("create_stripe_payment_intent error:: ", e)
             raise e
 
-    def handle_stripe_event(self, event: Any) -> None:
-        # logger.info("handle_stripe_event:: %s", event)
-        event_type = event.get("type")
-        data_object = event.get("data", {}).get("object", {})
-        
-        if event_type == "payment_intent.succeeded":
-            logger.info("payment_intent.succeeded:: %s", data_object)
-            self._handle_payment_succeeded(data_object)
-        elif event_type == "payment_intent.payment_failed":
-            logger.info("payment_intent.payment_failed:: %s", data_object)
-            self._handle_payment_failed(data_object)
 
-    def _get_or_create_payment_from_intent(self, payment_intent: Any) -> Payment:
+
+    def _get_or_create_payment_from_session(self, session: Any) -> Payment:
+        try:
+            metadata = session.get("metadata", {})
+            payment_id = metadata.get("payment_id")
+            payment = None
+            if payment_id:
+                payment = Payment.objects.filter(id=payment_id).first()
+            if not payment:
+                payment = Payment.objects.filter(
+                    external_transaction_id=session.get("id")).first()
+            if payment:
+                return payment
+        
+            business_id = metadata.get("business_id")
+            if not business_id:
+                raise ValueError("Missing business_id in Stripe session metadata")
+            business = Business.objects.get(id=business_id)
+
+            amount_cents = session.get("amount")
+            amount = money_quantize(Decimal(amount_cents) / 100)
+            currency = (session.get("currency") or "USD").upper()
+
+            payment_method = self._get_online_payment_method(business.id)
+            processing_fee, net_amount = self._calculate_processing_fees(amount, payment_method)
+
+            return Payment.objects.create(
+                business=business,
+                client_id=metadata.get("purchaser_id") or None,
+                amount=amount,
+                currency=currency,
+                payment_method=payment_method,
+                payment_method_type=PaymentMethodType.ONLINE,
+                status=PaymentStatusType.PENDING,
+                processing_fee=processing_fee,
+                net_amount=net_amount,
+                external_transaction_id=session.get("id"),
+                gateway_response=self._serialize_gateway_response(session),
+                internal_notes="Gift card online purchase (webhook created)",
+            )
+        except Exception as e:
+            print("error getting or creating payment from session:: ", e)
+            raise e
+
+    def _create_payment_from_intent(self, payment_intent: Any) -> Payment:
         metadata = self._get_intent_value(payment_intent, "metadata", {}) or {}
-        payment_id = metadata.get("payment_id")
-        payment = None
-        if payment_id:
-            payment = Payment.objects.filter(id=payment_id).first()
-        if not payment:
-            payment = Payment.objects.filter(
-                external_transaction_id=self._get_intent_value(payment_intent, "id")
-            ).first()
-        if payment:
-            return payment
 
         business_id = metadata.get("business_id")
         if not business_id:
@@ -470,7 +531,8 @@ class GiftCardOnlinePaymentService:
             currency=currency,
             payment_method=payment_method,
             payment_method_type=PaymentMethodType.ONLINE,
-            status=PaymentStatusType.PENDING,
+            status=PaymentStatusType.COMPLETED,
+            completed_at=timezone.now(),
             processing_fee=processing_fee,
             net_amount=net_amount,
             external_transaction_id=self._get_intent_value(payment_intent, "id"),
@@ -478,31 +540,16 @@ class GiftCardOnlinePaymentService:
             internal_notes="Gift card online purchase (webhook created)",
         )
 
-    def _handle_payment_succeeded(self, payment_intent: Any) -> None:
-        logger.info("payment_intent.succeeded:: %s", payment_intent)
+    def _handle_payment_succeeded(self, session: Any) -> None:
+        logger.info("checkout.session.completed:: %s", session)
         
-        payment = self._get_or_create_payment_from_intent(payment_intent)
-        now = timezone.now()
-        if payment.status != PaymentStatusType.COMPLETED:
-            payment.status = PaymentStatusType.COMPLETED
-            payment.processed_at = now
-            payment.completed_at = now
-            payment.gateway_response = self._serialize_gateway_response(payment_intent)
-            payment.save(
-                update_fields=[
-                    "status",
-                    "processed_at",
-                    "completed_at",
-                    "gateway_response",
-                    "updated_at",
-                ]
-            )
-
+        intent = self.stripe_service.retrieve_payment_intent(session.get("payment_intent"))
+        payment = self._create_payment_from_intent(intent)
+        
         if GiftCard.objects.filter(payment=payment).exists():
             return
 
-        metadata = payment_intent.get("metadata", {})
-        print("metadata:: ", metadata)
+        metadata = intent.get("metadata", {})
         expires_at = self._parse_datetime(metadata.get("expires_at"))
         amount_value = metadata.get("initial_amount") or payment.amount
         amount = money_quantize(Decimal(amount_value))
@@ -521,7 +568,12 @@ class GiftCardOnlinePaymentService:
             notes=metadata.get("notes"),
             payment_id=payment.id,
         )
-        self._send_gift_card_email(gift_card)
+        
+        if metadata.get("recipient_email"):
+            self._send_gift_card_email(gift_card)
+            
+        if metadata.get("recipient_phone"):
+            self._send_gift_card_sms(gift_card)
 
     def _handle_payment_failed(self, payment_intent: Any) -> None:
         payment = self._get_or_create_payment_from_intent(payment_intent)

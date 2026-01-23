@@ -4,6 +4,7 @@ from .models import GiftCard, GiftCardTransaction, GiftCardStatusType, GiftCardT
 from decimal import Decimal
 from business.models import Business
 from client.models import Client
+from payment.models import CurrencyType
 
 
 class GiftCardTransactionSerializer(serializers.ModelSerializer):
@@ -176,3 +177,37 @@ class GiftCardValidateSerializer(serializers.Serializer):
         data['gift_card'] = gift_card
         return data
 
+
+class GiftCardCheckoutSerializer(serializers.Serializer):
+    business = serializers.PrimaryKeyRelatedField(queryset=Business.objects.all())
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    currency = serializers.ChoiceField(choices=CurrencyType.values)
+    metadata = serializers.JSONField(required=False)
+    description = serializers.CharField(required=False, allow_blank=True)
+    success_url = serializers.URLField(required=False, allow_blank=True)
+    cancel_url = serializers.URLField(required=False, allow_blank=True)
+    recipient_name = serializers.CharField(required=False, allow_blank=True)
+    recipient_email = serializers.EmailField(required=False, allow_blank=True)
+    recipient_phone = serializers.CharField(required=False, allow_blank=True)
+    expires_at = serializers.DateTimeField(required=False, allow_null=True)
+    message = serializers.CharField(required=False, allow_blank=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than zero")
+        return value
+    
+    def validate_currency(self, value):
+        print("value:: ", value)
+        if value not in CurrencyType.values:
+            raise serializers.ValidationError("Invalid currency")
+        return value
+    
+    def validate_metadata(self, value):
+        if value is not None and not isinstance(value, dict):
+            raise serializers.ValidationError("Metadata must be a dictionary")
+        if "business_id" not in value:
+            raise serializers.ValidationError("Business ID must be provided")
+        return value
+    

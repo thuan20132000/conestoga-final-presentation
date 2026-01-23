@@ -54,3 +54,43 @@ class StripeService:
             sig_header=signature,
             secret=self.webhook_secret,
         )
+
+    def retrieve_payment_intent(self, payment_intent_id: str) -> stripe.PaymentIntent:
+        return stripe.PaymentIntent.retrieve(payment_intent_id)
+
+    def retrieve_checkout_session(self, checkout_session_id: str) -> stripe.Checkout.Session:
+        return stripe.Checkout.Session.retrieve(checkout_session_id)
+
+    def create_checkout_session(
+        self,
+        amount_cents: int,
+        currency: str,
+        metadata: dict[str, str],
+        description: str,
+        success_url: str,
+        cancel_url: str,
+    ) -> stripe.Checkout.Session:
+        try:
+            session = stripe.checkout.Session.create(
+                line_items=[{
+                    "price_data": {
+                        "currency": currency,
+                        "product_data": {
+                            "name": description,
+                        },
+                        "unit_amount": amount_cents,
+                    },
+                    "quantity": 1,
+                }],
+                mode="payment",
+                success_url=success_url,
+                cancel_url=cancel_url,
+                metadata=metadata,
+                payment_intent_data={
+                    "metadata": metadata,
+                },
+            )
+            return session
+        except Exception as e:
+            print("error creating Stripe checkout session", e)
+            raise e

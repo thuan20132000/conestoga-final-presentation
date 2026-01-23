@@ -18,6 +18,12 @@ def send_html_email(subject, to_email, template, context):
         template.replace(".html", ".txt"),
         context
     )
+    
+    print("html_content: ", html_content)
+    print("text_content: ", text_content)
+    print("from_email: ", settings.DEFAULT_FROM_EMAIL)
+    print("to_email: ", to_email)
+    print("subject: ", subject)
 
     email = EmailMultiAlternatives(
         subject=subject,
@@ -28,6 +34,7 @@ def send_html_email(subject, to_email, template, context):
 
     email.attach_alternative(html_content, "text/html")
     email.send(fail_silently=False)
+    
     return True
   except Exception as e:
     print("========= Error sending email: ", e)

@@ -252,9 +252,8 @@ DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@bookngon.com
 EMAIL_HOST = config("EMAIL_HOST", default="smtp.sendgrid.net")
 EMAIL_PORT = config("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True)
-EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="apikey")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="SG.a_SG.a_example_password")
 
 SMS_DEFAULT_SENDER = config("SMS_DEFAULT_SENDER", default="")
 PUSH_FCM_SERVER_KEY = config("PUSH_FCM_SERVER_KEY", default="")

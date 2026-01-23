@@ -8,121 +8,221 @@
         font-family: 'Segoe UI', Arial, sans-serif;
         margin: 0;
         padding: 0;
-        background: #fafbfc;
+        background: #f7fafc;
       }
       .container {
-        max-width: 420px;
-        margin: 40px auto;
+        max-width: 440px;
+        margin: 48px auto;
         background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.11);
-        padding: 32px 28px 26px 28px;
+        border-radius: 18px;
+        box-shadow: 0 6px 28px rgba(0,0,0,0.14);
+        padding: 40px 32px 32px 32px;
       }
       h2 {
-        color: #255a46;
-        font-weight: 600;
-        letter-spacing: 0.1px;
-        margin: 0 0 8px 0;
-        font-size: 24px;
+        color: #20533a;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        margin: 0 0 10px 0;
+        font-size: 27px;
+        text-align: center;
       }
       .subtitle {
         margin-top: 0;
-        color: #4d4d4d;
-        font-size: 16px;
+        color: #395142;
+        font-size: 17px;
+        text-align: center;
       }
       .card-block {
-        background: #f1f7f4;
-        border-radius: 8px;
-        padding: 20px 18px;
-        margin: 24px 0 18px 0;
+        background: linear-gradient(100deg, #f5fcfa 60%, #e0f8ee 100%);
+        border-radius: 11px;
+        padding: 30px 22px 26px 22px;
+        margin: 30px 0 18px 0;
         text-align: center;
-        border: 1.5px solid #b0e1d2;
+        border: 2.5px solid #6edcb4;
+        box-shadow: 0 2px 6px rgba(109,195,172,0.10);
+        position: relative;
+      }
+      .amount-badge {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .amount-icon {
+        font-size: 36px;
+        margin-right: 10px;
+        color: #21c177;
+        filter: drop-shadow(0 2px 8px #c8f4e3);
+      }
+      .amount {
+        font-size: 44px;
+        font-weight: 900;
+        color: #1d974b;
+        letter-spacing: 0.01em;
+        line-height: 1.05;
+        text-shadow: 0 3px 12px #e3f5ee;
+      }
+      .currency-tag {
+        font-size: 18px;
+        font-weight: 600;
+        color: #278f69;
+        margin-left: 4px;
+        letter-spacing: 0.09em;
+        vertical-align: top;
       }
       .label {
-        color: #38654a;
-        font-size: 13px;
-        font-weight: 500;
+        color: #26855c;
+        font-size: 14.5px;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.15em;
+        letter-spacing: 0.19em;
         margin-bottom: 4px;
+        margin-top: 22px;
       }
       .giftcode {
         font-size: 22px;
         font-weight: 700;
         letter-spacing: 0.13em;
-        color: #3e426b;
-        background: #e9ecef;
-        border-radius: 4px;
-        padding: 6px 16px;
-        margin: 6px 0 10px;
+        color: #313c55;
+        background: #f1f2fa;
+        border-radius: 8px;
+        padding: 8px 20px;
+        margin: 10px 0 0 0;
         display: inline-block;
+        border: 1.5px solid #baccdf;
+        transition: background 0.3s;
       }
-      .amount {
-        font-size: 19px;
-        font-weight: 600;
-        color: #1b693f;
-        margin: 8px 0 0 0;
+      .giftcode:hover {
+        background: #eaf7f2;
       }
       .expiration {
-        color: #a87a26;
+        color: #b4870f;
         background: #fff7e1;
-        border-radius: 3px;
-        font-size: 14px;
-        padding: 5px 12px;
+        border-radius: 5px;
+        font-size: 15px;
+        padding: 7px 17px;
         display: inline-block;
-        margin-top: 10px;
+        margin: 18px 0 6px 0;
+        font-weight: 500;
       }
       .message-block {
-        margin: 20px 0 8px 0;
-        padding: 12px 18px;
-        background: #fcf6ef;
-        border-left: 3px solid #edc578;
-        color: #955605;
-        border-radius: 5px;
+        margin: 20px 0 0 0;
+        padding: 15px 22px;
+        background: #fff7ed;
+        border-left: 4px solid #f0c86f;
+        color: #b08431;
+        border-radius: 7px;
         font-style: italic;
-        font-size: 15px;
+        font-size: 16px;
+        box-shadow: 0 0 2px #ecd49b33;
+      }
+      .how-to {
+        background: #f3f9f8;
+        border-radius: 7px;
+        padding: 20px 18px 16px 18px;
+        margin-top: 30px;
+        border: 1px dashed #90bfae;
+        text-align: left;
+      }
+      .how-to-title {
+        color: #22a876;
+        font-size: 15.5px;
+        font-weight: 700;
+        margin-bottom: 7px;
+        letter-spacing: 0.09em;
+      }
+      .how-to-list {
+        color: #2e463c;
+        font-size: 15.5px;
+        margin: 0;
+        padding-left: 18px;
+        line-height: 1.65;
+      }
+      .cta {
+        text-align: center;
+        margin-top: 26px;
+      }
+      .booking-button {
+        display: inline-block;
+        background: #22a876;
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 16px;
+        padding: 12px 24px;
+        border-radius: 24px;
+        box-shadow: 0 4px 10px rgba(34,168,118,0.25);
+      }
+      .booking-button:hover {
+        background: #1f996c;
       }
       .footer {
-        margin-top: 26px;
-        color: #797979;
+        margin-top: 32px;
+        color: #a0a0a0;
         font-size: 13px;
         text-align: center;
+        padding-top: 16px;
+        border-top: 1px solid #e8ecea;
+        letter-spacing: 0.05em;
+      }
+      @media (max-width: 540px) {
+        .container {
+          padding: 12vw 2vw 8vw 2vw;
+          max-width: 97vw;
+        }
+        .amount { font-size: 33px; }
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h2>You received a gift card 🎁</h2>
-      <p class="subtitle">
+      <h2>🎁 You Received a Gift Card!</h2>
+      <div class="subtitle">
         Hello {{ recipient_name|default:"there" }},
-        <br />
-        You received a gift card for <strong>{{ business_name }}</strong>!
-      </p>
-
+        <br/>
+        Enjoy your gift card for <strong>{{ business_name }}</strong>!
+      </div>
       <div class="card-block">
+        <div class="amount-badge">
+          <span class="amount-icon">💸</span>
+          <span class="amount">${{ balance }}</span>
+          <span class="currency-tag">{{ currency }}</span>
+        </div>
         <div class="label">Gift Card Code</div>
         <span class="giftcode">{{ code }}</span>
-        <div class="label" style="margin-top:14px;">Balance</div>
-        <div class="amount">{{ balance }} {{ currency }}</div>
         {% if expires_at %}
           <div class="expiration">Expires: {{ expires_at }}</div>
         {% endif %}
+        {% if message %}
+          <div class="message-block">
+            “{{ message }}”
+          </div>
+        {% endif %}
       </div>
-
-      {% if message %}
-        <div class="message-block">
-          "{{ message }}"
+      <div class="how-to">
+        <div class="how-to-title">How to redeem:</div>
+        <ul class="how-to-list">
+          <li>Book your next appointment.</li>
+          <li>Bring this code and apply it at checkout to redeem your gift card.</li>
+          <li>Enjoy your experience!</li>
+        </ul>
+      </div>
+      {% if booking_url %}
+        <div class="cta">
+          <a
+            class="booking-button"
+            href="{{ booking_url }}"
+            target="_blank"
+            rel="noopener"
+          >
+            Book an Appointment
+          </a>
         </div>
       {% endif %}
-
-      <div style="margin-top:22px;">
-        <p style="margin:0 0 8px 0;">Redeem this gift card when booking your next appointment.</p>
-        <p style="margin:2px 0 0 0;">Simply bring this code or apply it online at checkout.</p>
-      </div>
-
+      
       <div class="footer">
         Thank you for choosing {{ business_name }}.<br/>
-        <span style="color:#c5cfcc;">·</span> Powered by Our Gift Card Service
+        <span style="color:#dbdbdb;">·</span> Powered by Our Gift Card Service
       </div>
     </div>
   </body>

@@ -390,8 +390,6 @@ class GiftCardCheckoutViewSet(BaseAPIView):
                 cancel_url=validated_data.get('cancel_url', 'https://example.com/cancel'),
             )
             
-            logger.info("Gift Card checkout session created:: %s", session)
-            
             return self.response_success({
                 "id": session.id,
                 "url": session.url,

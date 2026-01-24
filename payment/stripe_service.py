@@ -12,15 +12,18 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
+STRIPE_APPLICATION_FEE_PERCENTAGE = 0.05
+
 class StripeService:
     def __init__(self, business_id: Optional[int] = None) -> None:
         self.business_id = business_id
-        self.api_key, self.webhook_secret = self._resolve_keys(business_id)
+        self.api_key, self.webhook_secret, self.merchant_id= self._resolve_keys(business_id)
         if not self.api_key:
             raise ValueError("Stripe API key is not configured")
         stripe.api_key = self.api_key
 
     def _resolve_keys(self, business_id: Optional[int]) -> tuple[str, str]:
+        merchant_id = None
         if business_id:
             gateway = (
                 PaymentGateway.objects.filter( 
@@ -31,10 +34,13 @@ class StripeService:
                 .order_by("-is_default", "name")
                 .first()
             )
-            if gateway and gateway.secret_key:
-                return gateway.secret_key, gateway.webhook_secret or ""
-        return settings.STRIPE_SECRET_KEY, settings.STRIPE_WEBHOOK_SECRET
+            if gateway and gateway.is_active == True:
+                merchant_id = gateway.merchant_id
+        return settings.STRIPE_SECRET_KEY, settings.STRIPE_WEBHOOK_SECRET, merchant_id
 
+    def _calculate_application_fee_amount(self, amount_cents: int) -> int:
+        return int(amount_cents * STRIPE_APPLICATION_FEE_PERCENTAGE)
+    
     def create_payment_intent(
         self,
         amount_cents: int,
@@ -80,6 +86,17 @@ class StripeService:
         cancel_url: str,
     ) -> stripe.Checkout.Session:
         try:
+            application_fee_amount = self._calculate_application_fee_amount(amount_cents)
+            payment_intent_data = {
+                "metadata": metadata,
+            }
+            if self.merchant_id:
+                payment_intent_data["application_fee_amount"] = application_fee_amount
+                payment_intent_data["transfer_data"] = {
+                    "destination": self.merchant_id,
+                }
+            
+            print("payment_intent_data:: %s", payment_intent_data)
             session = stripe.checkout.Session.create(
                 line_items=[{
                     "price_data": {
@@ -95,11 +112,8 @@ class StripeService:
                 success_url=success_url,
                 cancel_url=cancel_url,
                 metadata=metadata,
-                payment_intent_data={
-                    "metadata": metadata,
-                },
+                payment_intent_data=payment_intent_data,
             )
-            logger.info("Stripe checkout session created:: %s", session)
             return session
         except Exception as e:
             logger.error("error creating Stripe checkout session:: %s", e)

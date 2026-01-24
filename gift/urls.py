@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .viewsets import GiftCardViewSet, GiftCardTransactionViewSet, GiftCardStripeWebhookViewSet, GiftCardCheckoutViewSet
+from .viewsets import GiftCardViewSet, GiftCardTransactionViewSet, GiftCardCheckoutViewSet
 
 # Create router and register viewsets
 router = DefaultRouter()

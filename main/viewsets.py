@@ -105,7 +105,7 @@ class StripeWebhookAPIView(BaseAPIView):
         try:
             stripe_service = StripeService()
             event = stripe_service.construct_event(request.body, request.META.get("HTTP_STRIPE_SIGNATURE"))
-            logger.info("Stripe webhook event:: %s", event)
+            # logger.info("Stripe webhook event:: %s", event)
         except Exception as e:
             logger.error("error constructing event:: %s", e)
             return self.response_error(

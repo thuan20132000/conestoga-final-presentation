@@ -228,7 +228,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://develop.d3lgvc3ld1a6bg.amplifyapp.com",
     "https://master.d2cve25ion05t3.amplifyapp.com",  # Django dev origin
     "http://127.0.0.1:3000",  # Frontend dev origin
-    
+    "https://develop.d2cve25ion05t3.amplifyapp.com" # Client app booking
 
 ]
 CORS_ALLOW_CREDENTIALS = True

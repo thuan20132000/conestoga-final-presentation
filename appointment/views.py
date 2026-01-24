@@ -600,9 +600,15 @@ class AppointmentServiceViewSet(BaseModelViewSet):
 # Booking appointments viewset for client's booking pages
 class BusinessBookingViewSet(BaseModelViewSet):
     """ViewSet for managing booking pages"""
-    
-    
+    serializer_class = BusinessInfoSerializer
     http_method_names = ['get', 'post']
+    queryset = Business.objects.all()
+    
+    
+    def get_queryset(self):
+        """Get queryset for booking pages"""
+        queryset = super().get_queryset()
+        return queryset.filter(is_deleted=False)
     
     @action(detail=False, methods=['get'], url_path='business-info')
     def business_info(self, request):

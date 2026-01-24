@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from main.viewsets import StripeWebhookAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,10 +29,6 @@ urlpatterns = [
     path('api/', include('payment.urls')),
     path('api/', include('review.urls')),
     path('api/', include('gift.urls')),
-    # path('api/service/', include('service.urls')),
-    # path('api/staff/', include('staff.urls')),
     path('api/', include('notifications.urls')),
-    # path('api/appointment/', include('appointment.urls')),
-    # path('api/client/', include('client.urls')),
-    # path('api/payment/', include('payment.urls')),
+    path('webhooks/stripe/', StripeWebhookAPIView.as_view(), name='stripe_webhook'),
 ]

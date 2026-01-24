@@ -179,7 +179,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 # Email Configuration (for password reset, etc.)
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 # Logging Configuration
 LOGGING = {
@@ -227,8 +227,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://192.168.2.170:3001",  # Django dev origin
     "https://develop.d3lgvc3ld1a6bg.amplifyapp.com",
     "https://master.d2cve25ion05t3.amplifyapp.com",  # Django dev origin
-    "http://localhost:3002"
-    
+    "http://127.0.0.1:3000",  # Frontend dev origin
+    "https://develop.d2cve25ion05t3.amplifyapp.com" # Client app booking
 
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -248,7 +248,13 @@ CORS_ALLOW_HEADERS = [
     "X-Forwarded-Proto",
 ]
 # Notification provider settings (placeholders)
-DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@example.com")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@bookngon.com")
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.sendgrid.net")
+EMAIL_PORT = config("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="apikey")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="SG.a_SG.a_example_password")
+
 SMS_DEFAULT_SENDER = config("SMS_DEFAULT_SENDER", default="")
 PUSH_FCM_SERVER_KEY = config("PUSH_FCM_SERVER_KEY", default="")
 
@@ -258,6 +264,11 @@ TWILIO_AUTH_TOKEN = config("TWILIO_AUTH_TOKEN", default="")
 TWILIO_PHONE_NUMBER = config("TWILIO_PHONE_NUMBER", default="")
 
 OPT_OUT_MESSAGE = config('OPT_OUT_MESSAGE', default="To opt out, reply STOP")
+
+# Stripe settings
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = config("STRIPE_PUBLISHABLE_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
 
 # AWS settings
 AWS_REGION = config('AWS_REGION')

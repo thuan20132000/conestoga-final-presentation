@@ -5,6 +5,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
 from decimal import Decimal
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import GiftCard, GiftCardTransaction, GiftCardStatusType
 from .serializers import (
@@ -16,9 +18,17 @@ from .serializers import (
     GiftCardTransactionSerializer,
 )
 from .services import GiftCardService
-from main.viewsets import BaseModelViewSet
+from main.viewsets import BaseModelViewSet, BaseAPIView
 from rest_framework.permissions import IsAuthenticated
 from staff.permissions import IsBusinessManager
+
+from .services import GiftCardOnlinePaymentService
+from payment.stripe_service import StripeService
+from rest_framework.permissions import AllowAny
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 
 class GiftCardViewSet(BaseModelViewSet):
@@ -338,3 +348,70 @@ class GiftCardTransactionViewSet(BaseModelViewSet):
         
         return queryset.select_related('gift_card', 'payment', 'appointment', 'created_by')
 
+
+
+
+from .serializers import GiftCardCheckoutSerializer
+class GiftCardCheckoutViewSet(BaseAPIView):
+    """ViewSet for creating checkout sessions for gift cards"""
+    
+    
+    def post(self, request):
+        """Create a checkout session"""
+        try:
+            request_data = request.data.copy()
+            serializer = GiftCardCheckoutSerializer(data=request_data)
+            serializer.is_valid(raise_exception=True)
+            validated_data = serializer.validated_data
+            business_id = validated_data.get('business').id
+            
+            stripe_service = StripeService(business_id=business_id)
+            metadata = {
+                "business_id": business_id,
+                "gift_card_purchase": "true",
+                "recipient_name": validated_data.get('recipient_name'),
+                "recipient_email": validated_data.get('recipient_email'),
+                "recipient_phone": validated_data.get('recipient_phone'),
+                "initial_amount": validated_data.get('amount'),
+                "currency": validated_data.get('currency'),
+                "expires_at": validated_data.get('expires_at'),
+                "message": validated_data.get('message'),
+                "notes": validated_data.get('notes'),
+            }
+            
+            if validated_data.get('metadata'):
+                metadata.update(validated_data.get('metadata'))
+            session = stripe_service.create_checkout_session(
+                amount_cents=int(Decimal(str(validated_data.get('amount'))) * 100),
+                currency=validated_data.get('currency'),
+                metadata=metadata,
+                description=validated_data.get('description', 'Payment'),
+                success_url=validated_data.get('success_url', 'https://example.com/success'),
+                cancel_url=validated_data.get('cancel_url', 'https://example.com/cancel'),
+            )
+            
+            return self.response_success({
+                "id": session.id,
+                "url": session.url,
+            })
+        except Exception as e:
+            print("error creating Gift Card checkout session", e)
+            return self.response_error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+    
+    def get(self, request):
+        """Verify a checkout session"""
+        try:
+            session_id = request.query_params.get('session_id')
+            stripe_service = StripeService()
+            session = stripe_service.retrieve_checkout_session(session_id)
+            
+            return self.response_success(session)
+        except Exception as e:
+            return self.response_error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST,
+                data=None,
+            )

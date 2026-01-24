@@ -3,7 +3,6 @@ import logging
 from dataclasses import dataclass
 from typing import Optional, Dict
 import datetime
-from django.core.mail import send_mail
 from main import common_settings
 import boto3
 import json
@@ -26,13 +25,46 @@ lambda_client = boto3.client("lambda", region_name=AWS_REGION)
 events_client = boto3.client("events", region_name=AWS_REGION)
 schedule_client = boto3.client("scheduler", region_name=AWS_REGION)
 
-
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.conf import settings
 @dataclass
 class SendResult:
     ok: bool
     error: Optional[str] = None
 
+class EmailService:
+    def send(self, subject, to_email, template, context):
+        try:
+            html_content = render_to_string(template, context)
+            text_content = render_to_string(
+                template.replace(".html", ".txt"),
+                context
+            )
+            
 
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[to_email],
+            )
+
+            email.attach_alternative(html_content, "text/html")
+            email.send(fail_silently=False)
+            logger.info("Email sent to %s: %s", to_email, subject)
+            return SendResult(ok=True)
+        except Exception as e:
+            print("========= Error sending email: ", e)
+            return SendResult(ok=False, error=str(e))
+    
+    def send_async(self, subject, to_email, template, context):
+        def _send():
+            self.send(subject, to_email, template, context)
+        thread = threading.Thread(target=_send)
+        thread.start()
+        return SendResult(ok=True)
+        
 class SMSService:
     group_name: str = "bookngon-calendar"
 
@@ -181,6 +213,7 @@ class NotificationDispatcher:
     def __init__(self) -> None:
         self.sms = SMSService()
         self.push = PushService()
+        self.email = EmailService()
 
     def dispatch(
         self,
@@ -201,6 +234,15 @@ class NotificationDispatcher:
                 return self.push.send_group(group_name, title, body, data)
             if isinstance(to, Staff):
                 return self.push.send_user(to, title, body, data)
+        
+        if channel == Notification.Channel.EMAIL:
+            return self.email.send(
+                subject=title,
+                to_email=to,
+                template="emails/gift_card.html",
+                context=data
+            )
+        
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
     
     def dispatchAsync(
@@ -251,3 +293,5 @@ class NotificationDispatcher:
         if channel == Notification.Channel.SMS:
             return self.sms.destroy_scheduled(schedule_name)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
+
+

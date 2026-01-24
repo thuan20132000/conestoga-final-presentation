@@ -42,11 +42,6 @@ class EmailService:
                 context
             )
             
-            print("html_content: ", html_content)
-            print("text_content: ", text_content)
-            print("from_email: ", settings.DEFAULT_FROM_EMAIL)
-            print("to_email: ", to_email)
-            print("subject: ", subject)
 
             email = EmailMultiAlternatives(
                 subject=subject,
@@ -57,11 +52,18 @@ class EmailService:
 
             email.attach_alternative(html_content, "text/html")
             email.send(fail_silently=False)
-            
+            logger.info("Email sent to %s: %s", to_email, subject)
             return SendResult(ok=True)
         except Exception as e:
             print("========= Error sending email: ", e)
             return SendResult(ok=False, error=str(e))
+    
+    def send_async(self, subject, to_email, template, context):
+        def _send():
+            self.send(subject, to_email, template, context)
+        thread = threading.Thread(target=_send)
+        thread.start()
+        return SendResult(ok=True)
         
 class SMSService:
     group_name: str = "bookngon-calendar"

@@ -312,9 +312,8 @@ class GiftCardOnlinePaymentService:
         expires_at = None
         if gift_card.expires_at:
             expires_at = timezone.localtime(gift_card.expires_at).strftime("%Y-%m-%d")
-        logger.info("Sending gift card email to %s", recipient_email)
         email_service = EmailService()
-        email_service.send(subject, recipient_email, "emails/gift_card.html", {
+        email_service.send_async(subject, recipient_email, "emails/gift_card.html", {
             "recipient_name": recipient_name,
             "business_name": business_name,
             "code": gift_card.card_code,

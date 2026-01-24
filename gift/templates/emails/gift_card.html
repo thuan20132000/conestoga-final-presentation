@@ -1,229 +1,178 @@
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Your Gift Card from {{ business_name }}</title>
-    <style>
+    <style type="text/css">
       body {
-        font-family: 'Segoe UI', Arial, sans-serif;
         margin: 0;
         padding: 0;
-        background: #f7fafc;
+        font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
       }
-      .container {
-        max-width: 440px;
-        margin: 48px auto;
-        background: #fff;
-        border-radius: 18px;
-        box-shadow: 0 6px 28px rgba(0,0,0,0.14);
-        padding: 40px 32px 32px 32px;
+      table {
+        border-collapse: collapse;
+        mso-table-lspace: 0pt;
+        mso-table-rspace: 0pt;
       }
-      h2 {
-        color: #20533a;
-        font-weight: 700;
-        letter-spacing: 0.2px;
-        margin: 0 0 10px 0;
-        font-size: 27px;
-        text-align: center;
-      }
-      .subtitle {
-        margin-top: 0;
-        color: #395142;
-        font-size: 17px;
-        text-align: center;
-      }
-      .card-block {
-        background: linear-gradient(100deg, #f5fcfa 60%, #e0f8ee 100%);
-        border-radius: 11px;
-        padding: 30px 22px 26px 22px;
-        margin: 30px 0 18px 0;
-        text-align: center;
-        border: 2.5px solid #6edcb4;
-        box-shadow: 0 2px 6px rgba(109,195,172,0.10);
-        position: relative;
-      }
-      .amount-badge {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 20px;
-      }
-      .amount-icon {
-        font-size: 36px;
-        margin-right: 10px;
-        color: #21c177;
-        filter: drop-shadow(0 2px 8px #c8f4e3);
-      }
-      .amount {
-        font-size: 44px;
-        font-weight: 900;
-        color: #1d974b;
-        letter-spacing: 0.01em;
-        line-height: 1.05;
-        text-shadow: 0 3px 12px #e3f5ee;
-      }
-      .currency-tag {
-        font-size: 18px;
-        font-weight: 600;
-        color: #278f69;
-        margin-left: 4px;
-        letter-spacing: 0.09em;
-        vertical-align: top;
-      }
-      .label {
-        color: #26855c;
-        font-size: 14.5px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.19em;
-        margin-bottom: 4px;
-        margin-top: 22px;
-      }
-      .giftcode {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 0.13em;
-        color: #313c55;
-        background: #f1f2fa;
-        border-radius: 8px;
-        padding: 8px 20px;
-        margin: 10px 0 0 0;
-        display: inline-block;
-        border: 1.5px solid #baccdf;
-        transition: background 0.3s;
-      }
-      .giftcode:hover {
-        background: #eaf7f2;
-      }
-      .expiration {
-        color: #b4870f;
-        background: #fff7e1;
-        border-radius: 5px;
-        font-size: 15px;
-        padding: 7px 17px;
-        display: inline-block;
-        margin: 18px 0 6px 0;
-        font-weight: 500;
-      }
-      .message-block {
-        margin: 20px 0 0 0;
-        padding: 15px 22px;
-        background: #fff7ed;
-        border-left: 4px solid #f0c86f;
-        color: #b08431;
-        border-radius: 7px;
-        font-style: italic;
-        font-size: 16px;
-        box-shadow: 0 0 2px #ecd49b33;
-      }
-      .how-to {
-        background: #f3f9f8;
-        border-radius: 7px;
-        padding: 20px 18px 16px 18px;
-        margin-top: 30px;
-        border: 1px dashed #90bfae;
-        text-align: left;
-      }
-      .how-to-title {
-        color: #22a876;
-        font-size: 15.5px;
-        font-weight: 700;
-        margin-bottom: 7px;
-        letter-spacing: 0.09em;
-      }
-      .how-to-list {
-        color: #2e463c;
-        font-size: 15.5px;
-        margin: 0;
-        padding-left: 18px;
-        line-height: 1.65;
-      }
-      .cta {
-        text-align: center;
-        margin-top: 26px;
-      }
-      .booking-button {
-        display: inline-block;
-        background: #22a876;
-        color: #ffffff;
+      img {
+        border: 0;
+        height: auto;
+        line-height: 100%;
+        outline: none;
         text-decoration: none;
-        font-weight: 700;
-        font-size: 16px;
-        padding: 12px 24px;
-        border-radius: 24px;
-        box-shadow: 0 4px 10px rgba(34,168,118,0.25);
+        -ms-interpolation-mode: bicubic;
       }
-      .booking-button:hover {
-        background: #1f996c;
-      }
-      .footer {
-        margin-top: 32px;
-        color: #a0a0a0;
-        font-size: 13px;
-        text-align: center;
-        padding-top: 16px;
-        border-top: 1px solid #e8ecea;
-        letter-spacing: 0.05em;
-      }
-      @media (max-width: 540px) {
+      @media only screen and (max-width: 600px) {
         .container {
-          padding: 12vw 2vw 8vw 2vw;
-          max-width: 97vw;
+          width: 100% !important;
         }
-        .amount { font-size: 33px; }
+        .amount-text {
+          font-size: 36px !important;
+        }
+        .card-block {
+          padding: 20px 15px !important;
+        }
       }
     </style>
   </head>
-  <body>
-    <div class="container">
-      <h2>🎁 You Received a Gift Card!</h2>
-      <div class="subtitle">
-        Hello {{ recipient_name|default:"there" }},
-        <br/>
-        Enjoy your gift card for <strong>{{ business_name }}</strong>!
-      </div>
-      <div class="card-block">
-        <div class="amount-badge">
-          <span class="amount-icon">💸</span>
-          <span class="amount">${{ balance }}</span>
-          <span class="currency-tag">{{ currency }}</span>
-        </div>
-        <div class="label">Gift Card Code</div>
-        <span class="giftcode">{{ code }}</span>
-        {% if expires_at %}
-          <div class="expiration">Expires: {{ expires_at }}</div>
-        {% endif %}
-        {% if message %}
-          <div class="message-block">
-            “{{ message }}”
-          </div>
-        {% endif %}
-      </div>
-      <div class="how-to">
-        <div class="how-to-title">How to redeem:</div>
-        <ul class="how-to-list">
-          <li>Book your next appointment.</li>
-          <li>Bring this code and apply it at checkout to redeem your gift card.</li>
-          <li>Enjoy your experience!</li>
-        </ul>
-      </div>
-      {% if booking_url %}
-        <div class="cta">
-          <a
-            class="booking-button"
-            href="{{ booking_url }}"
-            target="_blank"
-            rel="noopener"
-          >
-            Book an Appointment
-          </a>
-        </div>
-      {% endif %}
-      
-      <div class="footer">
-        Thank you for choosing {{ business_name }}.<br/>
-        <span style="color:#dbdbdb;">·</span> Powered by Our Gift Card Service
-      </div>
-    </div>
+  <body style="margin: 0; padding: 0; background-color: #FFFBB1;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #FFFBB1; padding: 40px 0;">
+      <tr>
+        <td align="center">
+          <!-- Main Container -->
+          <table border="0" cellpadding="0" cellspacing="0" width="600" class="container" style="max-width: 600px; width: 100%; background-color: #fffefb; border-radius: 18px; border: 2px solid #FFFBB1;">
+            <tr>
+              <td style="padding: 40px 32px 32px 32px;">
+                
+                <!-- Header -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding-bottom: 10px;">
+                      <h2 style="margin: 0; color: #a5930e; font-size: 30px; font-weight: 700; letter-spacing: 0.2px;">🎁 You Received a Gift Card!</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="center" style="color: #a89836; font-size: 18px; line-height: 1.5; padding-bottom: 30px;">
+                      Hello {{ recipient_name|default:"there" }},<br/>
+                      Enjoy your gift card at <strong style="color: #a5930e;">{{ business_name }}</strong>!
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Gift Card Block -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" class="card-block" style="background-color: #fffde6; border-radius: 11px; border: 2px solid #ffe058;">
+                  <tr>
+                    <td style="padding: 30px 22px 26px 22px;" align="center">
+                      
+                      <!-- Amount -->
+                      <table border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td align="center" style="padding-bottom: 20px;">
+                            <span class="amount-text" style="font-size: 44px; font-weight: 900; color: #d6b613; letter-spacing: 0.01em;">${{ balance }}</span>
+                            <span style="font-size: 18px; font-weight: 600; color: #d6b613; letter-spacing: 0.09em; vertical-align: top; margin-left: 4px;">{{ currency }}</span>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Code Label -->
+                      <table border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td align="center" style="padding-top: 10px;">
+                            <div style="color: #a5930e; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; padding-bottom: 8px;">Gift Card Code</div>
+                          </td>
+                        </tr>
+                        <tr>
+                          <td align="center">
+                            <div style="font-size: 22px; font-weight: 700; letter-spacing: 0.13em; color: #ad9926; background-color: #fffde1; border-radius: 8px; padding: 10px 20px; border: 2px solid #e5e18f; display: inline-block;">{{ code }}</div>
+                          </td>
+                        </tr>
+                      </table>
+
+                      <!-- Expiration -->
+                      {% if expires_at %}
+                      <table border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td align="center" style="padding-top: 18px;">
+                            <div style="color: #c9a720; background-color: #fffbe9; border-radius: 5px; font-size: 15px; padding: 7px 17px; font-weight: 600; border: 1px dashed #ffe058; display: inline-block;">Expires: {{ expires_at }}</div>
+                          </td>
+                        </tr>
+                      </table>
+                      {% endif %}
+
+                      <!-- Message -->
+                      {% if message %}
+                      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td style="padding-top: 20px;">
+                            <div style="padding: 15px 22px; background-color: #FFFBB1; border-left: 5px solid #e7bb26; color: #b3952a; border-radius: 7px; font-style: italic; font-size: 16px; line-height: 1.5;">"{{ message }}"</div>
+                          </td>
+                        </tr>
+                      </table>
+                      {% endif %}
+
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- How to Redeem -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="padding-top: 30px;">
+                      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fffde1; border-radius: 7px; border: 1px dashed #ffe058;">
+                        <tr>
+                          <td style="padding: 20px 18px 16px 18px;">
+                            <div style="color: #a5930e; font-size: 15px; font-weight: 700; margin-bottom: 10px; letter-spacing: 0.05em;">How to redeem:</div>
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                              <tr>
+                                <td style="color: #a89836; font-size: 15px; line-height: 1.65; padding-left: 5px;">
+                                  • Book your next appointment.<br/>
+                                  • Bring this code and apply it at checkout to redeem your gift card.<br/>
+                                  • Enjoy your experience!
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- CTA Button -->
+                {% if booking_url %}
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding-top: 26px;">
+                      <table border="0" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td align="center" style="border-radius: 24px; background-color: #a5930e;">
+                            <a href="{{ booking_url }}" target="_blank" rel="noopener" style="display: inline-block; padding: 14px 28px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 700; color: #ffffff; text-decoration: none; border-radius: 24px; border: 2px solid #e7bb26; background-color: #a5930e;">Book an Appointment</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+                {% endif %}
+
+                <!-- Footer -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td align="center" style="padding-top: 32px; border-top: 1px solid #FFFBB1; color: #b8b27e; font-size: 13px; letter-spacing: 0.05em; line-height: 1.6;">
+                      Thank you for choosing {{ business_name }}.<br/>
+                      <span style="color: #e8e2ab;">·</span> Powered by Our Gift Card Service
+                    </td>
+                  </tr>
+                </table>
+
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>

@@ -7,6 +7,10 @@ from django.conf import settings
 
 from payment.models import PaymentGateway, GatewayTypeType
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
 
 class StripeService:
     def __init__(self, business_id: Optional[int] = None) -> None:
@@ -58,8 +62,13 @@ class StripeService:
     def retrieve_payment_intent(self, payment_intent_id: str) -> stripe.PaymentIntent:
         return stripe.PaymentIntent.retrieve(payment_intent_id)
 
-    def retrieve_checkout_session(self, checkout_session_id: str) -> stripe.Checkout.Session:
-        return stripe.Checkout.Session.retrieve(checkout_session_id)
+    def retrieve_checkout_session(self, checkout_session_id: str) -> stripe.checkout.Session:
+        try:
+            response = stripe.checkout.Session.retrieve(checkout_session_id)
+            return response
+        except Exception as e:
+            logger.error("error retrieving Stripe checkout session:: %s", e)
+            raise e
 
     def create_checkout_session(
         self,
@@ -90,7 +99,8 @@ class StripeService:
                     "metadata": metadata,
                 },
             )
+            logger.info("Stripe checkout session created:: %s", session)
             return session
         except Exception as e:
-            print("error creating Stripe checkout session", e)
+            logger.error("error creating Stripe checkout session:: %s", e)
             raise e

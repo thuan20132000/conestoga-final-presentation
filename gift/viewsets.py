@@ -5,8 +5,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
 from decimal import Decimal
-from django.conf import settings
-from rest_framework.views import APIView
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
@@ -20,15 +18,12 @@ from .serializers import (
     GiftCardTransactionSerializer,
 )
 from .services import GiftCardService
-from main.viewsets import BaseModelViewSet
+from main.viewsets import BaseModelViewSet, BaseAPIView
 from rest_framework.permissions import IsAuthenticated
 from staff.permissions import IsBusinessManager
 
-from .serializers import GiftCardOnlinePaymentIntentSerializer
 from .services import GiftCardOnlinePaymentService
 from payment.stripe_service import StripeService
-from main.viewsets import BaseViewSet
-from main.utils import send_html_email
 from rest_framework.permissions import AllowAny
 import logging
 logger = logging.getLogger(__name__)
@@ -355,69 +350,14 @@ class GiftCardTransactionViewSet(BaseModelViewSet):
 
 
 
-class GiftCardOnlinePaymentIntentViewSet(BaseViewSet):
-    permission_classes = [AllowAny]
-    authentication_classes = []
-
-    def create(self, request):
-        print(request.data)
-        serializer = GiftCardOnlinePaymentIntentSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        try:
-            service = GiftCardOnlinePaymentService()
-            result = service.create_stripe_payment_intent(serializer.validated_data)
-            payment_intent = result["payment_intent"]
-            payment = result["payment"]
-        except Exception as exc:
-            return Response(
-                {"error": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        return self.response_success(
-            {
-                "client_secret": payment_intent.client_secret,
-                "payment_intent_id": payment_intent.id,
-                "payment_id": payment.id,
-                "publishable_key": settings.STRIPE_PUBLISHABLE_KEY,
-            },
-            status_code=status.HTTP_201_CREATED,
-        )
-
-@method_decorator(csrf_exempt, name="dispatch")
-class GiftCardStripeWebhookViewSet(APIView):
-    permission_classes = [AllowAny]
-    authentication_classes = []
-
-    def post(self, request):
-        signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
-        payload = request.body
-        
-        # logger.info("payload:: %s", payload)
-        # logger.info("signature:: %s", signature)
-
-        try:
-            stripe_service = StripeService()
-            event = stripe_service.construct_event(payload, signature)
-        except Exception as exc:
-            logger.error("error constructing event:: %s", exc)
-            return Response(
-                {"error": str(exc)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # logger.info("webhook received:: %s", event)
-        GiftCardOnlinePaymentService(stripe_service).handle_stripe_event(event)
-        return Response({"status": "success"})
 
 from .serializers import GiftCardCheckoutSerializer
-class GiftCardCheckoutViewSet(BaseModelViewSet):
-    permission_classes = [AllowAny]
-    authentication_classes = []
-
-    @action(detail=False, methods=['post'], url_path='checkout-session')
-    def create_checkout_session(self, request):
+class GiftCardCheckoutViewSet(BaseAPIView):
+    """ViewSet for creating checkout sessions for gift cards"""
+    
+    
+    def post(self, request):
+        """Create a checkout session"""
         try:
             request_data = request.data.copy()
             serializer = GiftCardCheckoutSerializer(data=request_data)
@@ -449,20 +389,31 @@ class GiftCardCheckoutViewSet(BaseModelViewSet):
                 success_url=validated_data.get('success_url', 'https://example.com/success'),
                 cancel_url=validated_data.get('cancel_url', 'https://example.com/cancel'),
             )
+            
+            logger.info("Gift Card checkout session created:: %s", session)
+            
             return self.response_success({
                 "id": session.id,
                 "url": session.url,
             })
         except Exception as e:
             print("error creating Gift Card checkout session", e)
-            return self.response_error(str(e))
+            return self.response_error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
     
-    @action(detail=False, methods=['get'], url_path='verify-session')
-    def verify_checkout_session(self, request):
+    def get(self, request):
+        """Verify a checkout session"""
         try:
-            session_id = request.data.get('session_id')
+            session_id = request.query_params.get('session_id')
             stripe_service = StripeService()
             session = stripe_service.retrieve_checkout_session(session_id)
+            
             return self.response_success(session)
         except Exception as e:
-            return self.response_error(str(e))
+            return self.response_error(
+                message=str(e),
+                status_code=status.HTTP_400_BAD_REQUEST,
+                data=None,
+            )

@@ -61,23 +61,12 @@ run-django: ## Run Django development server
 run-fastapi: ## Run FastAPI service only
 	cd ai_service && uvicorn main:app --host 0.0.0.0 --port 5050 --reload
 
-run-prod: ## Run production server
-	uvicorn main.asgi:application --host 0.0.0.0 --port 8000 --reload --env-file .env
+run-dev: ## Run dev environment server
+	uvicorn main.asgi:application --host 0.0.0.0 --port 8000 --reload --env-file .env.dev
+
+run-prod: ## Run prod environment server
+	uvicorn main.asgi:application --host 0.0.0.0 --port 8000 --reload --env-file .env.prod
 	
-dev2: ## Run development server using composite ASGI app (Django + FastAPI)
-	@echo "Starting development server..."
-	@echo "Django API: http://localhost:8000"
-	@echo "FastAPI Service: http://localhost:8000/ai-service"
-	@echo "Use Ctrl+C to stop the service"
-	uvicorn main.asgi:application --host 0.0.0.0 --port 8003 --reload
-
-local: ## Run development server using composite ASGI app (Django + FastAPI)
-	@echo "Starting development server..."
-	@echo "Django API: http://localhost:8000"
-	@echo "FastAPI Service: http://localhost:8000/ai-service"
-	@echo "Use Ctrl+C to stop the service"
-	uvicorn main.asgi:application --host 0.0.0.0 --port 8003 --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem
-
 sample-data: ## Create sample data
 	@echo "Starting development server..."
 	@echo "Django API: http://localhost:8000"

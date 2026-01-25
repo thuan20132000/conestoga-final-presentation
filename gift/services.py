@@ -291,7 +291,6 @@ class GiftCardOnlinePaymentService:
         data_object = event.get("data", {}).get("object", {})
         
         if event_type == "checkout.session.completed":
-            logger.info("checkout.session.completed:: %s", data_object)
             self._handle_payment_succeeded(data_object)
         elif event_type == "checkout.session.expired":
             logger.info("checkout.session.expired:: %s", data_object)
@@ -483,21 +482,21 @@ class GiftCardOnlinePaymentService:
                 raise ValueError("Missing business_id in Stripe session metadata")
             business = Business.objects.get(id=business_id)
 
-            amount_cents = session.get("amount")
-            amount = money_quantize(Decimal(amount_cents) / 100)
-            currency = (session.get("currency") or "USD").upper()
+            amount_cents = metadata.get("initial_amount")
+            amount = money_quantize(Decimal(amount_cents))
+            currency = (metadata.get("currency") or "USD").upper()
 
             payment_method = self._get_online_payment_method(business.id)
             processing_fee, net_amount = self._calculate_processing_fees(amount, payment_method)
 
             return Payment.objects.create(
                 business=business,
-                client_id=metadata.get("purchaser_id") or None,
+                client_id=metadata.get("purchaser_id"),
                 amount=amount,
                 currency=currency,
                 payment_method=payment_method,
                 payment_method_type=PaymentMethodType.ONLINE,
-                status=PaymentStatusType.PENDING,
+                status=PaymentStatusType.COMPLETED,
                 processing_fee=processing_fee,
                 net_amount=net_amount,
                 external_transaction_id=session.get("id"),
@@ -534,21 +533,20 @@ class GiftCardOnlinePaymentService:
             completed_at=timezone.now(),
             processing_fee=processing_fee,
             net_amount=net_amount,
-            external_transaction_id=self._get_intent_value(payment_intent, "id"),
-            gateway_response=self._serialize_gateway_response(payment_intent),
             internal_notes="Gift card online purchase (webhook created)",
         )
 
     def _handle_payment_succeeded(self, session: Any) -> None:
-        logger.info("checkout.session.completed:: %s", session)
+        # logger.debug("checkout.session.completed:: %s", session)
+        metadata = session.get("metadata", {})
         
-        intent = self.stripe_service.retrieve_payment_intent(session.get("payment_intent"))
-        payment = self._create_payment_from_intent(intent)
+        
+        # intent = self.stripe_service.retrieve_payment_intent(session.get("payment_intent"))
+        payment = self._get_or_create_payment_from_session(session)
         
         if GiftCard.objects.filter(payment=payment).exists():
             return
 
-        metadata = intent.get("metadata", {})
         expires_at = self._parse_datetime(metadata.get("expires_at"))
         amount_value = metadata.get("initial_amount") or payment.amount
         amount = money_quantize(Decimal(amount_value))

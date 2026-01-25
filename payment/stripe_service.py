@@ -96,7 +96,6 @@ class StripeService:
                     "destination": self.merchant_id,
                 }
             
-            print("payment_intent_data:: %s", payment_intent_data)
             session = stripe.checkout.Session.create(
                 line_items=[{
                     "price_data": {

@@ -473,7 +473,7 @@ class GiftCardOnlinePaymentService:
                 payment = Payment.objects.filter(id=payment_id).first()
             if not payment:
                 payment = Payment.objects.filter(
-                    external_transaction_id=session.get("id")).first()
+                    external_transaction_id=session.get("payment_intent")).first()
             if payment:
                 return payment
         
@@ -497,10 +497,11 @@ class GiftCardOnlinePaymentService:
                 payment_method=payment_method,
                 payment_method_type=PaymentMethodType.ONLINE,
                 status=PaymentStatusType.COMPLETED,
+                completed_at=timezone.now(),
                 processing_fee=processing_fee,
                 net_amount=net_amount,
-                external_transaction_id=session.get("id"),
-                gateway_response=self._serialize_gateway_response(session),
+                external_transaction_id=session.get("payment_intent"),
+                gateway_response=session,
                 internal_notes="Gift card online purchase (webhook created)",
             )
         except Exception as e:

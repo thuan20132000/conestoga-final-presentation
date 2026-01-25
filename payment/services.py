@@ -12,7 +12,9 @@ from datetime import datetime
 from client.models import Client
 from gift.models import GiftCardTransaction
 from gift.services import GiftCardService
+import logging
 
+logger = logging.getLogger(__name__)
 
 class CreatePaymentData(TypedDict):
     payment_method_id: int
@@ -124,7 +126,7 @@ class PaymentService:
 
                 payment_stats = Payment.objects.filter(
                     business=business,
-                    created_at__range=(timezone_from_date, timezone_to_date),
+                    created_at__date__range=(timezone_from_date.date(), timezone_to_date.date()),
                     # status=PaymentStatusType.COMPLETED
                 )
 

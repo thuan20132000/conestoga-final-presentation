@@ -128,7 +128,6 @@ class PaymentService:
                     # status=PaymentStatusType.COMPLETED
                 )
 
-                print("payment_stats", payment_stats)
             else:
                 current_timezone = timezone.get_current_timezone()
                 timezone_now = timezone.now().astimezone(current_timezone)

@@ -80,7 +80,9 @@ class PaymentSerializer(serializers.ModelSerializer):
         return GiftCardTransactionSerializer(obj.gift_card_transactions.all(), many=True).data
 
     def get_service_amount(self, obj):
-        return obj.appointment.appointment_services.aggregate(Sum('custom_price'))['custom_price__sum']
+        if obj.appointment and obj.appointment.appointment_services.exists():
+            return obj.appointment.appointment_services.aggregate(Sum('custom_price'))['custom_price__sum']
+        return 0
 
 class PaymentCreateSerializer(PaymentSerializer):
     class Meta:

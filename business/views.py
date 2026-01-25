@@ -77,7 +77,7 @@ class BusinessViewSet(BaseModelViewSet):
             serializer = BusinessSettingsSerializer(settings)
             return self.response_success(serializer.data)
         except Exception as e:
-            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
@@ -185,7 +185,7 @@ class BusinessViewSet(BaseModelViewSet):
             serializer = ReceptionistStatisticsSerializer(business_calls)
             return self.response_success(serializer.data)
         except Exception as e:
-            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     @action(detail=True, methods=['get'], url_path='dashboard')
@@ -196,7 +196,7 @@ class BusinessViewSet(BaseModelViewSet):
             serializer = BusinessDashboardSerializer(object)
             return self.response_success(serializer.data)
         except Exception as e:
-            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     
     @action(detail=True, methods=['get'], url_path='service-categories')
@@ -272,16 +272,13 @@ class BusinessViewSet(BaseModelViewSet):
             from_date = request.query_params.get('from_date')
             to_date = request.query_params.get('to_date')
             
-            print("From date:: ", from_date)
-            print("To date:: ", to_date)
-            
             payment_service = PaymentService()
             payment_stats = payment_service.get_payment_stats(object, from_date, to_date)
             serializer = PaymentSerializer(payment_stats['results'], many=True)
             metadata = payment_stats['metadata']
             return self.response_success(serializer.data, metadata=metadata)
         except Exception as e:
-            return self.response_error({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class OperatingHoursViewSet(BaseModelViewSet):
     """ViewSet for OperatingHours management"""

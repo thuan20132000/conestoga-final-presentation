@@ -13,7 +13,7 @@ from payment.models import (
 from payment.stripe_service import StripeService
 from business.models import Business
 from main.common_settings import ONLINE_BOOKING_URL
-from main.utils import money_quantize, send_html_email
+from main.utils import money_quantize, get_business_managers_group_name
 from notifications.services import EmailService, NotificationDispatcher
 from notifications.models import Notification
 import logging
@@ -572,6 +572,18 @@ class GiftCardOnlinePaymentService:
             
         if metadata.get("recipient_phone"):
             self._send_gift_card_sms(gift_card)
+            
+         
+        notification_dispatcher = NotificationDispatcher()
+
+        notification_dispatcher.dispatchAsync(
+            channel=Notification.Channel.PUSH,
+            to=None,
+            group_name=get_business_managers_group_name(payment.business_id),
+            title="🧾 Gift Card Purchased",
+            body=f"{gift_card.recipient_name} has purchased a gift card for ${amount} {currency} at {gift_card.business.name} successfully.",
+            business_id=payment.business_id,
+        )
 
     def _handle_payment_failed(self, payment_intent: Any) -> None:
         payment = self._get_or_create_payment_from_intent(payment_intent)

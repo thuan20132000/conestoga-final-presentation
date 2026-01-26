@@ -110,7 +110,6 @@ class BusinessInitializerService:
                 'role': manager_role,
             }
         manager = Staff.objects.create(business=self.business, **defaults_managers)
-        manager.username = 'lisatran@manager'
         manager.set_password('!Matkhau@123')
         manager.save()
 

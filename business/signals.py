@@ -8,7 +8,7 @@ from payment.models import PaymentMethod
 from webpush.models import Group, PushInformation
 
 from main.utils import get_business_managers_group_name 
-from .services import BellebizBusinessInitializerService
+from .services import BusinessInitializerService
 
 @receiver(post_save, sender=Business)
 def create_business_defaults(sender, instance, created, **kwargs):
@@ -19,4 +19,6 @@ def create_business_defaults(sender, instance, created, **kwargs):
         return
     
     business = instance
-    BellebizBusinessInitializerService(business).initialize()
+    service_csv_path = 'dummy/services_by_salon_2026-01-26.csv'
+    category_csv_path = 'dummy/service_categories_by_salon_2026-01-26.csv'
+    BusinessInitializerService(business, service_csv_path, category_csv_path).initialize()

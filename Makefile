@@ -196,3 +196,8 @@ health-check: ## Check if services are running
 	@curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/receptionist/businesses/ | grep -q "200\|401\|403" && echo "Django: OK" || echo "Django: Not running"
 	@echo "Checking FastAPI service..."
 	@curl -s -o /dev/null -w "%{http_code}" http://localhost:5050/health | grep -q "200" && echo "FastAPI: OK" || echo "FastAPI: Not running"
+
+
+# Client migrations
+migrate-clients: ## Migrate clients from CSV file
+	python manage.py migrate-clients --business-id 72cb3a87-15d3-495d-a262-c8e28593195d --csv-file dummy/clients_by_salon_2026-01-26.csv

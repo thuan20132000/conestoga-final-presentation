@@ -31,17 +31,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Run without actually creating clients (for testing)'
         )
-        parser.add_argument(
-            '--skip-duplicates',
-            action='store_true',
-            help='Skip clients that already exist (by phone or email)'
-        )
-
+      
     def handle(self, *args, **options):
         business_id = options['business_id']
         csv_file = options['csv_file']
         dry_run = options['dry_run']
-        skip_duplicates = options['skip_duplicates']
 
         # Validate business exists
         try:
@@ -72,24 +66,30 @@ class Command(BaseCommand):
 
         try:
             with open(csv_file, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                
+                reader = csv.reader(f)
+                next(reader)  # Skip header row
                 for row_num, row in enumerate(reader, start=2):  # Start at 2 because row 1 is header
                     try:
                         # Parse and validate data
-                        first_name = row.get('fullname', '').strip()
-                        last_name = ''
-                        phone = row.get('tel', '').strip()
-                        email = row.get('email', '').strip()
+                        first_name = row[2].strip()
+                        phone = row[3].strip()
+                        email = row[4].strip()
+                        date_of_birth = parse_date(row[5].strip())
                         
                         # create client
-                        client = Client.objects.create(
-                            first_name=first_name,
-                            last_name=last_name,
-                            email=email,
-                            phone=phone,
-                            primary_business=business,
-                        )
+                        if not dry_run:
+                            client = Client.objects.create(
+                                first_name=first_name,
+                                last_name='',
+                                email=email,
+                                phone=phone,
+                                date_of_birth=date_of_birth,
+                                primary_business=business,
+                                is_active=True,
+                                is_vip=False
+                            )
+                        else:
+                            self.stdout.write(f'Would create client: {first_name} {email} {phone} {date_of_birth}')
                         created_count += 1
 
                         if (created_count + updated_count + skipped_count + error_count) % 100 == 0:

@@ -10,25 +10,30 @@ from staff.models import Staff
 from payment.models import PaymentMethod
 from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
+import csv
 from main.common_settings import ONLINE_BOOKING_URL
 
 
-class BellebizBusinessInitializerService:
-    def __init__(self, business):
+class BusinessInitializerService:
+    """Base class for business initializer services"""
+    def __init__(self, business, service_csv_path, category_csv_path):
         self.business = business
-        self._category_mapping = {}  # Maps serviceTypeId to category name
+        self.service_csv_path = service_csv_path
+        self.category_csv_path = category_csv_path
+        self.category_mapping = {}
 
     def initialize(self):
         with transaction.atomic():
             self._create_business_settings()
             self._create_business_roles()
-            self._create_service_categories()
-            self._create_services()
-            self._create_staff()
             self._create_operating_hours()
             self._create_payment_methods()
             self._create_business_managers_group()
             self._create_online_booking()
+            self._create_service_categories()
+            self._create_services()
+            self._create_staff()
+            self._create_manager()
 
     def _create_business_settings(self):
         """Create default business settings"""
@@ -70,6 +75,177 @@ class BellebizBusinessInitializerService:
         ]
         for role in defaults_roles:
             BusinessRoles.objects.create(business=self.business, **role)
+
+    def _create_staff(self):
+        """Create default staff members"""
+        technician_role = BusinessRoles.objects.get(name='Technician', business=self.business)
+        
+        defaults_staff = [
+            {
+                'first_name': 'John',
+                'last_name': 'Nguyen',
+                'email': 'john.nguyen@example.com',
+                'phone': '1234567890',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Jane',
+                'last_name': 'Tran',
+                'email': 'jane.tran@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+        ]
+        for staff in defaults_staff:
+            Staff.objects.create(business=self.business, **staff)
+
+    def _create_manager(self):
+        """Create default managers"""
+        manager_role = BusinessRoles.objects.get(name='Manager', business=self.business)
+        defaults_managers = {   
+                'first_name': 'Lisa',
+                'last_name': 'Tran',
+                'email': 'lisa.tran@example.com',
+                'phone': '1234567892',
+                'role': manager_role,
+            }
+        manager = Staff.objects.create(business=self.business, **defaults_managers)
+        manager.username = 'lisatran@manager'
+        manager.set_password('!Matkhau@123')
+        manager.save()
+
+    def _create_operating_hours(self):
+        """Create default operating hours for each day of the week"""
+        for day in range(7):
+            OperatingHours.objects.create(
+                business=self.business,
+                day_of_week=day,
+                is_open=True if day < 5 else False,
+                open_time=time(9, 0) if day < 5 else None,
+                close_time=time(17, 0) if day < 5 else None,
+                break_start_time=time(12, 0) if day < 5 else None,
+                break_end_time=time(13, 0) if day < 5 else None,
+            )
+
+    def _create_payment_methods(self):
+        """Create default payment methods"""
+        defaults_payment_methods = [
+            {
+                'name': 'Cash',
+                'payment_type': 'cash',
+                'description': 'Cash payment',
+                'is_active': True,
+            },
+            {
+                'name': 'Credit Card',
+                'payment_type': 'credit_card',
+                'description': 'Credit Card payment',
+                'is_active': True,
+            },
+            {
+                'name': 'Debit Card',
+                'payment_type': 'debit_card',
+                'description': 'Debit Card payment',
+                'is_active': True,
+            },
+            {
+                'name': 'Online Payment',
+                'payment_type': 'online',
+                'description': 'Online payment',
+                'is_active': True,
+            },
+            {
+                'name': 'Gift Card',
+                'payment_type': 'gift_card',
+                'description': 'Gift Card payment',
+                'is_active': True,
+            },
+            {
+                'name': 'Bank Transfer',
+                'payment_type': 'bank_transfer',
+                'description': 'Bank Transfer payment',
+                'is_active': True,
+            },
+        ]
+        for payment_method in defaults_payment_methods:
+            PaymentMethod.objects.create(business=self.business, **payment_method)
+
+    def _create_business_managers_group(self):
+        """Create business managers group for webpush notifications"""
+        Group.objects.create(name=get_business_managers_group_name(self.business.id))
+
+    def _create_online_booking(self):
+        """Create default online booking configuration"""
+        business_description = self.business.description if self.business.description else 'Online Booking'
+        business_policy = 'Booking policy/terms shown to clients'
+        BusinessOnlineBooking.objects.create(
+            business=self.business,
+            name=self.business.name,
+            description=business_description,
+            policy=business_policy,
+            interval_minutes=self.business.settings.time_slot_interval,
+            buffer_time_minutes=self.business.settings.buffer_time_minutes,
+            is_active=True,
+            shareable_link=f'{ONLINE_BOOKING_URL}/booking?business_id={self.business.id}',
+        )
+
+    def _create_service_categories(self):
+        """Create default service categories"""
+        base_dir = Path(__file__).resolve().parent
+        csv_path = base_dir / self.category_csv_path
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header row
+            for row in reader:
+                category = ServiceCategory.objects.create(
+                    business=self.business,
+                    name=row[2],
+                    color_code=row[3],
+                    sort_order=row[0],
+                    is_online_booking=True,
+                    is_active=True,
+                )
+                self.category_mapping[category.name] = category
+
+    def _create_services(self):
+        """Create default services"""
+        base_dir = Path(__file__).resolve().parent
+        csv_path = base_dir / self.service_csv_path
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            next(reader)  # Skip header row
+            for row in reader:
+                category = self.category_mapping.get(row[5])
+                if not category:
+                    category = None
+                Service.objects.create(
+                    business=self.business,
+                    category=category,
+                    name=row[2],
+                    duration_minutes=row[4],
+                    price=row[3],
+                    is_active=True,
+                    sort_order=row[0],
+                    is_online_booking=True,
+                )
+   
+class BellebizBusinessInitializerService(BusinessInitializerService):
+    def __init__(self, business):
+        self.business = business
+        self._category_mapping = {}  # Maps serviceTypeId to category name
+
+    def initialize(self):
+        with transaction.atomic():
+            self._create_business_settings()
+            self._create_business_roles()
+            self._create_service_categories()
+            self._create_services()
+            self._create_staff()
+            self._create_operating_hours()
+            self._create_payment_methods()
+            self._create_business_managers_group()
+            self._create_online_booking()
+
 
     def _create_service_categories(self):
         """Create default service categories from JSON file"""
@@ -149,130 +325,4 @@ class BellebizBusinessInitializerService:
                 is_online_booking=service_data.get('isOnlineBooking', True),
             )
 
-    def _create_staff(self):
-        """Create default staff members"""
-        technician_role = BusinessRoles.objects.get(name='Technician', business=self.business)
-        
-        defaults_staff = [
-            {
-                'first_name': 'John',
-                'last_name': 'Doe',
-                'email': 'john.doe@example.com',
-                'phone': '1234567890',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Jane',
-                'last_name': 'Doe',
-                'email': 'jill.doe@example.com',
-                'phone': '1234567890',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Jack',
-                'last_name': 'Doe',
-                'email': 'jack.doe@example.com',
-                'phone': '1234567890',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Jill',
-                'last_name': 'Doe',
-                'email': 'jill.doe@example.com',
-                'phone': '1234567890',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Jill',
-                'last_name': 'Doe',
-                'email': 'jill.doe@example.com',
-                'phone': '1234567890',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Jill',
-                'last_name': 'Doe',
-                'email': 'jill.doe@example.com',
-                'phone': '1234567890',
-                'role': technician_role,
-            },
-        ]
-        for staff in defaults_staff:
-            Staff.objects.create(business=self.business, **staff)
 
-    def _create_operating_hours(self):
-        """Create default operating hours for each day of the week"""
-        for day in range(7):
-            OperatingHours.objects.create(
-                business=self.business,
-                day_of_week=day,
-                is_open=True if day < 5 else False,
-                open_time=time(9, 0) if day < 5 else None,
-                close_time=time(17, 0) if day < 5 else None,
-                break_start_time=time(12, 0) if day < 5 else None,
-                break_end_time=time(13, 0) if day < 5 else None,
-            )
-
-    def _create_payment_methods(self):
-        """Create default payment methods"""
-        defaults_payment_methods = [
-            {
-                'name': 'Cash',
-                'payment_type': 'cash',
-                'description': 'Cash payment',
-                'is_active': True,
-            },
-            {
-                'name': 'Credit Card',
-                'payment_type': 'credit_card',
-                'description': 'Credit Card payment',
-                'is_active': True,
-            },
-            {
-                'name': 'Debit Card',
-                'payment_type': 'debit_card',
-                'description': 'Debit Card payment',
-                'is_active': True,
-            },
-            {
-                'name': 'Online Payment',
-                'payment_type': 'online',
-                'description': 'Online payment',
-                'is_active': True,
-            },
-            {
-                'name': 'Gift Card',
-                'payment_type': 'gift_card',
-                'description': 'Gift Card payment',
-                'is_active': True,
-            },
-            {
-                'name': 'Bank Transfer',
-                'payment_type': 'bank_transfer',
-                'description': 'Bank Transfer payment',
-                'is_active': True,
-            },
-        ]
-        for payment_method in defaults_payment_methods:
-            PaymentMethod.objects.create(business=self.business, **payment_method)
-
-    def _create_business_managers_group(self):
-        """Create business managers group for webpush notifications"""
-        Group.objects.create(name=get_business_managers_group_name(self.business.id))
-
-    def _create_online_booking(self):
-        """Create default online booking configuration"""
-        business_description = self.business.description if self.business.description else 'Online Booking'
-        business_policy = 'Booking policy/terms shown to clients'
-        BusinessOnlineBooking.objects.create(
-            business=self.business,
-            name=self.business.name,
-            description=business_description,
-            policy=business_policy,
-            interval_minutes=self.business.settings.time_slot_interval,
-            buffer_time_minutes=self.business.settings.buffer_time_minutes,
-            is_active=True,
-            shareable_link=f'{ONLINE_BOOKING_URL}/booking?business_id={self.business.id}',
-        )
-
-    

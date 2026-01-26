@@ -200,4 +200,4 @@ health-check: ## Check if services are running
 
 # Client migrations
 migrate-clients: ## Migrate clients from CSV file
-	python manage.py migrate-clients --business-id 72cb3a87-15d3-495d-a262-c8e28593195d --csv-file dummy/clients_by_salon_2026-01-26.csv
+	python manage.py migrate-clients --business-id 4a62da9d-578b-485d-b609-f59e5c9a41d5 --csv-file clients_by_salon_2026-01-26.csv

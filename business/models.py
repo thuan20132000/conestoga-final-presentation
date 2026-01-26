@@ -1,8 +1,7 @@
 from django.db import models
 import uuid
-from service.models import ServiceCategory, Service
-from payment.models import PaymentMethod
 from main.models import SoftDeleteModel
+from django.utils import timezone
 
 class BusinessType(SoftDeleteModel):
     """Different types of businesses that can use the system."""
@@ -234,3 +233,67 @@ class BusinessOnlineBooking(SoftDeleteModel):
             self.slug = slug
         
         super().save(*args, **kwargs)
+
+class BusinessBanner(SoftDeleteModel):
+    BANNER_TYPE_CHOICES = [
+        ('promotion', 'Promotion'),
+        ('info', 'Information'),
+        ('alert', 'Alert'),
+    ]
+    business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='banners')
+    type = models.CharField(max_length=20, choices=BANNER_TYPE_CHOICES, default='info')
+    title = models.CharField(max_length=120)
+    message = models.TextField()
+    cta_text = models.CharField(max_length=50, blank=True, null=True)
+    cta_url = models.CharField(max_length=255, blank=True, null=True)
+    start_at = models.DateTimeField(blank=True, null=True)
+    end_at = models.DateTimeField(blank=True, null=True)
+
+    dismissible = models.BooleanField(default=True)
+
+    # Styling (optional but useful)
+    background_color = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        help_text="HEX or Tailwind class"
+    )
+
+    text_color = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True
+    )
+    
+    image = models.ImageField(upload_to='banners/', blank=True, null=True)
+    
+    is_active = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["business", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.business} | {self.title}"
+
+    def is_visible(self):
+        """
+        Check if banner should be shown right now
+        """
+        now = timezone.now()
+
+        if not self.is_active:
+            return False
+
+        if self.start_at and self.start_at > now:
+            return False
+
+        if self.end_at and self.end_at < now:
+            return False
+
+        return True

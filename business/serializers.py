@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db.models import Sum, Avg
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking
+    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking, BusinessBanner
 )
 from payment.serializers import PaymentMethodSerializer
 class BusinessTypeSerializer(serializers.ModelSerializer):
@@ -219,6 +219,32 @@ class BusinessRolesSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description']
         read_only_fields = ['id']
         
+class BusinessBannerSerializer(serializers.ModelSerializer):
+    """Serializer for BusinessBanner model"""
+    class Meta:
+        model = BusinessBanner
+        fields = [
+            'id', 
+            'type',
+            'background_color', 
+            'text_color', 
+            'image', 
+            'title', 
+            'message', 
+            'cta_text', 
+            'cta_url', 
+            'start_at', 
+            'end_at', 
+            'is_active',
+            'is_visible',
+            'dismissible',
+            'created_at',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'is_visible']
+
+    def get_is_visible(self, obj):
+        return obj.is_visible()
 
 class BusinessInfoSerializer(serializers.ModelSerializer):
     """Serializer for BusinessInfo model"""
@@ -226,6 +252,7 @@ class BusinessInfoSerializer(serializers.ModelSerializer):
     operating_hours = OperatingHoursSerializer(many=True, read_only=True)
     settings = BusinessSettingsSerializer(read_only=True)
     online_booking = BusinessOnlineBookingSerializer(read_only=True)
+    active_banner = serializers.SerializerMethodField()
     class Meta:
         model = Business
         fields = [
@@ -247,6 +274,10 @@ class BusinessInfoSerializer(serializers.ModelSerializer):
             'status',
             'operating_hours',
             'settings',
-            'online_booking'
+            'online_booking',
+            'active_banner'
         ]
         read_only_fields = ['id']
+
+    def get_active_banner(self, obj):
+        return BusinessBannerSerializer(obj.banners.filter(is_active=True).first()).data

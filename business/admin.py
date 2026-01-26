@@ -7,6 +7,7 @@ from .models import (
     BusinessSettings, 
     BusinessRoles, 
     BusinessOnlineBooking,
+    BusinessBanner,
 )
 from staff.models import Staff
 
@@ -126,3 +127,10 @@ class BusinessOnlineBookingAdmin(admin.ModelAdmin):
             'fields': ('is_active', 'shareable_link')
         }),
     )
+
+@admin.register(BusinessBanner)
+class BusinessBannerAdmin(admin.ModelAdmin):
+    list_display = ['business', 'type', 'title', 'message', 'cta_text', 'cta_url', 'start_at', 'end_at', 'is_active']
+    list_filter = ['business', 'type', 'is_active']
+    search_fields = ['business__name', 'title', 'message', 'cta_text', 'cta_url']
+    ordering = ['business__name', 'type', 'title']

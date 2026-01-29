@@ -120,6 +120,14 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         metadata=metadata,
                         business_twilio_phone_number=business_twilio_phone_number,
                     )
+                    # send push notification to business managers
+                    appointment_notification_service.send_manager_rescheduled_appointment_notification(
+                        business_name=business_name,
+                        business_id=business_id,
+                        client_name=client_name,
+                        start_time_str=start_at_str,
+                    )
+                    
                 # Appointment cancelled
                 if metadata and metadata.get('is_send_sms_cancellation_confirmation', False) == True:
                     if send_cancellation_sms == True:

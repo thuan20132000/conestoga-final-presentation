@@ -46,9 +46,10 @@ class AppointmentFilter(filters.FilterSet):
     status = filters.CharFilter(field_name='status')
     booked_by = filters.NumberFilter(field_name='booked_by')
     booking_source = filters.CharFilter(field_name='booking_source')
+    staff = filters.NumberFilter(field_name='appointment_services__staff_id')
     class Meta:
         model = Appointment
-        fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source']
+        fields = ['business_id', 'appointment_date', 'status', 'booked_by', 'booking_source', 'staff']
         
     
 class AppointmentViewSet(BaseModelViewSet):
@@ -80,7 +81,7 @@ class AppointmentViewSet(BaseModelViewSet):
         queryset = self.filter_queryset(queryset)
         return queryset
     
-    # get only appointments for a specific staff
+    # get only appointments for a specific staff. login
     def get_staff_appointments(self, user):
         """Get staff appointments"""
         queryset = self.get_filtered_queryset().filter(appointment_services__staff_id=user.id)
@@ -90,7 +91,6 @@ class AppointmentViewSet(BaseModelViewSet):
         """List appointments"""
         appointments = self.get_filtered_queryset()
         self.paginator.page_size = request.query_params.get('page_size', 100)
-        
         page = self.paginate_queryset(appointments)
         if page is not None:
             serializer = AppointmentDetailSerializer(page, many=True)

@@ -603,6 +603,26 @@ class AppointmentNotificationService:
         except Exception as e:
             raise Exception(f"Error sending cancellation appointment notification: {e}")
 
+    @staticmethod
+    def send_manager_rescheduled_appointment_notification(
+        business_name: str,
+        business_id: int,
+        client_name: str,
+        start_time_str: str,
+    ):
+        try:
+            body_message = f"Client {client_name} has rescheduled their appointment to {start_time_str} at {business_name}."
+            title = f"🔔 Appointment Rescheduled - {business_name}"
+            NotificationDispatcher().dispatchAsync(
+                title=title,
+                body=body_message,
+                channel=Notification.Channel.PUSH,
+                group_name=get_business_managers_group_name(business_id),
+                to=None,
+            )
+        except Exception as e:
+            raise Exception(f"Error sending manager rescheduled appointment notification: {e}")
+
 class TicketReportService():
     def __init__(self, business_id):
         self.business_id = business_id

@@ -41,7 +41,7 @@ class PushInformationAdmin(admin.ModelAdmin):
     def send_notification(self, request, queryset):
         payload = {
             "title": "🔔 New Feature Added", 
-            "body": "You can now edit your time entry and clock in/out from the app. Please reload your app to the latest version."
+            "body": "You can now edit your time entry and clock in/out from the app. Please reload your app receive the latest updates."
         }
         for device in queryset:
             notification = _send_notification(device.subscription, json.dumps(payload), 0)

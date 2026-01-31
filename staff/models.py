@@ -155,3 +155,13 @@ class TimeEntry(SoftDeleteModel):
 
         regular = 8 * 60
         self.overtime_minutes = max(self.total_minutes - regular, 0)
+        
+    def save(self, *args, **kwargs):
+        if self.clock_out:
+            self.calculate_totals()
+            self.status = 'COMPLETED'
+        else:
+            self.status = 'IN_PROGRESS'
+            self.total_minutes = 0
+            self.overtime_minutes = 0
+        super().save(*args, **kwargs)

@@ -304,6 +304,12 @@ class BusinessBookingStaffSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'photo', 'role_name']
         
 
+class TimeEntryPartialUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for partial update time entry"""
+    class Meta:
+        model = TimeEntry
+        fields = ['clock_out', 'clock_in']
+        read_only_fields = ['total_minutes', 'overtime_minutes']
 
 class TimeEntrySerializer(serializers.ModelSerializer):
     """Serializer for TimeEntry model"""

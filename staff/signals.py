@@ -63,11 +63,15 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
             business_timezone = business_settings.timezone
         
         timezone.activate(business_timezone)
-        
+        if created:
+            update_title = ""
+        else:
+            update_title = "(Updated)"
+            
         if instance.status == 'IN_PROGRESS':
             title = f"🔔 Staff Clocked In - {business_name}"
             clock_in_time = timezone.localtime(instance.clock_in).strftime('%I:%M %p on %B %d, %Y')
-            body = f"{first_name} has clocked in at {clock_in_time}."
+            body = f"{update_title} {first_name} has clocked in at {clock_in_time}."
             
             dispatcher.dispatchAsync(
                 title=title,
@@ -80,7 +84,7 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
         if instance.status == 'COMPLETED':
             title = f"🔔 Staff Clocked Out - {business_name}"
             clock_out_time = timezone.localtime(instance.clock_out).strftime('%I:%M %p on %B %d, %Y')
-            body = f"{first_name} has clocked out at {clock_out_time}."
+            body = f"{update_title} {first_name} has clocked out at {clock_out_time}."
             
             dispatcher.dispatchAsync(
                 title=title,

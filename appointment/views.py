@@ -37,8 +37,14 @@ from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
 from appointment.models import AppointmentStatusType
 from staff.permissions import IsBusinessManager
-from appointment.services import TicketReportService
-from appointment.serializers import BusinessTicketReportSerializer, StaffTicketReportSerializer
+from appointment.services import TicketReportService, SalaryReportService
+from appointment.serializers import (
+    BusinessTicketReportSerializer, 
+    StaffTicketReportSerializer,
+    SalaryReportSerializer,
+    SalaryReportByDatesSerializer,
+    SalaryReportByDateSerializer
+)
 from appointment.services import AppointmentNotificationService
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id')
@@ -1043,6 +1049,119 @@ class TicketReportViewSet(BaseModelViewSet):
             ticket_report = TicketReportService(self.request.user.business_id)
             ticket_report_data = ticket_report.get_ticket_report_by_date(staff_id, date)
             serializer = StaffTicketReportSerializer(ticket_report_data)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+
+class SalaryReportViewSet(BaseModelViewSet):
+    """ViewSet for managing salary reports with commission calculations"""
+    http_method_names = ['get']
+    permission_classes = [IsAuthenticated]
+    queryset = AppointmentService.objects.all()
+    
+    def get_queryset(self):
+        """Get queryset for salary reports"""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(
+            appointment__business_id=self.request.user.business_id, 
+            appointment__is_deleted=False, 
+            appointment__is_active=True, 
+            is_deleted=False, 
+            is_active=True
+        )
+        return queryset
+    
+    def list(self, request):
+        """List salary report summary with commission calculations"""
+        try:
+            from_date = request.query_params.get('from_date')
+            to_date = request.query_params.get('to_date')
+            staff_id = request.query_params.get('staff_id')
+            
+            # Validate required parameters
+            if not from_date or not to_date:
+                return self.response_error(
+                    {'error': 'from_date and to_date parameters are required'},
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Permission check: staff can only view their own salary
+            user = self.request.user
+            if not IsBusinessManager().has_permission(self.request, self):
+                staff_id = user.id
+            
+            salary_report = SalaryReportService(self.request.user.business_id)
+            salary_report_data = salary_report.get_salary_report_summary(
+                from_date, to_date, staff_id
+            )
+            print("salary_report_data", salary_report_data)
+            
+            serializer = SalaryReportSerializer(salary_report_data)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=False, methods=['get'], url_path='by-dates', permission_classes=[IsAuthenticated])
+    def salary_report_by_dates(self, request):
+        """Get salary report by dates (daily breakdown) with commission"""
+        try:
+            staff_id = request.query_params.get('staff_id')
+            from_date = request.query_params.get('from_date')
+            to_date = request.query_params.get('to_date')
+            
+            # Validate required parameters
+            if not staff_id or not from_date or not to_date:
+                return self.response_error(
+                    {'error': 'staff_id, from_date, and to_date parameters are required'},
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Permission check: staff can only view their own salary
+            user = self.request.user
+            if not IsBusinessManager().has_permission(self.request, self):
+                if str(user.id) != str(staff_id):
+                    return self.response_error(
+                        {'error': 'You do not have permission to view this salary report'},
+                        status_code=status.HTTP_403_FORBIDDEN
+                    )
+            
+            salary_report = SalaryReportService(self.request.user.business_id)
+            salary_report_data = salary_report.get_salary_report_by_dates(
+                from_date, to_date, staff_id
+            )
+            
+            serializer = SalaryReportByDatesSerializer(salary_report_data)
+            return self.response_success(serializer.data)
+        except Exception as e:
+            return self.response_error(str(e))
+    
+    @action(detail=False, methods=['get'], url_path='by-date', permission_classes=[IsAuthenticated])
+    def salary_report_by_date(self, request):
+        """Get detailed salary report for specific date with commission"""
+        try:
+            staff_id = request.query_params.get('staff_id')
+            date = request.query_params.get('date')
+            
+            # Validate required parameters
+            if not staff_id or not date:
+                return self.response_error(
+                    {'error': 'staff_id and date parameters are required'},
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Permission check: staff can only view their own salary
+            user = self.request.user
+            if not IsBusinessManager().has_permission(self.request, self):
+                if str(user.id) != str(staff_id):
+                    return self.response_error(
+                        {'error': 'You do not have permission to view this salary report'},
+                        status_code=status.HTTP_403_FORBIDDEN
+                    )
+            
+            salary_report = SalaryReportService(self.request.user.business_id)
+            salary_report_data = salary_report.get_salary_report_by_date(staff_id, date)
+            
+            serializer = SalaryReportByDateSerializer(salary_report_data)
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error(str(e))

@@ -40,8 +40,8 @@ class StaffAdmin(UserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         ("Personal info", {"fields": (
-            "first_name", "last_name", "email", "phone", "bio", "staff_code", "commission_rate","photo")}),
-        ("Business Info", {"fields": ("role", "business", "hire_date", "photo", "is_online_booking_allowed", "is_payment_processing_allowed")}),
+            "first_name", "last_name", "email", "phone", "bio", "staff_code", "commission_rate")}),
+        ("Business Info", {"fields": ("role", "business", "hire_date", "is_online_booking_allowed", "is_payment_processing_allowed")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
         ("Soft delete", {"fields": ("is_deleted", "deleted_at")}),

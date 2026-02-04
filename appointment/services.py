@@ -634,6 +634,8 @@ class TicketReportService():
                 appointment__appointment_date__gte=from_date,
                 appointment__appointment_date__lte=to_date,
                 appointment__status=AppointmentStatusType.CHECKED_OUT.value,
+                is_active=True,
+                is_deleted=False,
             )
             
             if staff_id:
@@ -674,6 +676,8 @@ class TicketReportService():
                 appointment__appointment_date__lte=to_date,
                 appointment__status=AppointmentStatusType.CHECKED_OUT.value,
                 staff_id=staff_id,
+                is_active=True,
+                is_deleted=False,
             )
             
             queryset = queryset.order_by('-appointment__appointment_date')
@@ -714,6 +718,8 @@ class TicketReportService():
                 appointment__appointment_date=date,
                 appointment__status=AppointmentStatusType.CHECKED_OUT.value,
                 staff_id=staff_id,
+                is_active=True,
+                is_deleted=False,
             )
             
             queryset = queryset.order_by('-updated_at')

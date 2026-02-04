@@ -131,6 +131,9 @@ class AppointmentViewSet(BaseModelViewSet):
             with transaction.atomic():
                 instance = self.get_object()
                 instance.is_active = False
+                
+                instance.appointment_services.all().update(is_active=False)
+                
                 instance.payments.all().update(status=PaymentStatusType.FAILED)
                 instance.save()
                 return self.response_success(AppointmentSerializer(instance).data)

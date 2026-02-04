@@ -36,6 +36,16 @@ class AppointmentAdmin(SimpleHistoryAdmin):
     
 @admin.register(AppointmentService)
 class AppointmentServiceAdmin(SimpleHistoryAdmin):
-    list_display = ['appointment', 'service', 'staff', 'is_staff_request', 'custom_price', 'custom_duration', 'start_at', 'end_at']
-    list_filter = ['appointment', 'service', 'staff', 'is_staff_request']
-    list_per_page = 20
+    list_display = [
+        'appointment', 
+        'service', 
+        'staff', 
+        'is_staff_request', 
+        'custom_price', 
+        'custom_duration', 
+        'start_at', 
+        'end_at', 'created_at', 'updated_at']
+    list_filter = ['appointment__business']
+    list_per_page = 50
+    ordering = ['-created_at']
+    

@@ -644,6 +644,7 @@ class TicketReportService():
             staff_sales = queryset.values('staff').annotate(
                 staff_first_name=F('staff__first_name'),
                 staff_last_name=F('staff__last_name'),
+                commission_rate=F('staff__commission_rate'),
                 total_service_sales=Sum('custom_price'),
                 total_service_tips=Sum('tip_amount'),
                 total_services=Count('id'),
@@ -684,6 +685,7 @@ class TicketReportService():
             staff_sales = queryset.values('appointment__appointment_date').annotate(
                 staff_first_name=F('staff__first_name'),
                 staff_last_name=F('staff__last_name'),
+                commission_rate=F('staff__commission_rate'),
                 staff=F('staff__id'),
                 total_service_sales=Sum('custom_price'),
                 total_service_tips=Sum('tip_amount'),
@@ -726,6 +728,7 @@ class TicketReportService():
             staff_sales = queryset.values('appointment__appointment_date').annotate(
                 staff_first_name=F('staff__first_name'),
                 staff_last_name=F('staff__last_name'),
+                commission_rate=F('staff__commission_rate'),
                 staff=F('staff__id'),
                 appointment_id=F('appointment__id'),
                 service_id=F('service__id'),
@@ -758,3 +761,186 @@ class TicketReportService():
             }
         except Exception as e:
             raise Exception(f"Error getting ticket report by date: {e}")
+
+class SalaryReportService:
+    """Service for generating salary reports with commission calculations"""
+    
+    def __init__(self, business_id):
+        self.business_id = business_id
+        self.ticket_report_service = TicketReportService(business_id)
+    
+
+    def _calculate_commission(self, sales_amount: float, commission_rate: float) -> float:
+        """Calculate commission amount from sales and commission rate"""
+        if sales_amount is None or commission_rate is None:
+            return 0
+        commission_amount = float(sales_amount) * float(commission_rate)
+        return commission_amount
+    
+    def _enrich_data_with_commission(self, data: list) -> tuple[list, float]:
+        enriched_data = []
+        total_commission = 0
+        for item in data:
+            sales = item['total_service_sales'] or 0
+            commission_rate = item['commission_rate'] or 0
+            commission_amount = self._calculate_commission(sales, commission_rate)
+            item['commission_amount'] = commission_amount
+            total_commission += commission_amount
+            enriched_data.append(item)
+        return enriched_data, total_commission
+    
+    def get_salary_report_summary(self, from_date, to_date, staff_id=None):
+        """
+        Get salary report summary with commission calculations
+        
+        Args:
+            from_date: Start date for report
+            to_date: End date for report
+            staff_id: Optional staff ID to filter by specific staff
+            
+        Returns:
+            Dict with summary and per-staff data including commission
+        """
+        try:
+            # Get ticket report data
+            ticket_data = self.ticket_report_service.get_ticket_report_summary(
+                from_date, to_date, staff_id
+            )
+            
+            print("ticket_data summary", ticket_data['summary'])
+            summary = ticket_data['summary']
+            enriched_data = ticket_data['data']
+            
+            # Enrich data with commission calculations
+            enriched_data, total_commission = self._enrich_data_with_commission(enriched_data)
+            summary['total_commission'] = total_commission
+            return {
+                'summary': summary,
+                'data': enriched_data,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting salary report summary: {e}")
+    
+    def get_salary_report_by_dates(self, from_date, to_date, staff_id):
+        """
+        Get salary report by dates (daily breakdown) with commission calculations
+        
+        Args:
+            from_date: Start date for report
+            to_date: End date for report
+            staff_id: Staff ID (required)
+            
+        Returns:
+            Dict with summary and daily breakdown including commission
+        """
+        try:
+            # Get ticket report data by dates
+            ticket_data = self.ticket_report_service.get_ticket_report_by_dates(
+                from_date, to_date, staff_id
+            )
+            
+            # Enrich data with commission calculations
+            enriched_data = []
+            total_commission = 0
+            # print("ticket_data", ticket_data)
+            for item in ticket_data['data']:
+                sales = item['total_service_sales'] or 0
+                commission_rate = item['commission_rate'] or 0
+                commission_amount = self._calculate_commission(sales, commission_rate)
+                
+                if commission_amount is not None:
+                    total_commission += commission_amount
+                
+                enriched_data.append({
+                    'staff': item['staff'],
+                    'staff_first_name': item['staff_first_name'],
+                    'staff_last_name': item['staff_last_name'],
+                    'appointment_date': item['appointment_date'],
+                    'total_service_sales': sales,
+                    'commission_rate': commission_rate,
+                    'commission_amount': commission_amount,
+                    'total_services': item['total_services'],
+                })
+            
+            # Build summary with commission
+            summary = ticket_data['summary'].copy()
+            summary['total_commission'] = total_commission
+            summary['commission_rate'] = commission_rate
+            
+            return {
+                'summary': summary,
+                'data': enriched_data,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting salary report by dates: {e}")
+    
+    def get_salary_report_by_date(self, staff_id, date):
+        """
+        Get detailed salary report for a specific staff on a specific date
+        
+        Args:
+            staff_id: Staff ID (required)
+            date: Specific date for report
+            
+        Returns:
+            Dict with summary and detailed service breakdown including commission
+        """
+        try:
+            # Get ticket report data by date
+            ticket_data = self.ticket_report_service.get_ticket_report_by_date(
+                staff_id, date
+            )
+            
+            # Get commission rate from the first item in data (all items have same staff)
+            commission_rate = 0
+            if ticket_data['data']:
+                # Commission rate is included in the ticket data
+                first_item = list(ticket_data['data'])[0]
+                commission_rate = first_item.get('commission_rate', 0)
+            else:
+                # If no data, get commission rate directly from Staff model
+                try:
+                    staff = Staff.objects.get(id=staff_id, is_active=True)
+                    commission_rate = staff.commission_rate or 0
+                except Staff.DoesNotExist:
+                    commission_rate = 0
+            
+            # Calculate total commission for the day
+            total_sales = ticket_data['summary']['total_sales'] or 0
+            total_commission = self._calculate_commission(total_sales, commission_rate)
+            
+            # Enrich each service record with commission
+            enriched_data = []
+            for item in ticket_data['data']:
+                service_price = item.get('custom_price') or 0
+                service_commission = self._calculate_commission(service_price, commission_rate)
+                
+                enriched_data.append({
+                    'staff': item['staff'],
+                    'staff_first_name': item['staff_first_name'],
+                    'staff_last_name': item['staff_last_name'],
+                    'appointment_id': item.get('appointment_id'),
+                    'service_id': item.get('service_id'),
+                    'service_name': item.get('service_name'),
+                    'service_duration': item.get('service_duration'),
+                    'custom_price': service_price,
+                    'commission_rate': commission_rate,
+                    'commission_amount': service_commission,
+                    'tip_amount': item.get('tip_amount'),
+                    'tip_method': item.get('tip_method'),
+                    'client_name': item.get('client_name'),
+                    'updated_at': item.get('updated_at'),
+                    'created_at': item.get('created_at'),
+                })
+            
+            # Build summary with commission
+            summary = ticket_data['summary'].copy()
+            summary['total_commission'] = total_commission
+            summary['commission_rate'] = commission_rate
+            
+            return {
+                'summary': summary,
+                'data': enriched_data,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting salary report by date: {e}")

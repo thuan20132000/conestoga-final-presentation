@@ -312,3 +312,79 @@ class StaffTicketReportSerializer(serializers.Serializer):
     """Serializer for staff ticket report"""
     summary = StaffTicketReportSummarySerializer()
     data = TicketReportStaffDataSerializer(many=True)
+
+# Salary Report Serializers
+class SalaryReportSummaryDataSerializer(serializers.Serializer):
+    """Serializer for individual staff data in salary report summary"""
+    staff = serializers.IntegerField()
+    staff_first_name = serializers.CharField()
+    staff_last_name = serializers.CharField()
+    total_service_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    commission_rate = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    commission_amount = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    total_services = serializers.IntegerField()
+    from_date = serializers.DateField(required=False)
+    to_date = serializers.DateField(required=False)
+
+class BusinessSalaryReportSummarySerializer(serializers.Serializer):
+    """Serializer for business-level salary report summary"""
+    total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_commission = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_services = serializers.IntegerField()
+    total_staffs = serializers.IntegerField()
+    from_date = serializers.DateField()
+    to_date = serializers.DateField()
+
+class SalaryReportSerializer(serializers.Serializer):
+    """Serializer for salary report summary with commission"""
+    summary = BusinessSalaryReportSummarySerializer()
+    data = SalaryReportSummaryDataSerializer(many=True)
+
+class SalaryReportByDatesDataSerializer(serializers.Serializer):
+    """Serializer for daily breakdown in salary report"""
+    staff = serializers.IntegerField()
+    staff_first_name = serializers.CharField()
+    staff_last_name = serializers.CharField()
+    appointment_date = serializers.DateField()
+    total_service_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    commission_rate = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    commission_amount = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    total_services = serializers.IntegerField()
+
+class StaffSalaryReportSummarySerializer(serializers.Serializer):
+    """Serializer for staff salary report summary"""
+    total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_commission = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_tips = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total_cash_tips = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_card_tips = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_services = serializers.IntegerField()
+    commission_rate = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+
+class SalaryReportByDatesSerializer(serializers.Serializer):
+    """Serializer for salary report with daily breakdown"""
+    summary = StaffSalaryReportSummarySerializer()
+    data = SalaryReportByDatesDataSerializer(many=True)
+
+class SalaryReportByDateDataSerializer(serializers.Serializer):
+    """Serializer for detailed service-level data in salary report by date"""
+    staff = serializers.IntegerField()
+    staff_first_name = serializers.CharField()
+    staff_last_name = serializers.CharField()
+    appointment_id = serializers.IntegerField(required=False)
+    service_id = serializers.IntegerField(required=False)
+    service_name = serializers.CharField(required=False)
+    service_duration = serializers.IntegerField(required=False)
+    custom_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    commission_rate = serializers.DecimalField(max_digits=5, decimal_places=2, allow_null=True)
+    commission_amount = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
+    tip_amount = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    tip_method = serializers.CharField(required=False)
+    client_name = serializers.CharField(required=False)
+    updated_at = serializers.DateTimeField(required=False)
+    created_at = serializers.DateTimeField(required=False)
+
+class SalaryReportByDateSerializer(serializers.Serializer):
+    """Serializer for detailed salary report by specific date"""
+    summary = StaffSalaryReportSummarySerializer()
+    data = SalaryReportByDateDataSerializer(many=True)

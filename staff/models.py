@@ -27,6 +27,7 @@ class Staff(AbstractUser, SoftDeleteModel):
     bio = models.TextField(blank=True, null=True)
     photo = models.ImageField(upload_to='staff_photos/', blank=True, null=True)
     staff_code = models.IntegerField(blank=True, null=True, unique=True)
+    commission_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     
     def get_full_name(self):
@@ -54,23 +55,6 @@ class Staff(AbstractUser, SoftDeleteModel):
         
         if not self.working_hours.all():
             self.create_default_working_hours()
-
-class StaffSalarySettings(SoftDeleteModel):
-    """Staff salary settings"""
-    BONUS_TYPE_CHOICES = [
-        ('percentage', 'Percentage'),
-        ('fixed', 'Fixed'),
-    ]
-    staff = models.OneToOneField('staff.Staff', on_delete=models.CASCADE, related_name='staff_salary_settings')
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    commission_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    bonus_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    bonus_threshold = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    bonus_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    bonus_type = models.CharField(max_length=100, choices=BONUS_TYPE_CHOICES, default='percentage')
-    
-    class Meta:
-        unique_together = ['staff']
 
 class StaffService(SoftDeleteModel):
     """Many-to-many relationship between staff and services they can provide"""

@@ -120,6 +120,16 @@ class StaffViewSet(BaseModelViewSet):
             return self.response_success(credentials)
         except Exception as e:
             return self.response_error(str(e))
+        
+    @action(detail=True, methods=['post'], url_path='reset-staff-code')
+    def reset_staff_code(self, request, *args, **kwargs):
+        """Reset staff code"""
+        try:
+            staff = self.get_object()
+            staff_code = StaffCredentialService.reset_staff_code(staff, send_sms=True)
+            return self.response_success(staff_code)
+        except Exception as e:
+            return self.response_error(str(e))
                 
 class StaffServiceViewSet(BaseModelViewSet):
     """ViewSet for Staff services"""

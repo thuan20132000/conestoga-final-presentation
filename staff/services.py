@@ -98,6 +98,24 @@ class StaffCredentialService:
         )
         if not result.ok:
             raise ValueError(result.error or "Failed to send SMS")
+        
+    @staticmethod
+    def _send_staff_code_sms(staff: Staff, staff_code: int) -> None:
+        sms_service = SMSService()
+        business_twilio_phone_number = None
+        business_id = None
+        if staff.business:
+            business_id = staff.business_id
+            business_twilio_phone_number = getattr(staff.business, "twilio_phone_number", None)
+        message = f"Hi {staff.first_name}, your security code for {staff.business.name} is {staff_code}. Thank you!"
+        result = sms_service.send(
+            staff.phone,
+            message,
+            business_id=business_id,
+            business_twilio_phone_number=business_twilio_phone_number
+        )
+        if not result.ok:
+            raise ValueError(result.error or "Failed to send SMS")
 
     @staticmethod
     @transaction.atomic
@@ -113,3 +131,13 @@ class StaffCredentialService:
 
         return {"username": username, "password": password}
 
+    @staticmethod
+    def reset_staff_code(staff: Staff, send_sms: bool = False) -> dict:
+        staff.staff_code = secrets.choice(range(10000, 99999))
+        while Staff.objects.filter(staff_code=staff.staff_code).exclude(pk=staff.pk).exists():
+            staff.staff_code = secrets.choice(range(10000, 99999))
+        staff.save()
+        if send_sms:
+            StaffCredentialService._send_staff_code_sms(staff, staff.staff_code)
+        
+        return {"staff_code": staff.staff_code}

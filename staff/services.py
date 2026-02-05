@@ -107,7 +107,7 @@ class StaffCredentialService:
         if staff.business:
             business_id = staff.business_id
             business_twilio_phone_number = getattr(staff.business, "twilio_phone_number", None)
-        message = f"Hi {staff.first_name}, your security code for {staff.business.name} is {staff_code}. Thank you!"
+        message = f"Hi {staff.first_name}, your security code for {staff.business.name} is {staff_code}. Please logout and login again to use the new code. Thank you!"
         result = sms_service.send(
             staff.phone,
             message,

@@ -226,6 +226,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.2.170:3001",  # Django dev origin
     "https://192.168.2.170:3001",  # Django dev origin
     "https://develop.d3lgvc3ld1a6bg.amplifyapp.com",
+    "https://staging.d3lgvc3ld1a6bg.amplifyapp.com",
     "https://master.d2cve25ion05t3.amplifyapp.com",  # Django dev origin
     "http://127.0.0.1:3000",  # Frontend dev origin
     "https://develop.d2cve25ion05t3.amplifyapp.com" # Client app booking

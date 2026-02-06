@@ -74,7 +74,6 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
         model = Staff
         fields = [
             'first_name', 'last_name', 'email', 'phone', 'role',
-            'staff_code',
             'is_active',
             'is_online_booking_allowed',
             'is_payment_processing_allowed',

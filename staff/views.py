@@ -44,7 +44,11 @@ class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
     queryset = Staff.objects.filter(is_deleted=False)
     permission_classes = [IsAuthenticated, IsBusinessManager]
+    ordering_fields = ['created_at','updated_at','first_name','last_name']
+    ordering = ['-created_at']
+    
     filterset_class = StaffFilter
+    
     
     def list(self, request, *args, **kwargs):
         """List staff"""
@@ -68,6 +72,17 @@ class StaffViewSet(BaseModelViewSet):
         if self.action in ['create', 'update', 'partial_update']:
             return StaffCreateUpdateSerializer
         return StaffSerializer
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Partial update staff"""
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            instance = serializer.save()
+            return self.response_success(StaffSerializer(instance).data)
+        except Exception as e:
+            return self.response_error(str(e))
     
     @action(detail=True, methods=['get'])
     def roles(self, request, pk=None):

@@ -238,7 +238,7 @@ class AppointmentDetailSerializer(AppointmentSerializer):
         many=True, read_only=True)
     start_at = serializers.DateTimeField(
         source='appointment_services.first.start_at', read_only=True)
-
+    
     class Meta(AppointmentSerializer.Meta):
 
         fields = AppointmentSerializer.Meta.fields + [

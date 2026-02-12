@@ -8,6 +8,9 @@ from receptionist.models import AIConfiguration, CallSession, AIConfigurationSta
 from asgiref.sync import sync_to_async
 from urllib.parse import urlencode
 
+import logging
+logger = logging.getLogger(__name__)
+
 # Create router
 router = APIRouter(tags=["twilio"])
 
@@ -101,9 +104,12 @@ async def handle_incoming_call(request: Request):
     call_sid = data.get("CallSid")
     print("Call SID:: ", call_sid)
     
-    business_ai_config = await AIConfiguration.objects.aget(business__phone_number=call_to, status=AIConfigurationStatus.ACTIVE.value)
+    business_ai_config = await AIConfiguration.objects.aget(
+        business__twilio_phone_number=call_to, 
+        status=AIConfigurationStatus.ACTIVE.value
+    )
     
-    print("Business AI config:: ", business_ai_config.__dict__)
+    logger.info(f"Business AI config:: {business_ai_config.__dict__}")
     
     call_session = await CallSession.objects.acreate(
         call_sid=call_sid,

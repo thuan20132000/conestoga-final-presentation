@@ -25,7 +25,7 @@ AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS
 # Create router
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
-VOICE = 'verse'
+VOICE = 'alloy'
 MODEL = 'gpt-realtime-mini'
 LOG_EVENT_TYPES = [
     'error',
@@ -48,16 +48,16 @@ SHOW_TIMING_MATH = False
 async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str):
     """Handle WebSocket connections between Twilio and OpenAI."""
     print("Client connected")
+
+    
     receptionist_tools = ReceptionistTools()
     ai_configuration = await receptionist_tools.ai_configuration(call_to)
-    print("AI configuration:: ", ai_configuration)
+    
+    # Set business_id for booking service
+    receptionist_tools.set_business_id(ai_configuration.business_id)
     
     
     await websocket.accept()
-    
-    print("Call SID:: ", call_sid)
-    print("Call to:: ", call_to)
-    
     
     async def send_session_update(openai_ws):
         """Send session update to OpenAI."""

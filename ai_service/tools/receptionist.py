@@ -1,12 +1,14 @@
 from ai_service.tools.base import BaseTool
 from typing import Dict, Any, Callable
 import json
-from ai_service.services.booking_api import BookingAPI
+from ai_service.services.business_booking_service import BusinessBookingService
 from ai_service.tools.receptionist_agent import RECEPTIONIST_AGENT_TOOLS
 from ai_service.services.openai_api import OpenAIAPI
 from receptionist.models import SystemLog, CallSession, AIConfiguration, AIConfigurationStatus
 from asgiref.sync import sync_to_async
 from django.utils import timezone
+from logging import getLogger
+logger = getLogger(__name__)
 
 AGENT_TOOLS = RECEPTIONIST_AGENT_TOOLS
 
@@ -22,14 +24,37 @@ SYSTEM_MESSAGE = (
 
 class ReceptionistTools(BaseTool):
     """Tools for the receptionist."""
-    _booking_api: BookingAPI
+    _booking_service: BusinessBookingService = None
+    _business_id: int = None
 
-    def __init__(self):
-        """Initialize the receptionist tools."""
+    def __init__(self, business_id: int = None):
+        """
+        Initialize the receptionist tools.
+        
+        Args:
+            business_id: Optional business ID. If not provided, will be set via set_business_id()
+        """
         print("Initializing receptionist tools...")
-        self._booking_api = BookingAPI()
+        self._business_id = business_id
+        if business_id:
+            self._booking_service = BusinessBookingService(business_id)
         self._openai_api = OpenAIAPI()
         super().__init__()
+    
+    def set_business_id(self, business_id: int):
+        """
+        Set the business ID and initialize the booking service.
+        
+        Args:
+            business_id: The business ID to use for booking operations
+        """
+        self._business_id = business_id
+        self._booking_service = BusinessBookingService(business_id)
+    
+    def _ensure_booking_service(self):
+        """Ensure booking service is initialized."""
+        if not self._booking_service:
+            raise RuntimeError("Booking service not initialized. Call set_business_id() first.")
     
     async def create_system_log(self, level: str, call: None, message: str, metadata: Dict[str, Any]):
         """Create a system log."""
@@ -54,132 +79,76 @@ class ReceptionistTools(BaseTool):
 
     async def execute_function_call(self, function_name: str, arguments: Dict[str, Any]) -> str:
         """Execute function calls and return results."""
-        print("Executing function call:: ", function_name)
-        print("Arguments:: ", arguments)
-        data = None
+        print(f"Executing function call: {function_name}")
+        print(f"Arguments: {arguments}")
+        
         try:
+            self._ensure_booking_service()
+            data = None
+            
             if function_name == "get_business_information":
-                data = await self._booking_api.fetch_business_information(arguments.get("info_type", "general"))
+                data = await self._booking_service.get_business_information(
+                    arguments.get("info_type", "general")
+                )
+                
             elif function_name == "get_service_information":
-                data = await self._booking_api.fetch_business_services(arguments.get("service_type", "all_services"))
-                # return await self.get_service_information(arguments.get("service_type", "all_services"))
+                data = await self._booking_service.get_service_information()
+                
             elif function_name == "check_availability":
-                print("====================Checking availability...====================")
-                print("Arguments:: ", arguments)
-                data = await self.check_availability(
-                    arguments.get("date"),
-                    arguments.get("time", "any"),
-                    arguments.get("service_type")
+                data = await self._booking_service.check_availability(
+                    date=arguments.get("date"),
+                    time=arguments.get("time", "any"),
+                    service_type=arguments.get("service_type")
                 )
-                print("Check availability data:: ", data)
+                
             elif function_name == "get_customer_information":
-                phone_number = arguments.get("customer_phone")
-                customer_name = arguments.get("customer_name", "Unknown")
-                data = await self._booking_api.fetch_customer_information(phone_number)
-                if not data:
-                    data = await self._booking_api.create_customer(customer_name, phone_number)
-                    
-            elif function_name == "book_appointment":
-                print("====================Booking appointment...====================")
-                print("Arguments:: ", arguments)
-                phone_number = arguments.get("phone_number")
-                print("Phone number:: ", phone_number)
-                full_name = arguments.get("name")
-                customer = await self._booking_api.fetch_customer_information(arguments.get("phone_number"))
-                if not customer:
-                    customer = await self._booking_api.create_customer(full_name, phone_number)
-
-                services_ids = arguments.get("service_ids")
-                booking_services = list()
-                for service_id in services_ids:
-                    booking_services.append({
-                        "service_id": service_id,
-                        "employee_id": arguments.get("available_time_slot").get("employee_id"),
-                        "start_at": arguments.get("available_time_slot").get("start_at"),
-                        "end_at": arguments.get("available_time_slot").get("end_at")
-                    })
-
-                appointment_data = {
-                    "selected_date": arguments.get("date"),
-                    "notes": "test notes",
-                    "salon": 1,
-                    "customer": customer.get("id"),
-                    "booking_source": "phone",
-                    "services": booking_services
-                }
-                
-                booking_data = await self._booking_api.book_appointment(appointment_data)
-                print("Booking data:: ", booking_data)
-
-                return json.dumps(booking_data)
-            
-            elif function_name == "look_up_appointment":
-                print("====================Looking up appointment...====================")
-                phone_number = arguments.get("phone_number")
-                print("Phone number:: ", phone_number)
-                date = arguments.get("date")
-                print("Date:: ", date)
-                data = await self._booking_api.find_my_appointments(phone_number, date)
-                print("Look up appointment data:: ", data)
-                return json.dumps(data)
-            
-            elif function_name == "cancel_appointment":
-                phone_number = arguments.get("phone_number")
-                name = arguments.get("name")
-                service_name = arguments.get("service_name")
-                date = arguments.get("date")
-                time = arguments.get("time")
-                appointment_id = arguments.get("appointment_id")
-                print("====================Cancelling appointment...====================")
-                print("Phone number:: ", phone_number)
-                print("Name:: ", name)
-                print("Service name:: ", service_name)
-                print("Date:: ", date)
-                print("Time:: ", time)
-                print("Appointment id:: ", appointment_id)
-            
-                
-                canceled_data = await self._booking_api.cancel_appointment(
-                    appointment_id,
-                    phone_number
+                data = await self._booking_service.get_or_create_customer(
+                    phone_number=arguments.get("customer_phone"),
+                    customer_name=arguments.get("customer_name", "Unknown")
                 )
-                print("Canceled data:: ", canceled_data)
-                return json.dumps(canceled_data)
-            
+                
+            elif function_name == "book_appointment":
+                data = await self._booking_service.book_appointment(
+                    phone_number=arguments.get("phone_number"),
+                    name=arguments.get("name"),
+                    date=arguments.get("date"),
+                    service_ids=arguments.get("service_ids"),
+                    available_time_slot=arguments.get("available_time_slot"),
+                    notes=arguments.get("notes", "")
+                )
+                
+                logger.info(f"Booked appointment: {data}")
+                
+            elif function_name == "look_up_appointment":
+                data = await self._booking_service.lookup_appointments(
+                    phone_number=arguments.get("phone_number"),
+                    date=arguments.get("date")
+                )
+                
+            elif function_name == "cancel_appointment":
+                data = await self._booking_service.cancel_appointment(
+                    appointment_id=arguments.get("appointment_id"),
+                    phone_number=arguments.get("phone_number"),
+                    name=arguments.get("name"),
+                    service_name=arguments.get("service_name"),
+                    date=arguments.get("date"),
+                    time=arguments.get("time")
+                )
+                
             else:
                 return f"Unknown function: {function_name}"
 
-            print("Function call data:: ", data)
+            print(f"Function call data: {data}")
             return json.dumps(data)
 
         except Exception as e:
+            print(f"Error executing {function_name}: {str(e)}")
             return f"Error executing {function_name}: {str(e)}"
 
-    async def check_availability(self, date: str, time: str, service_type: str) -> str:
-        """Check availability."""
-        print("Checking availability...")
-        print("Date:: ", date)
-        print("Time:: ", time)
-        print("Service type:: ", service_type)
-
-        raw_data = f"{{ 'service_type': '{service_type}', 'date': '{date}', 'time': '{time}' }}"
-
-        print("Raw data:: ", raw_data)
-        sanitized_data = await self._openai_api.sanitize_booking_services_data(raw_data)
-
-        print("Sanitized data:: ", sanitized_data)
-
-        data = await self._booking_api.check_availability(
-            booking__selected_date=sanitized_data.get("date"),
-            service_duration=sanitized_data.get("duration"),
-            service_ids=sanitized_data.get("service_ids")
-        )
-        print("Check availability data:: ", json.dumps(data, indent=4))
-
-        return json.dumps(data)
-
-
-    async def  ai_configuration(self, call_to: str) -> AIConfiguration:
+    async def ai_configuration(self, call_to: str) -> AIConfiguration:
         """Get AI configuration."""
-        ai_configuration = await AIConfiguration.objects.aget(business__phone_number=call_to, status=AIConfigurationStatus.ACTIVE.value)
+        ai_configuration = await AIConfiguration.objects.aget(
+            business__twilio_phone_number=call_to,
+            status=AIConfigurationStatus.ACTIVE.value
+        )
         return ai_configuration

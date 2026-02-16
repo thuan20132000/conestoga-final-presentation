@@ -268,6 +268,7 @@ class BusinessTicketReportSummarySerializer(serializers.Serializer):
     total_staffs = serializers.IntegerField( required=False )
     from_date = serializers.DateField( required=False )
     to_date = serializers.DateField( required=False )
+    payment_stats = serializers.JSONField(required=False)
 
 class StaffTicketReportSummarySerializer(serializers.Serializer):
     """Serializer for staff ticket report summary"""

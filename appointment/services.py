@@ -12,8 +12,9 @@ from business.models import BusinessSettings
 import logging
 from main.utils import get_business_managers_group_name
 from main.common_settings import ONLINE_BOOKING_URL
-from django.db.models import Sum, Count, Value, DateField, F
+from django.db.models import Sum, Count, Value, DateField, F, Q
 from client.models import Client
+from payment.models import Payment, PaymentStatusType
 
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
@@ -627,7 +628,7 @@ class TicketReportService():
     def __init__(self, business_id):
         self.business_id = business_id
     
-    def get_ticket_report_summary(self, from_date, to_date, staff_id):
+    def get_ticket_report_summary(self, from_date, to_date, staff_id=None):
         try:
             queryset = AppointmentService.objects.filter(
                 appointment__business_id=self.business_id,
@@ -652,6 +653,74 @@ class TicketReportService():
                 to_date=Value(to_date, output_field=DateField()),
             )
             
+            # order by total_service_sales descending
+            staff_sales = staff_sales.order_by('-total_service_sales')
+            
+            # payment ticket report
+            payment_queryset = Payment.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date__gte=from_date,
+                appointment__appointment_date__lte=to_date,
+                status=PaymentStatusType.COMPLETED.value,
+            )
+            
+            payment_statistics = payment_queryset.aggregate(
+                total_sales=Sum('amount'),
+                cash_method_sales=Sum('amount', filter=Q(payment_method__name='Cash')),
+                card_method_sales=Sum('amount', filter=Q(payment_method__name='Credit Card')),
+                debit_card_method_sales=Sum('amount', filter=Q(payment_method__name='Debit Card')),
+                bank_transfer_method_sales=Sum('amount', filter=Q(payment_method__name='Bank Transfer')),
+                cheque_method_sales=Sum('amount', filter=Q(payment_method__name='Cheque')),
+                gift_card_method_sales=Sum('amount', filter=Q(payment_method__name='Gift Card')),
+                online_method_sales=Sum('amount', filter=Q(payment_method__name='Online')),
+                other_method_sales=Sum('amount', filter=Q(payment_method__name='Other')),
+            )
+            
+            summary = queryset.aggregate(
+                total_sales=Sum('custom_price'),
+                total_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+            )
+            summary['from_date'] = from_date
+            summary['to_date'] = to_date
+            summary['total_staffs'] = staff_sales.count()
+            summary['payment_stats'] = payment_statistics
+            
+            return {
+                'summary': summary,
+                'data': staff_sales,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting ticket report: {e}")
+        
+    def get_staff_ticket_report_summary(self, from_date, to_date, staff_id):
+        try:
+            queryset = AppointmentService.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date__gte=from_date,
+                appointment__appointment_date__lte=to_date,
+                appointment__status=AppointmentStatusType.CHECKED_OUT.value,
+                is_active=True,
+                is_deleted=False,
+            )
+            
+            if staff_id:
+                queryset = queryset.filter(staff_id=staff_id)
+                
+            staff_sales = queryset.values('staff').annotate(
+                staff_first_name=F('staff__first_name'),
+                staff_last_name=F('staff__last_name'),
+                commission_rate=F('staff__commission_rate'),
+                total_service_sales=Sum('custom_price'),
+                total_service_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+                from_date=Value(from_date, output_field=DateField()),
+                to_date=Value(to_date, output_field=DateField()),
+            )
+            
+            # order by total_service_sales descending
+            staff_sales = staff_sales.order_by('-total_service_sales')
+            
             summary = queryset.aggregate(
                 total_sales=Sum('custom_price'),
                 total_tips=Sum('tip_amount'),
@@ -661,13 +730,12 @@ class TicketReportService():
             summary['to_date'] = to_date
             summary['total_staffs'] = staff_sales.count()
             
-            
             return {
                 'summary': summary,
                 'data': staff_sales,
             }
         except Exception as e:
-            raise Exception(f"Error getting ticket report: {e}")
+            raise Exception(f"Error getting staff ticket report summary: {e}")
         
     def get_ticket_report_by_dates(self, from_date, to_date, staff_id):
         try:

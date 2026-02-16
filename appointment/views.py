@@ -1011,11 +1011,15 @@ class TicketReportViewSet(BaseModelViewSet):
                 staff_id = user.id
             
             ticket_report = TicketReportService(self.request.user.business_id)
-            ticket_report_data = ticket_report.get_ticket_report_summary(from_date, to_date, staff_id)
+            if staff_id:
+                ticket_report_data = ticket_report.get_staff_ticket_report_summary(from_date, to_date, staff_id)
+            else:
+                ticket_report_data = ticket_report.get_ticket_report_summary(from_date, to_date)
             
             serializer = BusinessTicketReportSerializer(ticket_report_data)
             return self.response_success(serializer.data)
         except Exception as e:
+            print("error getting ticket report", e)
             return self.response_error(str(e))
         
     @action(detail=False, methods=['get'], url_path='by-dates', permission_classes=[IsAuthenticated])

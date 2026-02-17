@@ -12,7 +12,7 @@ from business.models import BusinessSettings
 import logging
 from main.utils import get_business_managers_group_name
 from main.common_settings import ONLINE_BOOKING_URL
-from django.db.models import Sum, Count, Value, DateField, F, Q
+from django.db.models import QuerySet, Sum, Count, Value, DateField, F, Q
 from client.models import Client
 from payment.models import Payment, PaymentStatusType
 
@@ -1012,3 +1012,87 @@ class SalaryReportService:
             }
         except Exception as e:
             raise Exception(f"Error getting salary report by date: {e}")
+        
+    
+class CalendarStaffService:
+    def __init__(self, business_id, auth_user, weekday, appointment_date):
+        self.business_id = business_id
+        self.auth_user = auth_user
+        self.weekday = weekday
+        self.appointment_date = appointment_date
+    
+    def _get_business_staffs(self) -> QuerySet[Staff]:
+        try:
+            if self.auth_user.role.name in ['Manager', 'Owner']:
+                business_staffs = Staff.objects.filter(
+                    business_id=self.business_id,
+                    is_active=True,
+                    is_online_booking_allowed=True,
+                    working_hours__is_working=True,
+                    working_hours__day_of_week=self.weekday,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+            else:
+                business_staffs = Staff.objects.filter(
+                    id=self.auth_user.id,
+                )
+            
+            return business_staffs
+        
+        except Exception as e:
+            raise Exception(f"Error getting business staffs: {e}")
+        
+    def _get_staff_off_days(self, business_staffs) -> QuerySet[StaffOffDay]:
+        try:
+            staff_off_days = StaffOffDay.objects.filter(
+                staff__id__in=business_staffs.values_list('id', flat=True),
+                start_date__lte=self.appointment_date,
+                end_date__gte=self.appointment_date,
+            )
+            return staff_off_days
+        except Exception as e:
+            raise Exception(f"Error getting staff off days: {e}")
+        
+    def _handle_staff_on_leave(
+        self,
+        staff_off_days: QuerySet[StaffOffDay],
+        business_staffs: QuerySet[Staff],
+    ) -> QuerySet[Staff]:
+        try:
+            staff_on_leave_ids = set(
+                staff_off_days.values_list('staff__id', flat=True)
+            )
+            staff_off_day_appointments = AppointmentService.objects.filter(
+                staff_id__in=staff_on_leave_ids,
+                appointment__appointment_date=self.appointment_date,
+            )
+            staff_on_leave_with_appointments = set(
+                staff_off_day_appointments.values_list('staff_id', flat=True)
+            )
+            staff_on_leave_without_appointments = (
+                staff_on_leave_ids - staff_on_leave_with_appointments
+            )
+            available_staffs = business_staffs.exclude(
+                id__in=staff_on_leave_without_appointments
+            )
+            return available_staffs
+
+        except Exception as e:
+            raise Exception(f"Error getting staff on leave with appointments: {e}")
+    
+    def get_calendar_staffs(self) -> QuerySet[Staff]:
+        try:
+            # Get staff with role and who are working on the appointment date
+            business_staffs = self._get_business_staffs()
+            
+            # Get staff who have an off day on the appointment date
+            staff_off_days = self._get_staff_off_days(business_staffs)
+            
+            # Get staff who are available for the appointment date
+            if staff_off_days.exists():
+                return self._handle_staff_on_leave(staff_off_days, business_staffs)
+            else:
+                return business_staffs
+        
+        except Exception as e:
+            raise Exception(f"Error getting calendar staffs: {e}")

@@ -14,11 +14,10 @@ from business.models import Business
 from service.models import ServiceCategory
 from .models import Appointment, AppointmentService
 from client.models import Client
-from client.serializers import ClientSerializer, BookingClientSerializer, BookingClientCreateSerializer
+from client.serializers import BookingClientSerializer, BookingClientCreateSerializer
 
 from .serializers import (
     AppointmentSerializer,
-    AppointmentAvailabilitySerializer,
     AppointmentStatsSerializer,
     AppointmentCreateSerializer,
     AppointmentDetailSerializer,
@@ -29,13 +28,12 @@ from .serializers import (
 from main.viewsets import BaseModelViewSet, BaseViewSet
 from staff.serializers import StaffCalendarSerializer
 from staff.models import Staff, StaffOffDay
-from payment.serializers import PaymentSerializer, PaymentDetailSerializer
+from payment.serializers import PaymentDetailSerializer
 from service.serializers import BusinessBookingServiceCategorySerializer
 from staff.serializers import BusinessBookingStaffSerializer
 from .services import BusinessBookingService
 from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
-from appointment.models import AppointmentStatusType
 from staff.permissions import IsBusinessManager
 from appointment.services import TicketReportService, SalaryReportService
 from appointment.serializers import (
@@ -46,6 +44,9 @@ from appointment.serializers import (
     SalaryReportByDateSerializer
 )
 from appointment.services import AppointmentNotificationService
+from appointment.services import CalendarStaffService
+from appointment.enums import StaffFilterType
+
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -264,6 +265,7 @@ class AppointmentViewSet(BaseModelViewSet):
             business_id = request.query_params.get('business_id')
             appointment_date = request.query_params.get('appointment_date')
             auth_user = request.user
+            staff_filter_type = request.query_params.get('staff_filter_type', StaffFilterType.WORKING_HOURS.value)
             
             if not business_id or not appointment_date:
                 return self.response_error(
@@ -273,52 +275,33 @@ class AppointmentViewSet(BaseModelViewSet):
                 
             weekday = datetime.strptime(appointment_date, '%Y-%m-%d').weekday()
             
-            # Get staff with role and who are working on the appointment date
-            if auth_user.role.name in ['Manager', 'Owner']:
-                business_staffs = Staff.objects.filter(
-                    business_id=business_id,
-                    is_active=True,
-                    is_online_booking_allowed=True,
-                    working_hours__is_working=True,
-                    working_hours__day_of_week=weekday,
-                    role__name__in=['Technician', 'Stylist'],
-                )
-            else:
-                business_staffs = Staff.objects.filter(
-                    id=auth_user.id,
-                )
-            
-            
-            # Get staff who have an off day on the appointment date
-            staff_off_days = StaffOffDay.objects.filter(
-                staff__id__in=business_staffs.values_list('id', flat=True),
-                start_date__lte=appointment_date,
-                end_date__gte=appointment_date,
+            calendar_staff_service = CalendarStaffService(
+                business_id=business_id,
+                auth_user=auth_user,
+                weekday=weekday,
+                appointment_date=appointment_date,
             )
-            
-            # Get staff who are available for the appointment date
-            if staff_off_days.exists():
-                staff_on_leave_ids = staff_off_days.values_list('staff__id', flat=True)
-                staff_off_day_appointments = AppointmentService.objects.filter(
-                    staff_id__in=staff_on_leave_ids,
-                    appointment__appointment_date=appointment_date,
-                )
-                staff_on_leave_with_appointments = staff_off_day_appointments.values_list('staff__id', flat=True)
-                
-                staff_on_leave_without_appointments = staff_on_leave_ids.exclude(staff__id__in=list(staff_on_leave_with_appointments))
-                
-                available_staffs = business_staffs.exclude(id__in=staff_on_leave_without_appointments)
-            else:
-                available_staffs = business_staffs
-                
+           
+            match staff_filter_type:
+                case StaffFilterType.WORKING_HOURS.value:
+                    calendar_staffs = calendar_staff_service.get_calendar_staffs()
+                case StaffFilterType.ALL.value:
+                    calendar_staffs = calendar_staff_service.get_all_technicians()
+                case _:
+                    return self.response_error(
+                        {'error': 'Invalid staff filter type'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
             serializer = StaffCalendarSerializer(
-                available_staffs, 
+                calendar_staffs, 
                 many=True, 
                 context={
                     'appointment_date': appointment_date, 
                     'weekday': weekday,
                 }
             )
+            
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error(str(e))

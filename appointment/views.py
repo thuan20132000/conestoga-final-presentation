@@ -1,12 +1,10 @@
 from rest_framework import status
-from rest_framework.decorators import APIView, action
-from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from datetime import datetime, timedelta, date
-from django_filters import rest_framework as filters
+from django_filters import rest_framework as filters, CharFilter, BaseCSVFilter
 from django.db import transaction
 
 from payment.models import Payment, PaymentStatusType
@@ -47,10 +45,14 @@ from appointment.services import AppointmentNotificationService
 from appointment.services import CalendarStaffService
 from appointment.enums import StaffFilterType
 
+
+class CharCSVFilter(BaseCSVFilter, CharFilter):
+    pass
+
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
-    status = filters.CharFilter(field_name='status')
+    status = CharCSVFilter(field_name='status', lookup_expr='in')
     booked_by = filters.NumberFilter(field_name='booked_by')
     booking_source = filters.CharFilter(field_name='booking_source')
     staff = filters.NumberFilter(field_name='appointment_services__staff_id')

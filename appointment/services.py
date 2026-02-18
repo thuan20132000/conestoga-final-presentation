@@ -1096,3 +1096,21 @@ class CalendarStaffService:
         
         except Exception as e:
             raise Exception(f"Error getting calendar staffs: {e}")
+
+    def get_all_technicians(self) -> QuerySet[Staff]:
+        try:
+            if self.auth_user.role.name in ['Manager', 'Owner']:
+                technicians = Staff.objects.filter(
+                    business_id=self.business_id,
+                    is_active=True,
+                    is_online_booking_allowed=True,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+                return technicians
+            else:
+                return Staff.objects.filter(
+                    id=self.auth_user.id,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+        except Exception as e:
+            raise Exception(f"Error getting all technicians: {e}")

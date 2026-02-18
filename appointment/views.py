@@ -45,6 +45,8 @@ from appointment.serializers import (
 )
 from appointment.services import AppointmentNotificationService
 from appointment.services import CalendarStaffService
+from appointment.enums import StaffFilterType
+
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
@@ -263,6 +265,7 @@ class AppointmentViewSet(BaseModelViewSet):
             business_id = request.query_params.get('business_id')
             appointment_date = request.query_params.get('appointment_date')
             auth_user = request.user
+            staff_filter_type = request.query_params.get('staff_filter_type', StaffFilterType.WORKING_HOURS.value)
             
             if not business_id or not appointment_date:
                 return self.response_error(
@@ -278,7 +281,17 @@ class AppointmentViewSet(BaseModelViewSet):
                 weekday=weekday,
                 appointment_date=appointment_date,
             )
-            calendar_staffs = calendar_staff_service.get_calendar_staffs()
+           
+            match staff_filter_type:
+                case StaffFilterType.WORKING_HOURS.value:
+                    calendar_staffs = calendar_staff_service.get_calendar_staffs()
+                case StaffFilterType.ALL.value:
+                    calendar_staffs = calendar_staff_service.get_all_technicians()
+                case _:
+                    return self.response_error(
+                        {'error': 'Invalid staff filter type'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
             serializer = StaffCalendarSerializer(
                 calendar_staffs, 

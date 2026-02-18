@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
 from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
 
 
@@ -95,9 +95,25 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
 class StaffWorkingHoursSerializer(serializers.ModelSerializer):
     """Serializer for StaffWorkingHours model"""
     day_name = serializers.CharField(source='get_day_of_week_display', read_only=True)
+    is_override = serializers.SerializerMethodField();
     class Meta:
         model = StaffWorkingHours
         fields = '__all__'
+        
+    def get_is_override(self, obj):
+        """Get if staff is override"""
+        return False
+        
+class StaffWorkingHoursOverrideSerializer(serializers.ModelSerializer):
+    """Serializer for StaffWorkingHoursOverride model"""
+    is_override = serializers.SerializerMethodField();
+    class Meta:
+        model = StaffWorkingHoursOverride
+        fields = ['id', 'date', 'start_time', 'end_time', 'is_working', 'reason', 'is_override']
+        
+    def get_is_override(self, obj):
+        """Get if staff is override"""
+        return True
 
 class StaffWorkingHoursCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating staff working hours"""
@@ -129,12 +145,22 @@ class StaffCalendarSerializer(StaffSerializer):
     def get_working_hours(self, obj):
         """Get working hours for staff"""
         try:    
+            appointment_date = self.context.get('appointment_date')
             weekday = self.context.get('weekday')
+            
+            # Check if there is an override for the appointment date
+            override = obj.working_hours_overrides.filter(date=appointment_date).first()
+            
+            if override:
+                return StaffWorkingHoursOverrideSerializer(override).data
+            
+            # Check if the staff is working on the appointment date
             working_hours = obj.working_hours.filter(day_of_week=weekday).first()
             return StaffWorkingHoursSerializer(working_hours).data
+        
         except Exception as e:
             return None
-    
+        
     def get_is_off_day(self, obj):
         """Get if staff is off day"""
         try:

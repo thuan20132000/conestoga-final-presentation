@@ -1,10 +1,9 @@
 from appointment.models import AppointmentService, Appointment, AppointmentStatusType
 from datetime import datetime
 from payment.models import PaymentMethodType
-from staff.models import StaffService, StaffWorkingHours
+from staff.models import StaffService, StaffWorkingHours, StaffWorkingHoursOverride, StaffOffDay, Staff
 from datetime import timedelta
 from django.utils import timezone
-from staff.models import Staff, StaffOffDay
 from django.db import transaction
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
@@ -1013,7 +1012,7 @@ class SalaryReportService:
         except Exception as e:
             raise Exception(f"Error getting salary report by date: {e}")
         
-    
+
 class CalendarStaffService:
     def __init__(self, business_id, auth_user, weekday, appointment_date):
         self.business_id = business_id
@@ -1024,6 +1023,9 @@ class CalendarStaffService:
     def _get_business_staffs(self) -> QuerySet[Staff]:
         try:
             if self.auth_user.role.name in ['Manager', 'Owner']:
+                
+                override_staffs = self._get_business_staffs_overrides()
+                
                 business_staffs = Staff.objects.filter(
                     business_id=self.business_id,
                     is_active=True,
@@ -1032,6 +1034,10 @@ class CalendarStaffService:
                     working_hours__day_of_week=self.weekday,
                     role__name__in=['Technician', 'Stylist'],
                 )
+                
+                if override_staffs.exists():
+                    # add staff working hours overrides to business staffs
+                    business_staffs = (business_staffs | override_staffs).distinct()
             else:
                 business_staffs = Staff.objects.filter(
                     id=self.auth_user.id,
@@ -1041,6 +1047,21 @@ class CalendarStaffService:
         
         except Exception as e:
             raise Exception(f"Error getting business staffs: {e}")
+    
+    def _get_business_staffs_overrides(self) -> QuerySet[Staff]:
+        try:
+            override_staffs = StaffWorkingHoursOverride.objects.filter(
+                staff__business_id=self.business_id,
+                date=self.appointment_date,
+                is_working=True,
+            )
+            staffs = override_staffs.values_list('staff__id', flat=True)
+            
+            override_staffs = Staff.objects.filter(id__in=staffs).all()
+            
+            return override_staffs
+        except Exception as e:
+            raise Exception(f"Error getting business staffs overrides: {e}")
         
     def _get_staff_off_days(self, business_staffs) -> QuerySet[StaffOffDay]:
         try:

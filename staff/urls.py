@@ -4,6 +4,7 @@ from .views import (
     StaffViewSet, 
     StaffWorkingHoursViewSet, 
     StaffOffDayViewSet,
+    StaffWorkingHoursOverrideViewSet,
     RegisterView,
     LoginView,
     LogoutView,
@@ -18,6 +19,7 @@ router = DefaultRouter()
 router.register(r'staff', StaffViewSet, basename='staff')
 router.register(r'working-hours', StaffWorkingHoursViewSet, basename='staff-working-hours')
 router.register(r'off-days', StaffOffDayViewSet, basename='staff-off-days')
+router.register(r'working-hours-overrides', StaffWorkingHoursOverrideViewSet, basename='staff-working-hours-overrides')
 router.register(r'staff-services', StaffServiceViewSet, basename='staff-services')
 router.register(r'time-entries', TimeEntryViewSet, basename='time-entries')
 # The API URLs are now determined automatically by the router

@@ -1,10 +1,9 @@
 from appointment.models import AppointmentService, Appointment, AppointmentStatusType
 from datetime import datetime
 from payment.models import PaymentMethodType
-from staff.models import StaffService, StaffWorkingHours
+from staff.models import StaffService, StaffWorkingHours, StaffWorkingHoursOverride, StaffOffDay, Staff
 from datetime import timedelta
 from django.utils import timezone
-from staff.models import Staff, StaffOffDay
 from django.db import transaction
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
@@ -42,6 +41,11 @@ class BusinessBookingService:
             weekday = datetime.strptime(
                 appointment_date, '%Y-%m-%d').weekday()
 
+            override = self._get_staff_working_hours_override(staff_id, appointment_date)
+
+            if override:
+                return override
+
             working_hours = StaffWorkingHours.objects.filter(
                 staff__id=staff_id,
                 day_of_week=weekday,
@@ -56,6 +60,19 @@ class BusinessBookingService:
         except Exception as e:
             raise Exception(f"Error getting staff working hours: {e}")
 
+    def _get_staff_working_hours_override(self, staff_id, appointment_date):
+        try:
+            override = StaffWorkingHoursOverride.objects.filter(
+                staff__id=staff_id,
+                staff__business_id=self.business_id,
+                date=appointment_date,
+                staff__is_online_booking_allowed=True,
+                is_working=True,
+            ).first()
+            return override
+        except Exception as e:
+            raise Exception(f"Error getting staff working hours override: {e}")
+
     def _check_staff_off_days(self, staff_id, appointment_date):
         try:
             day_offs = StaffOffDay.objects.filter(
@@ -63,7 +80,7 @@ class BusinessBookingService:
                 start_date__lte=appointment_date,
                 end_date__gte=appointment_date
             )
-            if day_offs.count() > 0:
+            if day_offs.exists():
                 return True
             return False
         except Exception as e:
@@ -86,7 +103,6 @@ class BusinessBookingService:
             start_time = (datetime.min + current_time).strftime('%H:%M')
             end_time = (datetime.min + service_end_time).strftime('%H:%M')
             
-            # convert start_time and end_time to timezone aware datetime and set date to 2025-11-24
             start_time = timezone.make_aware(datetime.strptime(start_time, '%H:%M'))
             start_time = start_time.replace(
                 year=appointment_date.year, 
@@ -452,7 +468,6 @@ class AppointmentNotificationService:
         business_twilio_phone_number,
     ):
         try:
-            print("send cancellation sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
             body_message = f"Your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
             title = f"Appointment Cancelled - {business_name}"
             self.dispatcher.dispatchAsync(
@@ -566,8 +581,6 @@ class AppointmentNotificationService:
             title = f"Leave a Review - {business.name}"
             schedule_name = f"leave-review-sms3-{business.id}-{appointment.id}"
             schedule_time = datetime.now() + timedelta(seconds=10)
-            print("sending review request sms", appointment.client.phone, business.id, metadata)
-            print("schedule time", schedule_time)
             
             NotificationDispatcher().dispatch_scheduled(
                 title=title,
@@ -875,7 +888,6 @@ class SalaryReportService:
                 from_date, to_date, staff_id
             )
             
-            print("ticket_data summary", ticket_data['summary'])
             summary = ticket_data['summary']
             enriched_data = ticket_data['data']
             
@@ -910,7 +922,7 @@ class SalaryReportService:
             # Enrich data with commission calculations
             enriched_data = []
             total_commission = 0
-            # print("ticket_data", ticket_data)
+            commission_rate = 0
             for item in ticket_data['data']:
                 sales = item['total_service_sales'] or 0
                 commission_rate = item['commission_rate'] or 0
@@ -933,7 +945,6 @@ class SalaryReportService:
             # Build summary with commission
             summary = ticket_data['summary'].copy()
             summary['total_commission'] = total_commission
-            summary['commission_rate'] = commission_rate
             
             return {
                 'summary': summary,
@@ -1013,7 +1024,7 @@ class SalaryReportService:
         except Exception as e:
             raise Exception(f"Error getting salary report by date: {e}")
         
-    
+
 class CalendarStaffService:
     def __init__(self, business_id, auth_user, weekday, appointment_date):
         self.business_id = business_id
@@ -1024,6 +1035,9 @@ class CalendarStaffService:
     def _get_business_staffs(self) -> QuerySet[Staff]:
         try:
             if self.auth_user.role.name in ['Manager', 'Owner']:
+                
+                override_staffs = self._get_business_staffs_overrides()
+                
                 business_staffs = Staff.objects.filter(
                     business_id=self.business_id,
                     is_active=True,
@@ -1032,6 +1046,10 @@ class CalendarStaffService:
                     working_hours__day_of_week=self.weekday,
                     role__name__in=['Technician', 'Stylist'],
                 )
+                
+                if override_staffs.exists():
+                    # add staff working hours overrides to business staffs
+                    business_staffs = (business_staffs | override_staffs).distinct()
             else:
                 business_staffs = Staff.objects.filter(
                     id=self.auth_user.id,
@@ -1041,6 +1059,26 @@ class CalendarStaffService:
         
         except Exception as e:
             raise Exception(f"Error getting business staffs: {e}")
+    
+    def _get_business_staffs_overrides(self) -> QuerySet[Staff]:
+        try:
+            override_staffs = StaffWorkingHoursOverride.objects.filter(
+                staff__business_id=self.business_id,
+                date=self.appointment_date,
+                is_working=True,
+            )
+            staffs = override_staffs.values_list('staff__id', flat=True)
+            
+            override_staffs = Staff.objects.filter(
+                id__in=staffs,
+                is_active=True,
+                is_online_booking_allowed=True,
+                role__name__in=['Technician', 'Stylist'],
+            ).all()
+            
+            return override_staffs
+        except Exception as e:
+            raise Exception(f"Error getting business staffs overrides: {e}")
         
     def _get_staff_off_days(self, business_staffs) -> QuerySet[StaffOffDay]:
         try:

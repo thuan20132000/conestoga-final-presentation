@@ -1,12 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
 from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
+from service.models import Service
 
 
 class StaffServiceSerializer(serializers.ModelSerializer):
     """Serializer for StaffService model"""
-    service_name = serializers.SerializerMethodField()
+    service_name = serializers.CharField(source='service.name', read_only=True)
     service_duration = serializers.IntegerField(source='service.duration_minutes', read_only=True)
     service_price = serializers.DecimalField(source='service.price', read_only=True, max_digits=10, decimal_places=2)
     service_category_name = serializers.CharField(source='service.category.name', read_only=True)
@@ -33,13 +34,6 @@ class StaffServiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at']
     
-    def get_service_name(self, obj):
-        try:
-            from service.models import Service
-            service = Service.objects.get(id=obj.service_id)
-            return service.name
-        except:
-            return f"Service {obj.service_id}"
 
 
 class StaffSerializer(serializers.ModelSerializer):
@@ -95,10 +89,18 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
 class StaffWorkingHoursSerializer(serializers.ModelSerializer):
     """Serializer for StaffWorkingHours model"""
     day_name = serializers.CharField(source='get_day_of_week_display', read_only=True)
+    is_override = serializers.BooleanField(default=False)
     class Meta:
         model = StaffWorkingHours
         fields = '__all__'
-
+        
+class StaffWorkingHoursOverrideSerializer(serializers.ModelSerializer):
+    """Serializer for StaffWorkingHoursOverride model"""
+    is_override = serializers.BooleanField(default=True)
+    class Meta:
+        model = StaffWorkingHoursOverride
+        fields = ['id', 'date', 'start_time', 'end_time', 'is_working', 'reason', 'is_override', 'staff']
+        
 class StaffWorkingHoursCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating staff working hours"""
     class Meta:
@@ -125,16 +127,30 @@ class StaffCalendarSerializer(StaffSerializer):
     class Meta:
         model = Staff
         fields = StaffSerializer.Meta.fields + ['working_hours', 'is_off_day']
-        
+
     def get_working_hours(self, obj):
         """Get working hours for staff"""
         try:    
+            appointment_date = self.context.get('appointment_date')
             weekday = self.context.get('weekday')
+            
+            # Check if there is an override for the appointment date
+            override = obj.working_hours_overrides.filter(date=appointment_date).first()
+            
+            if override:
+                return StaffWorkingHoursOverrideSerializer(override).data
+            
+            # Check if the staff is working on the appointment date
             working_hours = obj.working_hours.filter(day_of_week=weekday).first()
-            return StaffWorkingHoursSerializer(working_hours).data
+            
+            if working_hours:
+                return StaffWorkingHoursSerializer(working_hours).data
+            else:
+                return None
+        
         except Exception as e:
             return None
-    
+        
     def get_is_off_day(self, obj):
         """Get if staff is off day"""
         try:
@@ -265,7 +281,6 @@ class UserProfileSerializer(StaffSerializer):
             'photo',
             'created_at', 
             'updated_at',
-            'business',
             'business_settings',
         ]
         read_only_fields = ['id', 'username', 'created_at', 'updated_at']

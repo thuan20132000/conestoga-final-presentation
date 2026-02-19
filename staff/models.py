@@ -94,6 +94,20 @@ class StaffWorkingHours(SoftDeleteModel):
     
     def __str__(self):
         return f"{self.staff} - {self.day_of_week}"
+    
+class StaffWorkingHoursOverride(SoftDeleteModel):
+    staff = models.ForeignKey('staff.Staff', on_delete=models.CASCADE, related_name='working_hours_overrides')
+    date = models.DateField()
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    is_working = models.BooleanField(default=True)
+    reason = models.CharField(max_length=255, null=True, blank=True)
+    
+    class Meta:
+        unique_together = ['staff', 'date']
+        
+    def __str__(self):
+        return f"{self.staff} - {self.date} - {self.start_time} to {self.end_time} - {self.reason}"
 
 class StaffOffDay(SoftDeleteModel):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name='staff_off_days')

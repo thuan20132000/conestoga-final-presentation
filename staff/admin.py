@@ -1,7 +1,6 @@
 from django.contrib import admin
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
 from django.contrib.auth.admin import UserAdmin
-from time import time
 
 class StaffServiceInline(admin.TabularInline):
     model = StaffService
@@ -11,12 +10,17 @@ class StaffServiceInline(admin.TabularInline):
 class StaffWorkingHoursInline(admin.TabularInline):
     model = StaffWorkingHours
     extra = 0
-    fields = ['day_of_week', 'start_time', 'end_time']
+    fields = ['day_of_week', 'start_time', 'end_time', 'is_working']
 
 class StaffOffDayInline(admin.TabularInline):
     model = StaffOffDay
     extra = 0
     fields = ['start_date', 'end_date', 'reason']
+
+class StaffWorkingHoursOverrideInline(admin.TabularInline):
+    model = StaffWorkingHoursOverride
+    extra = 0
+    fields = ['date', 'start_time', 'end_time', 'is_working', 'reason']
 
 @admin.register(Staff)
 class StaffAdmin(UserAdmin):
@@ -71,8 +75,8 @@ class StaffAdmin(UserAdmin):
     )
 
     readonly_fields = ["date_joined", "last_login"]
-    inlines = [StaffWorkingHoursInline, StaffOffDayInline]
-    
+    inlines = [StaffWorkingHoursInline, StaffOffDayInline, StaffWorkingHoursOverrideInline]
+
 @admin.register(StaffService)
 class StaffServiceAdmin(admin.ModelAdmin):
     list_display = ['staff', 'service', 'is_primary', 'created_at']
@@ -87,3 +91,10 @@ class TimeEntryAdmin(admin.ModelAdmin):
     list_filter = ['status', 'created_at', 'staff__business']
     search_fields = ['staff__username', 'staff__business']
     ordering = ['staff__business__name', 'staff__username', 'clock_in', 'id']
+    
+@admin.register(StaffWorkingHoursOverride)
+class StaffWorkingHoursOverrideAdmin(admin.ModelAdmin):
+    list_display = ['staff', 'date', 'start_time', 'end_time', 'is_working', 'reason']
+    list_filter = ['is_working', 'date', 'staff__business']
+    search_fields = ['staff__username', 'staff__business']
+    ordering = ['staff__business__name', 'staff__username', 'date', 'id']

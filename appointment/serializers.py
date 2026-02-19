@@ -331,6 +331,7 @@ class BusinessSalaryReportSummarySerializer(serializers.Serializer):
     """Serializer for business-level salary report summary"""
     total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_commission = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_revenue = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     total_services = serializers.IntegerField()
     total_staffs = serializers.IntegerField()
     from_date = serializers.DateField()

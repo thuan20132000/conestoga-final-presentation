@@ -1083,7 +1083,6 @@ class SalaryReportViewSet(BaseModelViewSet):
             salary_report_data = salary_report.get_salary_report_summary(
                 from_date, to_date, staff_id
             )
-            print("salary_report_data", salary_report_data)
             
             serializer = SalaryReportSerializer(salary_report_data)
             return self.response_success(serializer.data)

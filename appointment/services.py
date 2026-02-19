@@ -894,6 +894,12 @@ class SalaryReportService:
             # Enrich data with commission calculations
             enriched_data, total_commission = self._enrich_data_with_commission(enriched_data)
             summary['total_commission'] = total_commission
+            
+            # Calculate total revenue
+            total_sales = summary['total_sales'] or 0
+            total_revenue = float(total_sales) - float(total_commission)
+            summary['total_revenue'] = total_revenue
+            
             return {
                 'summary': summary,
                 'data': enriched_data,

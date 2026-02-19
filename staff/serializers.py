@@ -56,7 +56,8 @@ class StaffSerializer(serializers.ModelSerializer):
             'created_at', 
             'updated_at', 
             'business_id', 
-            'is_deleted'
+            'is_deleted',
+            'commission_rate',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

@@ -39,7 +39,7 @@ class GiftCardService:
         message: Optional[str] = None,
         notes: Optional[str] = None,
         payment_id: Optional[int] = None,
-        is_online_purchase: Optional[bool] = True,
+        is_online_purchase: Optional[bool] = False,
     ) -> GiftCard:
         """Create a new gift card"""
         with transaction.atomic():

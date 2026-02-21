@@ -30,6 +30,7 @@ class GiftCardSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source='business.name', read_only=True)
     purchaser_name = serializers.CharField(source='purchaser.get_full_name', read_only=True)
     transactions = GiftCardTransactionSerializer(many=True, read_only=True)
+    is_online_purchase = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = GiftCard
@@ -39,7 +40,7 @@ class GiftCardSerializer(serializers.ModelSerializer):
             'initial_amount', 'current_balance', 'currency', 'status', 'status_display',
             'issued_at', 'expires_at', 'redeemed_at', 'payment', 'message', 'notes',
             'is_active', 'is_expired', 'is_redeemed', 'created_at', 'updated_at',
-            'transactions'
+            'transactions', 'is_online_purchase'
         ]
         read_only_fields = ['id', 'card_code', 'created_at', 'updated_at', 'issued_at']
 

@@ -149,6 +149,9 @@ class GiftCard(models.Model):
         help_text="Internal notes about the gift card"
     )
     
+    # Is online or offline
+    is_online_purchase = models.BooleanField(default=False)
+    
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

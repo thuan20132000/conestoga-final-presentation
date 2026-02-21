@@ -50,13 +50,13 @@ class GiftCardListSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     is_active = serializers.BooleanField(read_only=True)
     business_name = serializers.CharField(source='business.name', read_only=True)
-    
+    is_online_purchase = serializers.BooleanField(read_only=True)
     class Meta:
         model = GiftCard
         fields = [
             'id', 'card_code', 'business', 'business_name', 'purchaser',
             'recipient_name', 'initial_amount', 'current_balance', 'currency',
-            'status', 'status_display', 'is_active', 'issued_at', 'expires_at'
+            'status', 'status_display', 'is_active', 'issued_at', 'expires_at', 'is_online_purchase'
         ]
 
 

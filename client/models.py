@@ -56,6 +56,14 @@ class Client(SoftDeleteModel):
     # Status and metadata
     is_active = models.BooleanField(default=True, help_text="Whether the client is active")
     is_vip = models.BooleanField(default=False, help_text="VIP client status")
+    bonus_time_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Extra minutes automatically added to each service duration for this client"
+    )
+    minimum_booking_duration_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text="Minimum booking duration in minutes for this client"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -70,7 +78,7 @@ class Client(SoftDeleteModel):
 
     def get_full_name(self):
         """Return the client's full name"""
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.last_name if self.last_name else ''}"
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)

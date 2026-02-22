@@ -18,7 +18,7 @@ class ClientSerializer(serializers.ModelSerializer):
             'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
             'preferred_contact_method', 'notes', 'medical_notes',
             'primary_business', 'primary_business_name', 'is_active', 'is_vip',
-            'created_at', 'updated_at'
+            'bonus_time_minutes', 'minimum_booking_duration_minutes', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -54,7 +54,7 @@ class ClientListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'first_name', 'last_name', 'full_name', 'email', 'phone',
             'date_of_birth', 'age', 'primary_business_name', 'is_active',
-            'is_vip', 'created_at'
+            'is_vip', 'bonus_time_minutes', 'minimum_booking_duration_minutes', 'created_at'
         ]
 
 
@@ -101,7 +101,7 @@ class BookingClientSerializer(serializers.ModelSerializer):
     """Serializer for booking client"""
     class Meta:
         model = Client
-        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'primary_business_id']
+        fields = ['id', 'first_name', 'last_name', 'email', 'phone', 'primary_business_id', 'bonus_time_minutes', 'minimum_booking_duration_minutes']
         read_only_fields = ['id']
         
 class BookingClientCreateSerializer(serializers.ModelSerializer):

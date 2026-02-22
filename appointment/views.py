@@ -167,29 +167,25 @@ class AppointmentViewSet(BaseModelViewSet):
         try:
             with transaction.atomic():
                 appointment_services = request.data['appointment_services']
-                appointment = Appointment.objects.create(
+                appointment = {
+                    'business_id': request.data['business_id'],
+                    'client_id': request.data['client'],
+                    'appointment_date': request.data['appointment_date'],
+                    'notes': request.data['notes'],
+                    'internal_notes': request.data['internal_notes'],
+                    'booking_source': request.data['booking_source'],
+                    'start_at': request.data['start_at'],
+                    'end_at': request.data['end_at'],
+                    'metadata': request.data['metadata'],
+                }
+                appointment_service = BusinessBookingService(
                     business_id=request.data['business_id'],
-                    client_id=request.data['client'],
-                    appointment_date=request.data['appointment_date'],
-                    notes=request.data['notes'],
-                    internal_notes=request.data['internal_notes'],
-                    booking_source=request.data['booking_source'],
-                    start_at=request.data['start_at'],
-                    end_at=request.data['end_at'],
-                    metadata=request.data['metadata'],
-                    
+                    interval_minutes=request.data.get('interval_minutes', 0)
                 )
-                for appointment_service in appointment_services:
-                    AppointmentService.objects.create(
-                        id=appointment_service['id'],
-                        appointment=appointment,
-                        service_id=appointment_service['service'],
-                        staff_id=appointment_service['staff'],
-                        is_staff_request=appointment_service['is_staff_request'],
-                        start_at=appointment_service['start_at'],
-                        end_at=appointment_service['end_at'],
-                        custom_price=appointment_service['custom_price'] or appointment_service['service'].price,
-                    )
+                appointment = appointment_service.create_appointment_services(
+                    appointment=appointment,
+                    appointment_services=appointment_services
+                )
                 
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
@@ -701,11 +697,17 @@ class BusinessBookingViewSet(BaseModelViewSet):
             date = request.query_params.get('date')
             staff_id = request.query_params.get('staff_id')
             interval_minutes = request.query_params.get('interval_minutes',15)
+            client_id = request.query_params.get('client_id')
             
             booking_service = BusinessBookingService(
                 business_id=business_id,
                 interval_minutes=int(interval_minutes)
             )
+            
+            if client_id:
+                minimum_booking_duration = booking_service.get_client_minimum_booking_duration(client_id, duration)
+                duration = minimum_booking_duration
+            
             
             if staff_id:
                 available_time_slots_for_staff = booking_service.get_staff_time_slots(
@@ -759,12 +761,9 @@ class BusinessBookingViewSet(BaseModelViewSet):
     def client(self, request):
         """Create a client for a specific business"""
         try:
-            print("request.data", request.data)
             serializer = BookingClientCreateSerializer(data=request.data)
-            print("serializer", serializer)
             serializer.is_valid(raise_exception=True)
             client = serializer.update_or_create(serializer.validated_data)
-            print("client", client)
             
             return self.response_success(client, message="Client created successfully")
         except Exception as e:
@@ -774,13 +773,10 @@ class BusinessBookingViewSet(BaseModelViewSet):
     @action(detail=False, methods=['post'], url_path='appointment')
     def create_appointment(self, request):
         """Make an appointment"""
-        print("create appointment request.data", request.data)
         try:
             
             appointment_data = request.data
             appointment_services = appointment_data.pop('appointment_services', [])
-            print("appointment_data", appointment_data)
-            print("appointment_services", appointment_services)
             
             appointment_service = BusinessBookingService(
                 business_id=appointment_data.get('business_id'),

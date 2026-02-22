@@ -14,6 +14,7 @@ from main.common_settings import ONLINE_BOOKING_URL
 from django.db.models import QuerySet, Sum, Count, Value, DateField, F, Q
 from client.models import Client
 from payment.models import Payment, PaymentStatusType
+from dateutil import parser
 
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
@@ -34,6 +35,15 @@ class BusinessBookingService:
             return True
         except Exception as e:
             raise Exception(f"Error checking staff services: {e}")
+    
+    def get_client_minimum_booking_duration(self, client_id, duration):
+        try:
+            client = Client.objects.get(id=client_id)
+            if client.minimum_booking_duration_minutes > int(duration):
+                return int(client.minimum_booking_duration_minutes)
+            return int(duration)
+        except Exception as e:
+            return int(duration)
 
     def _get_staff_working_hours(self, staff_id, appointment_date):
         try:
@@ -254,12 +264,40 @@ class BusinessBookingService:
             return unique_time_slots
         except Exception as e:
             raise Exception(f"Error getting all available time slots: {e}")
-
+        
+    def _get_appointment_services_duration(self, appointment_services):
+        try:
+            total_duration = 0
+            for appointment_service in appointment_services:
+                total_duration += int(appointment_service['service_duration'])
+            return total_duration
+        except Exception as e:
+            return 0
+        
     def create_appointment_services(self, appointment, appointment_services):
         try:
+            
             with transaction.atomic():
                 created_appointment = Appointment.objects.create(**appointment)
                 
+                total_duration = self._get_appointment_services_duration(appointment_services)
+                
+                client_minimum_booking_duration = self.get_client_minimum_booking_duration(
+                    appointment['client_id'], 
+                    total_duration
+                )
+                
+                if client_minimum_booking_duration > total_duration:
+                    appointment_services[0]['service_duration'] = client_minimum_booking_duration
+                    if isinstance(appointment_services[0]['start_at'], str):
+                        start_at_dt = parser.parse(appointment_services[0]['start_at'])
+                    else:
+                        start_at_dt = appointment_services[0]['start_at']
+                    end_at_dt = start_at_dt + timedelta(minutes=client_minimum_booking_duration)
+                    appointment_services[0]['end_at'] = end_at_dt
+                    created_appointment.end_at = end_at_dt
+                    created_appointment.save()
+                    
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
                         id=appointment_service['id'],
@@ -270,6 +308,7 @@ class BusinessBookingService:
                         start_at=appointment_service['start_at'],
                         end_at=appointment_service['end_at'],
                         custom_price=appointment_service['custom_price'],
+                        custom_duration=appointment_service['service_duration'],
                     )
                     
                 return created_appointment

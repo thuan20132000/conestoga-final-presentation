@@ -54,7 +54,8 @@ class ClientListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'first_name', 'last_name', 'full_name', 'email', 'phone',
             'date_of_birth', 'age', 'primary_business_name', 'is_active',
-            'is_vip', 'bonus_time_minutes', 'minimum_booking_duration_minutes', 'created_at'
+            'is_vip', 'bonus_time_minutes', 'minimum_booking_duration_minutes', 'created_at',
+            'notes',
         ]
 
 

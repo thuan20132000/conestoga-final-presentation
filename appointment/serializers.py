@@ -22,6 +22,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
         source='client.minimum_booking_duration_minutes', 
         read_only=True, 
     )
+    client_notes = serializers.CharField(
+        source='client.notes', read_only=True)
     business_phone_number = serializers.CharField(
         source='business.phone_number', read_only=True)
     business_twilio_phone_number = serializers.CharField(
@@ -42,6 +44,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'client_email',
             'client_phone',
             'client_minimum_booking_duration',
+            'client_notes',
             'appointment_date',
             'status',
             'notes',

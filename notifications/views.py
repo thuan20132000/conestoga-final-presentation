@@ -10,7 +10,7 @@ from main.viewsets import BaseViewSet
 from .serializers import PushInformationSerializer, PushGroupSerializer, PushSubscriptionSerializer
 from main.viewsets import BaseModelViewSet
 from django_filters import rest_framework as filters
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from rest_framework.pagination import PageNumberPagination
 from main.utils import get_business_managers_group_name
 dispatcher = NotificationDispatcher()
@@ -26,7 +26,7 @@ class NotificationViewSet(BaseModelViewSet):
     serializer_class = NotificationSerializer
     filterset_class = NotificationFilter
     search_fields = ["to", "title", "body"]
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     pagination_class = PageNumberPagination
     page_size = 100
     page_size_query_param = "page_size"
@@ -59,7 +59,7 @@ class SMSNotificationFilter(filters.FilterSet):
 class SMSNotificationViewSet(BaseModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     filterset_class = SMSNotificationFilter
     search_fields = ["to", "title", "body"]
     pagination_class = PageNumberPagination

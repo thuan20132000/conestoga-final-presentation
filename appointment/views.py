@@ -32,7 +32,7 @@ from staff.serializers import BusinessBookingStaffSerializer
 from .services import BusinessBookingService
 from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from appointment.services import TicketReportService, SalaryReportService
 from appointment.serializers import (
     BusinessTicketReportSerializer, 
@@ -988,7 +988,7 @@ class TicketReportViewSet(BaseModelViewSet):
             staff_id = request.query_params.get('staff_id')
             
             user = self.request.user
-            if not IsBusinessManager().has_permission(self.request, self):
+            if not IsBusinessManagerOrReceptionist().has_permission(self.request, self):
                 staff_id = user.id
             
             ticket_report = TicketReportService(self.request.user.business_id)

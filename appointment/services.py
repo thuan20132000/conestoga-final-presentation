@@ -1079,7 +1079,7 @@ class CalendarStaffService:
     
     def _get_business_staffs(self) -> QuerySet[Staff]:
         try:
-            if self.auth_user.role.name in ['Manager', 'Owner']:
+            if self.auth_user.role.name in ['Manager', 'Owner', 'Receptionist']:
                 
                 override_staffs = self._get_business_staffs_overrides()
                 
@@ -1182,7 +1182,7 @@ class CalendarStaffService:
 
     def get_all_technicians(self) -> QuerySet[Staff]:
         try:
-            if self.auth_user.role.name in ['Manager', 'Owner']:
+            if self.auth_user.role.name in ['Manager', 'Owner', 'Receptionist']:
                 technicians = Staff.objects.filter(
                     business_id=self.business_id,
                     is_active=True,

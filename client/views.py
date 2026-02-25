@@ -13,7 +13,7 @@ from appointment.serializers import AppointmentDetailSerializer
 from appointment.models import Appointment
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from django_filters import rest_framework as filters
 from rest_framework.pagination import PageNumberPagination
 
@@ -49,7 +49,7 @@ class ClientViewSet(BaseModelViewSet):
     """ViewSet for managing clients"""
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     filterset_class = ClientFilter
     
     def get_queryset(self):

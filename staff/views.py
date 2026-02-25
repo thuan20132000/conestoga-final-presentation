@@ -27,7 +27,7 @@ from main.viewsets import BaseModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from staff.services import TimeEntryService, StaffCredentialService
 from django.db import transaction
 from django.db.models import Sum
@@ -44,7 +44,7 @@ class StaffFilter(filters.FilterSet):
 class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
     queryset = Staff.objects.filter(is_deleted=False)
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     ordering_fields = ['created_at','updated_at','first_name','last_name']
     ordering = ['-created_at']
     
@@ -196,7 +196,7 @@ class StaffViewSet(BaseModelViewSet):
 class StaffServiceViewSet(BaseModelViewSet):
     """ViewSet for Staff services"""
     queryset = StaffService.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         return StaffServiceSerializer
@@ -215,7 +215,7 @@ class StaffServiceViewSet(BaseModelViewSet):
 class StaffWorkingHoursViewSet(BaseModelViewSet):
     """ViewSet for Staff working hours"""
     queryset = StaffWorkingHours.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -225,7 +225,7 @@ class StaffWorkingHoursViewSet(BaseModelViewSet):
 class StaffOffDayViewSet(BaseModelViewSet):
     """ViewSet for Staff off days"""
     queryset = StaffOffDay.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -426,7 +426,7 @@ class TimeEntryFilter(filters.FilterSet):
 class TimeEntryViewSet(BaseModelViewSet):
     """ViewSet for TimeEntry"""
     queryset = TimeEntry.objects.filter(is_deleted=False)
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     filterset_class = TimeEntryFilter
     
     def get_serializer_class(self):
@@ -508,7 +508,7 @@ class TimeEntryViewSet(BaseModelViewSet):
 class StaffWorkingHoursOverrideViewSet(BaseModelViewSet):
     """ViewSet for Staff working hours override"""
     queryset = StaffWorkingHoursOverride.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_queryset(self):
         return self.queryset.filter(staff__business_id=self.request.user.business_id)

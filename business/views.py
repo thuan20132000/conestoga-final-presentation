@@ -35,20 +35,20 @@ from payment.serializers import PaymentMethodSerializer
 from django.db.models import Sum, Count
 from payment.models import Payment
 from payment.services import PaymentService
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
     """ViewSet for BusinessType - read-only since these are predefined"""
     queryset = BusinessType.objects.all()
     serializer_class = BusinessTypeSerializer
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
 
 class BusinessViewSet(BaseModelViewSet):
     """ViewSet for Business management"""
     queryset = Business.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -308,7 +308,7 @@ class BusinessSettingsViewSet(BaseModelViewSet):
     """ViewSet for BusinessSettings management"""
     queryset = BusinessSettings.objects.all()
     serializer_class = BusinessSettingsSerializer
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def perform_update(self, serializer):
         serializer.save(business=self.get_object().business)
@@ -318,7 +318,7 @@ class BusinessOnlineBookingViewSet(BaseModelViewSet):
     """ViewSet for BusinessOnlineBooking management"""
     queryset = BusinessOnlineBooking.objects.all()
     serializer_class = BusinessOnlineBookingSerializer
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_queryset(self):
         queryset = super().get_queryset()

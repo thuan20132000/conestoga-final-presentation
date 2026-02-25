@@ -1,4 +1,6 @@
+from django import forms
 from django.contrib import admin
+from django.forms.models import BaseInlineFormSet
 from django.utils.html import format_html
 from .models import (
     BusinessType, 
@@ -42,6 +44,57 @@ class BusinessStaffInline(admin.TabularInline):
     ordering = ['username', 'role', 'is_active', 'hire_date', 'last_login', 'business']
 
 
+class BusinessOwnerInlineForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        help_text='Leave blank to set an unusable password.',
+    )
+
+    class Meta:
+        model = Staff
+        fields = ['username', 'password', 'first_name', 'last_name', 'email', 'phone', 'is_active']
+
+    def save(self, commit=True):
+        staff = super().save(commit=False)
+        raw_password = self.cleaned_data.get('password')
+        if raw_password:
+            staff.set_password(raw_password)
+        elif not self.instance.pk:
+            staff.set_unusable_password()
+        if commit:
+            staff.save()
+        return staff
+
+
+class BusinessOwnerFormset(BaseInlineFormSet):
+    role_name = 'Owner'
+
+
+class BusinessOwnerInline(admin.TabularInline):
+    model = Staff
+    form = BusinessOwnerInlineForm
+    formset = BusinessOwnerFormset
+    verbose_name = 'Owner'
+    verbose_name_plural = 'Owners'
+    extra = 1
+    fields = ['username', 'password', 'first_name', 'last_name', 'email', 'phone', 'is_active']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(role__name='Owner')
+
+
+class BusinessManagerInline(admin.TabularInline):
+    model = Staff
+    verbose_name = 'Manager'
+    verbose_name_plural = 'Managers'
+    extra = 0
+    fields = ['first_name','phone', 'is_active', 'username']
+    readonly_fields = ['first_name', 'phone', 'is_active', 'username']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(role__name='Manager')
+
 
 @admin.register(Business)
 class BusinessAdmin(admin.ModelAdmin):
@@ -49,8 +102,19 @@ class BusinessAdmin(admin.ModelAdmin):
     list_filter = ['business_type']
     search_fields = ['name', 'description', 'address', 'city', 'phone_number', 'email']
     ordering = ['name']
-    # inlines = [OperatingHoursInline, BusinessStaffInline]
-    
+    inlines = [BusinessOwnerInline, BusinessManagerInline]
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        business = form.instance
+        for formset in formsets:
+            if not hasattr(formset, 'role_name'):
+                continue
+            role, _ = BusinessRoles.objects.get_or_create(business=business, name=formset.role_name)
+            for staff in formset.new_objects:
+                staff.role = role
+                staff.save()
+
     fieldsets = (
         ('Basic Information', {
             'fields': ('name', 'business_type', 'description', 'cost_per_minute', 'twilio_phone_number', 'google_review_url')

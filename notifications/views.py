@@ -12,7 +12,7 @@ from main.viewsets import BaseModelViewSet
 from django_filters import rest_framework as filters
 from staff.permissions import IsBusinessManager
 from rest_framework.pagination import PageNumberPagination
-
+from main.utils import get_business_managers_group_name
 dispatcher = NotificationDispatcher()
 
 
@@ -119,12 +119,15 @@ class WebPushViewSet(BaseViewSet):
                     "user_agent": request.data.get("user_agent"),
                 }
             )
-           
             if created:
+                business = request.user.business
+                if not business:
+                    return self.response_error("User is not associated with a business")
+                group = Group.objects.filter(name=get_business_managers_group_name(business.id)).first()
                 push_information = PushInformation.objects.create(
                     subscription=subscription,
                     user=request.user,
-                    group_id=request.data.get("group",None),
+                    group=group,
                 )
             else:
                 push_information = PushInformation.objects.filter(subscription=subscription).first()
@@ -140,7 +143,6 @@ class WebPushViewSet(BaseViewSet):
         try:
             endpoint = request.data.get("endpoint")
             subscription = SubscriptionInfo.objects.filter(endpoint=endpoint).first()
-            print("================= WebPush Unsubscribe subscription:: ", subscription)
             if subscription:
                 PushInformation.objects.filter(subscription=subscription).delete()
                 subscription.delete()

@@ -121,18 +121,24 @@ class BookingClientCreateSerializer(serializers.ModelSerializer):
     def update_or_create(self, validated_data):
         """Update or create a client for a specific business"""
         try:
-            client, created = Client.objects.update_or_create(
+            
+            client = Client.objects.filter(
                 primary_business_id=validated_data['primary_business_id'],
                 phone=validated_data['phone'],
                 is_active=True,
                 is_deleted=False,
-                defaults={
-                    'first_name': validated_data['first_name'],
-                    'last_name': validated_data.get('last_name', None),
-                    'email': validated_data.get('email', None),
-                    'date_of_birth': validated_data.get('date_of_birth', None),
-                }
-            )
+            ).first()
+            
+            if not client:
+                client = Client.objects.create(**validated_data)
+            else:
+                client.first_name = validated_data['first_name']
+                client.last_name = validated_data.get('last_name', None)
+                client.email = validated_data.get('email', None)
+                client.date_of_birth = validated_data.get('date_of_birth', None)
+                client.save()
+                
             return BookingClientSerializer(client).data
+            
         except Exception as e:
             raise serializers.ValidationError(str(e))

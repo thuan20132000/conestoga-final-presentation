@@ -117,4 +117,9 @@ class StripeWebhookAPIView(BaseAPIView):
         # Handle gift card webhook
         from gift.services import GiftCardOnlinePaymentService
         GiftCardOnlinePaymentService(stripe_service).handle_stripe_event(event)
+
+        # Handle subscription webhook
+        from subscription.services import SubscriptionService
+        SubscriptionService().handle_webhook_event(event)
+
         return self.response_success({"status": "success"})

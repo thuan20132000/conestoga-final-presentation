@@ -75,6 +75,66 @@ class StripeService:
         except Exception as e:
             logger.error("error retrieving Stripe checkout session:: %s", e)
             raise e
+    
+    def retrieve_invoice(self, invoice_id: str) -> stripe.Invoice:
+        invoice = stripe.Invoice.retrieve(
+            invoice_id,
+            expand=['confirmation_secret'],
+        )
+        print("================= Retrieve Invoice invoice:: ", invoice)
+        return invoice
+
+    def create_customer(self, email: str, name: str, metadata: dict) -> stripe.Customer:
+        return stripe.Customer.create(email=email, name=name, metadata=metadata)
+
+    def create_subscription(self, customer_id: str, price_id: str, trial_days: int = 0) -> stripe.Subscription:
+        
+        return stripe.Subscription.create(
+            customer=customer_id,
+            items=[{'price': price_id}],
+            payment_behavior='default_incomplete',
+            payment_settings={
+                'payment_method_types': ['card'],
+                'save_default_payment_method': 'on_subscription',
+            },
+            expand=['latest_invoice.confirmation_secret'],
+            metadata={
+                'trial_days': str(trial_days),
+            },
+            trial_period_days=trial_days,
+        )
+
+    def cancel_subscription(self, subscription_id: str, at_period_end: bool = True) -> stripe.Subscription:
+        if at_period_end:
+            return stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+        return stripe.Subscription.cancel(subscription_id)
+
+    def change_subscription_plan(self, subscription_id: str, new_price_id: str) -> stripe.Subscription:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        item_id = subscription['items']['data'][0]['id']
+        return stripe.Subscription.modify(
+            subscription_id,
+            items=[{'id': item_id, 'price': new_price_id}],
+            proration_behavior='always_invoice',
+        )
+
+    def create_stripe_product(self, name: str, description: str) -> stripe.Product:
+        return stripe.Product.create(name=name, description=description)
+
+    def create_stripe_price(
+        self,
+        product_id: str,
+        amount_cents: int,
+        currency: str,
+        interval: str,
+        interval_count: int,
+    ) -> stripe.Price:
+        return stripe.Price.create(
+            product=product_id,
+            unit_amount=amount_cents,
+            currency=currency,
+            recurring={'interval': interval, 'interval_count': interval_count},
+        )
 
     def create_checkout_session(
         self,

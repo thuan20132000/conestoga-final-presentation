@@ -75,6 +75,75 @@ class StripeService:
         except Exception as e:
             logger.error("error retrieving Stripe checkout session:: %s", e)
             raise e
+    
+    def create_customer(self, email: str, name: str, metadata: dict) -> stripe.Customer:
+        return stripe.Customer.create(email=email, name=name, metadata=metadata)
+
+    def retrieve_subscription(self, subscription_id: str) -> stripe.Subscription:
+        return stripe.Subscription.retrieve(subscription_id)
+
+    def create_subscription_checkout_session(
+        self,
+        price_id: str,
+        success_url: str,
+        cancel_url: str,
+        customer_email: str = '',
+        customer_id: str = None,
+        business_id: int = None,
+        trial_days: int = 0,
+        metadata: dict = None,
+    ) -> stripe.checkout.Session:
+        metadata = metadata or {}
+        params: dict = {
+            'mode': 'subscription',
+            'line_items': [{'price': price_id, 'quantity': 1}],
+            'success_url': success_url,
+            'cancel_url': cancel_url,
+            'allow_promotion_codes': True,
+            'client_reference_id': business_id,
+            'metadata': metadata,
+            'subscription_data': {'metadata': metadata},
+            
+        }
+        if customer_id:
+            params['customer'] = customer_id
+        elif customer_email:
+            params['customer_email'] = customer_email
+        if trial_days > 0:
+            params['subscription_data']['trial_period_days'] = trial_days
+        return stripe.checkout.Session.create(**params)
+
+    def cancel_subscription(self, subscription_id: str, at_period_end: bool = True) -> stripe.Subscription:
+        if at_period_end:
+            return stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+        return stripe.Subscription.cancel(subscription_id)
+
+    def change_subscription_plan(self, subscription_id: str, new_price_id: str) -> stripe.Subscription:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        item_id = subscription['items']['data'][0]['id']
+        return stripe.Subscription.modify(
+            subscription_id,
+            items=[{'id': item_id, 'price': new_price_id}],
+            proration_behavior='always_invoice',
+        )
+
+    def create_stripe_product(self, name: str, description: str) -> stripe.Product:
+        return stripe.Product.create(name=name, description=description)
+
+    def create_stripe_price(
+        self,
+        product_id: str,
+        amount_cents: int,
+        currency: str,
+        interval: str,
+        interval_count: int,
+    ) -> stripe.Price:
+        return stripe.Price.create(
+            product=product_id,
+            unit_amount=amount_cents,
+            currency=currency,
+            recurring={'interval': interval, 'interval_count': interval_count},
+        )
 
     def create_checkout_session(
         self,

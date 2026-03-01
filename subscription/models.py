@@ -5,7 +5,9 @@ from main.models import SoftDeleteModel
 class SubscriptionTier(models.TextChoices):
     FREE = 'free', 'Free'
     BASIC = 'basic', 'Basic'
+    STARTER = 'starter', 'Starter'
     PRO = 'pro', 'Pro'
+    PREMIUM = 'premium', 'Premium'
     ENTERPRISE = 'enterprise', 'Enterprise'
 
 
@@ -19,7 +21,7 @@ class SubscriptionStatus(models.TextChoices):
     TRIALING = 'trialing', 'Trialing'
     ACTIVE = 'active', 'Active'
     PAST_DUE = 'past_due', 'Past Due'
-    CANCELLED = 'cancelled', 'Cancelled'
+    CANCELLED = 'canceled', 'Canceled'
     PAUSED = 'paused', 'Paused'
     UNPAID = 'unpaid', 'Unpaid'
 

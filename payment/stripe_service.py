@@ -76,33 +76,42 @@ class StripeService:
             logger.error("error retrieving Stripe checkout session:: %s", e)
             raise e
     
-    def retrieve_invoice(self, invoice_id: str) -> stripe.Invoice:
-        invoice = stripe.Invoice.retrieve(
-            invoice_id,
-            expand=['confirmation_secret'],
-        )
-        print("================= Retrieve Invoice invoice:: ", invoice)
-        return invoice
-
     def create_customer(self, email: str, name: str, metadata: dict) -> stripe.Customer:
         return stripe.Customer.create(email=email, name=name, metadata=metadata)
 
-    def create_subscription(self, customer_id: str, price_id: str, trial_days: int = 0) -> stripe.Subscription:
-        
-        return stripe.Subscription.create(
-            customer=customer_id,
-            items=[{'price': price_id}],
-            payment_behavior='default_incomplete',
-            payment_settings={
-                'payment_method_types': ['card'],
-                'save_default_payment_method': 'on_subscription',
-            },
-            expand=['latest_invoice.confirmation_secret'],
-            metadata={
-                'trial_days': str(trial_days),
-            },
-            trial_period_days=trial_days,
-        )
+    def retrieve_subscription(self, subscription_id: str) -> stripe.Subscription:
+        return stripe.Subscription.retrieve(subscription_id)
+
+    def create_subscription_checkout_session(
+        self,
+        price_id: str,
+        success_url: str,
+        cancel_url: str,
+        customer_email: str = '',
+        customer_id: str = None,
+        business_id: int = None,
+        trial_days: int = 0,
+        metadata: dict = None,
+    ) -> stripe.checkout.Session:
+        metadata = metadata or {}
+        params: dict = {
+            'mode': 'subscription',
+            'line_items': [{'price': price_id, 'quantity': 1}],
+            'success_url': success_url,
+            'cancel_url': cancel_url,
+            'allow_promotion_codes': True,
+            'client_reference_id': business_id,
+            'metadata': metadata,
+            'subscription_data': {'metadata': metadata},
+            
+        }
+        if customer_id:
+            params['customer'] = customer_id
+        elif customer_email:
+            params['customer_email'] = customer_email
+        if trial_days > 0:
+            params['subscription_data']['trial_period_days'] = trial_days
+        return stripe.checkout.Session.create(**params)
 
     def cancel_subscription(self, subscription_id: str, at_period_end: bool = True) -> stripe.Subscription:
         if at_period_end:

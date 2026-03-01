@@ -32,6 +32,7 @@ class SubscriptionPlanViewSet(BaseModelViewSet):
         plans = self.get_queryset()
         serializer = self.get_serializer(plans, many=True)
         return self.response_success(serializer.data, message="Plans retrieved successfully")
+    
 
 
 class BusinessSubscriptionViewSet(BaseModelViewSet):
@@ -82,21 +83,21 @@ class BusinessSubscriptionViewSet(BaseModelViewSet):
             return self.response_error(serializer.errors)
 
         try:
-            sub, client_secret = SubscriptionService().create_subscription(
+            checkout_url = SubscriptionService().create_subscription(
                 business=business,
                 plan_id=serializer.validated_data['plan_id'],
                 billing_cycle=serializer.validated_data['billing_cycle'],
+                success_url=serializer.validated_data['success_url'],
+                cancel_url=serializer.validated_data['cancel_url'],
             )
         except Exception as e:
             logger.error("subscribe error: %s", e)
             return self.response_error(message=str(e), status_code=status.HTTP_400_BAD_REQUEST)
 
-        data = BusinessSubscriptionSerializer(sub).data
-        data['client_secret'] = client_secret
         return self.response_success(
-            data,
+            {'checkout_url': checkout_url},
             status_code=status.HTTP_201_CREATED,
-            message="Subscription created successfully. Use client_secret to confirm payment." if client_secret else "Subscription created successfully.",
+            message="Redirect user to checkout_url to complete subscription.",
         )
 
     @action(detail=False, methods=['post'], url_path='cancel')

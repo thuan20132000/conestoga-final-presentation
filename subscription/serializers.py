@@ -53,6 +53,8 @@ class BusinessSubscriptionSerializer(serializers.ModelSerializer):
 class BusinessSubscriptionCreateSerializer(serializers.Serializer):
     plan_id = serializers.IntegerField()
     billing_cycle = serializers.ChoiceField(choices=BillingCycle.choices)
+    success_url = serializers.URLField(help_text="URL to redirect after successful subscription",)
+    cancel_url = serializers.URLField(help_text="URL to redirect if user cancels subscription")
 
     def validate_plan_id(self, value):
         if not SubscriptionPlan.objects.filter(id=value, is_active=True).exists():

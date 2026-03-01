@@ -300,7 +300,7 @@ class UserProfileSerializer(StaffSerializer):
     def get_business_settings(self, obj):
         """Get business settings"""
         try:
-            if obj.role.name in ['Owner', 'Manager']:
+            if obj.role.name in ['Owner', 'Manager','Receptionist']:
                 return BusinessSettingsSerializer(obj.business.settings).data
             else:
                 return None

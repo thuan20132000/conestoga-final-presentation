@@ -4,6 +4,7 @@ from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking, BusinessBanner
 )
 from payment.serializers import PaymentMethodSerializer
+from subscription.serializers import BusinessSubscriptionSerializer
 class BusinessTypeSerializer(serializers.ModelSerializer):
     """Serializer for BusinessType model"""
     
@@ -78,6 +79,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
     operating_hours = OperatingHoursSerializer(many=True, read_only=True)
     settings = BusinessSettingsSerializer(read_only=True)
     online_booking = BusinessOnlineBookingSerializer(read_only=True)
+    subscription = BusinessSubscriptionSerializer(read_only=True)
     
     class Meta:
         model = Business
@@ -85,7 +87,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
             'country', 'description', 'logo', 'google_review_url', 'operating_hours',
-            'settings', 'online_booking', 'created_at', 'updated_at'
+            'settings', 'online_booking', 'subscription', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

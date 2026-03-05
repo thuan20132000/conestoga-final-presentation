@@ -68,12 +68,19 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = [
-            'first_name', 'last_name', 'email', 'phone', 'role',
+            'first_name', 
+            'last_name', 
+            'email', 
+            'phone', 
+            'role',
             'is_active',
             'is_online_booking_allowed',
             'is_payment_processing_allowed',
-            'hire_date', 'bio', 'photo',
+            'hire_date', 
+            'bio', 
+            'photo',
             'business',
+            'commission_rate',
         ]
     
     def validate_email(self, value):

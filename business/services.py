@@ -144,7 +144,7 @@ class BusinessInitializerService:
                 'name': 'Credit Card',
                 'payment_type': 'credit_card',
                 'description': 'Credit Card payment',
-                'is_active': True,
+                'is_active': False,
             },
             {
                 'name': 'Debit Card',
@@ -156,7 +156,7 @@ class BusinessInitializerService:
                 'name': 'Online Payment',
                 'payment_type': 'online',
                 'description': 'Online payment',
-                'is_active': True,
+                'is_active': False,
             },
             {
                 'name': 'Gift Card',
@@ -368,8 +368,7 @@ class BusinessRegisterService(BusinessInitializerService):
     def _create_owner(self):
         """Create default owner"""
         owner_role = BusinessRoles.objects.get(name='Owner', business=self.business)
-        print("Owner data:: ", self.owner_data)
         owner = Staff.objects.create(business=self.business, role=owner_role, **self.owner_data)
         
-        StaffCredentialService.create_or_reset_credentials(owner, send_sms=False)
+        StaffCredentialService.create_or_reset_credentials(owner, send_sms=True)
         return owner

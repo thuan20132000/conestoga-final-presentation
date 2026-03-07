@@ -326,6 +326,17 @@ class BusinessBookingStaffSerializer(serializers.ModelSerializer):
 
 class TimeEntryPartialUpdateSerializer(serializers.ModelSerializer):
     """Serializer for partial update time entry"""
+    
+    clock_in = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+    )
+    
+    clock_out = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+    )
+    
     class Meta:
         model = TimeEntry
         fields = ['clock_out', 'clock_in']

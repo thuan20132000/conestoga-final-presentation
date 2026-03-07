@@ -119,16 +119,26 @@ class WebPushViewSet(BaseViewSet):
                     "user_agent": request.data.get("user_agent"),
                 }
             )
+         
+            user = request.user
+            business = user.business
+          
             if created:
-                business = request.user.business
                 if not business:
                     return self.response_error("User is not associated with a business")
-                group = Group.objects.filter(name=get_business_managers_group_name(business.id)).first()
-                push_information = PushInformation.objects.create(
-                    subscription=subscription,
-                    user=request.user,
-                    group=group,
-                )
+                
+                if user.role.is_managers():
+                    group = Group.objects.filter(name=get_business_managers_group_name(business.id)).first()
+                    push_information = PushInformation.objects.create(
+                        subscription=subscription,
+                        user=user,
+                        group=group,
+                    )
+                else:
+                    push_information = PushInformation.objects.create(
+                        subscription=subscription,
+                        user=user,
+                    )
             else:
                 push_information = PushInformation.objects.filter(subscription=subscription).first()
                 

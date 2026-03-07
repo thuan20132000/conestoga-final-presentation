@@ -3,13 +3,11 @@ from django.dispatch import receiver
 from .models import Staff, StaffService, TimeEntry
 from service.models import Service
 import logging
-from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
 from notifications.models import Notification
 from notifications.services import NotificationDispatcher
 from django.utils import timezone
 from business.models import BusinessSettings
-from datetime import datetime
 dispatcher = NotificationDispatcher()
 
 logger = logging.getLogger(__name__)
@@ -32,19 +30,7 @@ def handle_staff_post_save(sender, instance, created, **kwargs):
                 is_active=True
             )
 
-    else:
-        # update the staff group
-        try:
-            business_managers_group_name = get_business_managers_group_name(
-                instance.business.id)
-            push_information = PushInformation.objects.filter(
-                user=instance).first()
-            if push_information:
-                push_information.group = Group.objects.get(
-                    name=business_managers_group_name)
-                push_information.save()
-        except Exception as e:
-            print(f"Error updating staff group: {e}")
+
 
 
 # signal to send push notification to managers when a staff is clocked in or clocked out

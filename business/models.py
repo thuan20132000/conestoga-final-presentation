@@ -160,7 +160,8 @@ class BusinessRoles(SoftDeleteModel):
     def __str__(self):
         return f"{self.business.name} - {self.name}"
     
-
+    def is_managers(self):
+        return self.name in ['Manager', 'Owner', 'Receptionist']
 class BusinessOnlineBooking(SoftDeleteModel):
     """Online booking configuration for the business"""
     business = models.OneToOneField(

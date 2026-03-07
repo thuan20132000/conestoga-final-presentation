@@ -8,6 +8,8 @@ from notifications.models import Notification
 from notifications.services import NotificationDispatcher
 from django.utils import timezone
 from business.models import BusinessSettings
+from staff.models import StaffOffDay
+
 dispatcher = NotificationDispatcher()
 
 logger = logging.getLogger(__name__)
@@ -84,3 +86,33 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
         return
     finally:
         timezone.deactivate()
+        
+@receiver(post_save, sender=StaffOffDay)
+def handle_staff_off_day_post_save(sender, instance, created, **kwargs):
+    """Send push notification to managers when a staff is off day"""
+    try:
+        business_id = instance.staff.business.id
+        business_name = instance.staff.business.name
+        first_name = instance.staff.first_name
+        
+        if created:
+            title = f"🔔 Staff Vacation Day - {business_name}"
+            start_date = instance.start_date.strftime('%B %d, %Y')
+            end_date = instance.end_date.strftime('%B %d, %Y')
+            body = f"{first_name} is on vacation from {start_date} to {end_date}."
+            
+            if instance.reason:
+                body += f" Reason: {instance.reason}."
+                
+            dispatcher.dispatchAsync(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                group_name=get_business_managers_group_name(business_id),
+            )
+            
+    except Exception as e:
+        print(f"Error sending staff off day notification: {e}")
+        return
+   

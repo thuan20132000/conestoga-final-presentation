@@ -13,6 +13,7 @@ from main.utils import get_business_managers_group_name
 import csv
 from main.common_settings import ONLINE_BOOKING_URL
 from staff.services import StaffCredentialService
+from subscription.models import BusinessSubscription, SubscriptionStatus, SubscriptionPlan
 
 
 class BusinessInitializerService:
@@ -353,6 +354,7 @@ class BusinessRegisterService(BusinessInitializerService):
             self._create_online_booking()
             self._create_service_categories()
             self._create_services()
+            self._subscribe_free_trial()
             self._create_staff()
             self._create_manager()
             owner = self._create_owner()
@@ -372,3 +374,12 @@ class BusinessRegisterService(BusinessInitializerService):
         
         StaffCredentialService.create_or_reset_credentials(owner, send_sms=True)
         return owner
+
+    def _subscribe_free_trial(self):
+        """Subscribe to free trial"""
+        subscription = BusinessSubscription.objects.create(
+            business=self.business,
+            plan=SubscriptionPlan.objects.get(name='Free Trial', is_active=True),
+            status=SubscriptionStatus.TRIALING,
+        )
+        return subscription

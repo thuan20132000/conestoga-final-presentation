@@ -12,6 +12,7 @@ from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
 import csv
 from main.common_settings import ONLINE_BOOKING_URL
+from staff.services import StaffCredentialService
 
 
 class BusinessInitializerService:
@@ -48,7 +49,7 @@ class BusinessInitializerService:
             send_reminder_sms=False,
             reminder_hours_before=24,
             send_confirmation_sms=False,
-            currency='CAD',
+            currency="CAD",
             tax_rate=0.13,
             require_payment_advance=False,
             allow_online_booking=True,
@@ -61,16 +62,20 @@ class BusinessInitializerService:
         """Create default business roles"""
         defaults_roles = [
             {
-                'name': 'Technician',
-                'description': 'Technician of the business',
+                "name": "Technician",
+                "description": "Technician of the business",
             },
             {
-                'name': 'Manager',
-                'description': 'Manager of the business',
+                "name": "Manager",
+                "description": "Manager of the business",
             },
             {
-                'name': 'Receptionist',
-                'description': 'Receptionist of the business',
+                "name": "Receptionist",
+                "description": "Receptionist of the business",
+            },
+            {
+                "name": "Owner",
+                "description": "Owner of the business",
             },
         ]
         for role in defaults_roles:
@@ -99,7 +104,7 @@ class BusinessInitializerService:
         for staff in defaults_staff:
             Staff.objects.create(business=self.business, **staff)
 
-    def _create_manager(self):
+    def _create_manager(self,):
         """Create default managers"""
         manager_role = BusinessRoles.objects.get(name='Manager', business=self.business)
         defaults_managers = {   
@@ -227,7 +232,7 @@ class BusinessInitializerService:
                     sort_order=row[0],
                     is_online_booking=True,
                 )
-   
+
 class BellebizBusinessInitializerService(BusinessInitializerService):
     def __init__(self, business):
         self.business = business
@@ -325,3 +330,46 @@ class BellebizBusinessInitializerService(BusinessInitializerService):
             )
 
 
+
+class BusinessRegisterService(BusinessInitializerService):
+    """Service for registering a new business"""
+    service_csv_path = "dummy/services_by_salon_2026-01-26.csv"
+    category_csv_path = "dummy/service_categories_by_salon_2026-01-26.csv"
+    
+    
+    def __init__(self, business: dict, owner: dict):
+        super().__init__(business, self.service_csv_path, self.category_csv_path)
+        self.business_data = business
+        self.owner_data = owner
+
+    def initialize(self):
+        with transaction.atomic():
+            self.business = self._create_business()
+            self._create_business_settings()
+            self._create_business_roles()
+            self._create_operating_hours()
+            self._create_payment_methods()
+            self._create_business_managers_group()
+            self._create_online_booking()
+            self._create_service_categories()
+            self._create_services()
+            self._create_staff()
+            self._create_manager()
+            owner = self._create_owner()
+            self.owner = owner
+            return owner
+            
+            
+    def _create_business(self):
+        """Create default business"""
+        business = Business.objects.create(**self.business_data)
+        return business
+            
+    def _create_owner(self):
+        """Create default owner"""
+        owner_role = BusinessRoles.objects.get(name='Owner', business=self.business)
+        print("Owner data:: ", self.owner_data)
+        owner = Staff.objects.create(business=self.business, role=owner_role, **self.owner_data)
+        
+        StaffCredentialService.create_or_reset_credentials(owner, send_sms=False)
+        return owner

@@ -1,10 +1,20 @@
 from rest_framework import serializers
 from django.db.models import Sum, Avg
+from django.db import transaction
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking, BusinessBanner
+    BusinessType,
+    Business,
+    OperatingHours,
+    BusinessSettings,
+    BusinessRoles,
+    BusinessOnlineBooking,
+    BusinessBanner,
 )
 from payment.serializers import PaymentMethodSerializer
 from subscription.serializers import BusinessSubscriptionSerializer
+from staff.models import Staff
+from staff.services import StaffCredentialService
+
 class BusinessTypeSerializer(serializers.ModelSerializer):
     """Serializer for BusinessType model"""
     
@@ -283,3 +293,23 @@ class BusinessInfoSerializer(serializers.ModelSerializer):
 
     def get_active_banner(self, obj):
         return BusinessBannerSerializer(obj.banners.filter(is_active=True).first()).data
+    
+    
+class OwnerRegisterSerializer(serializers.Serializer):
+    """Serializer for owner registration"""
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    phone = serializers.CharField(required=True)
+    email = serializers.EmailField(required=False)
+    
+class BusinessRegisterSerializer(serializers.Serializer):
+    """
+    Serializer orchestrating business + owner registration in one request.
+    """
+
+    business = BusinessSerializer()
+    owner = OwnerRegisterSerializer()
+    
+    class Meta:
+        fields = ['business', 'owner']
+        read_only_fields = ['business', 'owner']

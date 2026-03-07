@@ -1,8 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
-from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
-from service.models import Service
+from business.serializers import BusinessSettingsSerializer, BusinessSerializer
 
 
 class StaffServiceSerializer(serializers.ModelSerializer):

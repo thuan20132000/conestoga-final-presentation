@@ -3,39 +3,38 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from datetime import timedelta
-
+from django.contrib.auth.models import User
 from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings, BusinessOnlineBooking
 )
 from .serializers import (
-    BusinessTypeSerializer, 
-    BusinessListSerializer, 
-    OperatingHoursSerializer, 
-    ReceptionistStatisticsSerializer, 
+    BusinessTypeSerializer,
+    BusinessListSerializer,
+    OperatingHoursSerializer,
+    ReceptionistStatisticsSerializer,
     BusinessDashboardSerializer,
     BusinessSerializer,
     BusinessSettingsSerializer,
     BusinessRolesSerializer,
-    BusinessOnlineBookingSerializer
+    BusinessOnlineBookingSerializer,
+    BusinessRegisterSerializer,
 )
 from appointment.serializers import AppointmentDetailSerializer, AppointmentListSerializer
 from payment.serializers import PaymentSerializer
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer
 from receptionist.serializers import BusinessStatisticsSerializer
-from main.viewsets import BaseModelViewSet
+from main.viewsets import BaseModelViewSet, BaseAPIView
 from service.serializers import ServiceCategorySerializer, ServiceSerializer, ServiceCategoryWithServicesSerializer
-from staff.serializers import StaffSerializer
+from staff.serializers import StaffSerializer, UserProfileSerializer
 from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
-from django.db.models import Sum, Count
-from payment.models import Payment
 from payment.services import PaymentService
 from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
+from .services import BusinessRegisterService
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -323,3 +322,50 @@ class BusinessOnlineBookingViewSet(BaseModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset.filter(business=self.request.user.business)
+
+
+class BusinessRegisterView(BaseAPIView):
+    """
+    Public endpoint to register a new business and its initial owner.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            print("Request data:: ", request.data)
+            serializer = BusinessRegisterSerializer(data=request.data)
+            if serializer.is_valid():
+                business_data = serializer.validated_data['business']
+                owner_data = serializer.validated_data['owner']
+                business_service = BusinessRegisterService(business_data, owner_data)
+                owner = business_service.initialize()
+                
+                user_serializer = UserProfileSerializer(owner)
+                refresh = RefreshToken.for_user(owner)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Registration successful',
+                    'results': {
+                        'user': user_serializer.data,
+                        'tokens': {
+                            'refresh': str(refresh),
+                            'access': str(refresh.access_token),
+                        }
+                    }
+                }, status=status.HTTP_201_CREATED)
+
+            return Response({
+                'success': False,
+                'message': 'Registration failed',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as exc:
+            
+            return Response({
+                'success': False,
+                'message': 'Error during registration',
+                'error': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)

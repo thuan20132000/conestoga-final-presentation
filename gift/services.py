@@ -95,8 +95,6 @@ class GiftCardService:
                     raise ValueError("Gift card has been fully redeemed")
                 else:
                     raise ValueError("Gift card is not active")
-            print("amount:: ", Decimal(amount))
-            print("gift_card.current_balance:: ", gift_card.current_balance)
             amount = money_quantize(amount)
             current_balance = money_quantize(gift_card.current_balance)
             if amount > current_balance:
@@ -112,7 +110,6 @@ class GiftCardService:
                 gift_card.status = GiftCardStatusType.REDEEMED
                 gift_card.redeemed_at = timezone.now()
                 
-            print("gift_card.current_balance:: ", gift_card.__dict__)
             
             gift_card.save()
             

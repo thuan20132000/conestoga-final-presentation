@@ -24,7 +24,8 @@ MIDDLEWARE = [
     "simple_history.middleware.HistoryRequestMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "main.middleware.TimezoneMiddleware",
+    "main.middleware.request.RequestMiddleware",
+    "main.middleware.signature.SignatureVerificationMiddleware",
 ]
 
 ROOT_URLCONF = "main.urls"
@@ -122,6 +123,8 @@ AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
 AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
+SIGNATURE_SECRET_KEY = config("SIGNATURE_SECRET_KEY")
 
 
 STATICFILES_LOCATION = "static"
@@ -247,6 +250,9 @@ CORS_ALLOW_HEADERS = [
     "X-Forwarded-Server",
     "X-Forwarded-Port",
     "X-Forwarded-Proto",
+    "X-API-KEY",
+    "X-SIGNATURE",
+    "X-TIMESTAMP",
 ]
 # Notification provider settings (placeholders)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@bookngon.com")

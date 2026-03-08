@@ -100,7 +100,6 @@ from payment.stripe_service import StripeService
 # Webhook APIView
 class StripeWebhookAPIView(BaseAPIView):
     def post(self, request):
-        logger.info("Stripe webhook received:: %s", request.body)
         
         try:
             stripe_service = StripeService()

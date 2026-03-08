@@ -1,6 +1,6 @@
 from django.utils import timezone
 
-class TimezoneMiddleware:
+class RequestMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 

@@ -86,12 +86,11 @@ class SignatureVerificationMiddleware:
         return self.get_response(request)
 
     def _path_requires_signature(self, path):
-        return False
         # Require signature for all /api/... except a few paths (e.g. login, webhooks)
-        # if not path.startswith("/api/"):
-        #     return False
+        if not path.startswith("/api/"):
+            return False
         excluded = (
-          "/webhooks/", 
+          "/webhooks/",
           "/admin/",
         )  # adjust as needed
         if any(path.startswith(prefix) for prefix in excluded):

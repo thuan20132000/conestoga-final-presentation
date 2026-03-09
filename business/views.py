@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from datetime import timedelta
-from django.contrib.auth.models import User
 from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings, BusinessOnlineBooking
 )
@@ -21,7 +20,7 @@ from .serializers import (
     BusinessOnlineBookingSerializer,
     BusinessRegisterSerializer,
 )
-from appointment.serializers import AppointmentDetailSerializer, AppointmentListSerializer
+from appointment.serializers import AppointmentDetailSerializer
 from payment.serializers import PaymentSerializer
 from receptionist.serializers import CallSessionSerializer
 from receptionist.serializers import AIConfigurationSerializer

@@ -48,7 +48,7 @@ class BusinessInitializerService:
             buffer_time_minutes=0,
             send_reminder_emails=True,
             send_reminder_sms=False,
-            reminder_hours_before=24,
+            reminder_hours_before=2,
             send_confirmation_sms=False,
             currency="CAD",
             tax_rate=0.13,
@@ -95,9 +95,30 @@ class BusinessInitializerService:
                 'role': technician_role,
             },
             {
-                'first_name': 'Jane',
-                'last_name': 'Tran',
-                'email': 'jane.tran@example.com',
+                'first_name': 'Tony',
+                'last_name': 'Le',
+                'email': 'tony.le@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Chris',
+                'last_name': 'Pham',
+                'email': 'chris.pham@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Diana',
+                'last_name': 'Le',
+                'email': 'diana.le@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Eric',
+                'last_name': 'Vu',
+                'email': 'eric.vu@example.com',
                 'phone': '1234567891',
                 'role': technician_role,
             },
@@ -356,7 +377,6 @@ class BusinessRegisterService(BusinessInitializerService):
             self._create_services()
             self._subscribe_free_trial()
             self._create_staff()
-            self._create_manager()
             owner = self._create_owner()
             self.owner = owner
             return owner

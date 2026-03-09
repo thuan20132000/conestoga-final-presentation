@@ -210,7 +210,7 @@ class BusinessInitializerService:
             interval_minutes=self.business.settings.time_slot_interval,
             buffer_time_minutes=self.business.settings.buffer_time_minutes,
             is_active=True,
-            shareable_link=f'{ONLINE_BOOKING_URL}/booking?business_id={self.business.id}',
+            shareable_link=f'{ONLINE_BOOKING_URL}/?business_id={self.business.id}',
         )
 
     def _create_service_categories(self):

@@ -146,11 +146,9 @@ class BusinessInitializerService:
             OperatingHours.objects.create(
                 business=self.business,
                 day_of_week=day,
-                is_open=True if day < 5 else False,
-                open_time=time(9, 0) if day < 5 else None,
-                close_time=time(17, 0) if day < 5 else None,
-                break_start_time=time(12, 0) if day < 5 else None,
-                break_end_time=time(13, 0) if day < 5 else None,
+                is_open=True,
+                open_time=time(9, 30),
+                close_time=time(19, 30),
             )
 
     def _create_payment_methods(self):
@@ -384,7 +382,24 @@ class BusinessRegisterService(BusinessInitializerService):
             
     def _create_business(self):
         """Create default business"""
-        business = Business.objects.create(**self.business_data)
+        business_data = {
+            'name': self.business_data.get('name'),
+            'business_type': self.business_data.get('business_type'),
+            'phone_number': self.business_data.get('phone_number','+15550001'),
+            'email': self.business_data.get('email','info1@luxenails.com'),
+            'website': self.business_data.get('website', 'https://bookngon.com'),
+            'address': self.business_data.get('address', '456 Queen Street'),
+            'city': self.business_data.get('city', 'Toronto'),
+            'state_province': self.business_data.get('state_province', 'ON'),
+            'postal_code': self.business_data.get('postal_code', 'M5H 2M9'),
+            'country': self.business_data.get('country', 'Canada'),
+            'currency': self.business_data.get('currency', 'CAD'),
+            'description': self.business_data.get('description', 'Description of the business'),
+            'logo': self.business_data.get('logo', 'https://bookngon.com/logo.png'),
+            'google_review_url': self.business_data.get('google_review_url', 'https://www.google.com/search?q=123+Main+St+Toronto+ON'),
+            'status': self.business_data.get('status', 'active'),
+        }
+        business = Business.objects.create(**business_data)
         return business
             
     def _create_owner(self):

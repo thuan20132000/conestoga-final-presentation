@@ -395,7 +395,7 @@ class BusinessRegisterService(BusinessInitializerService):
             'country': self.business_data.get('country', 'Canada'),
             'currency': self.business_data.get('currency', 'CAD'),
             'description': self.business_data.get('description', 'Description of the business'),
-            'logo': self.business_data.get('logo', 'https://bookngon.com/logo.png'),
+            'logo': self.business_data.get('logo'),
             'google_review_url': self.business_data.get('google_review_url', 'https://www.google.com/search?q=123+Main+St+Toronto+ON'),
             'status': self.business_data.get('status', 'active'),
         }

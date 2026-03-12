@@ -1,13 +1,10 @@
 from rest_framework import serializers
 from django.utils import timezone
-from django.db.models import Q
-from datetime import datetime, timedelta
 from .models import Appointment, AppointmentService
-from client.models import Client
 from business.models import Business
 from service.models import Service
 from staff.models import Staff
-
+from payment.models import Payment
 
 class AppointmentSerializer(serializers.ModelSerializer):
     """Serializer for Appointment model"""
@@ -240,21 +237,54 @@ class AppointmentStatsSerializer(serializers.Serializer):
     no_show_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
 
 
+class AppointmentPaymentSerializer(serializers.ModelSerializer):
+    
+    payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
+    payment_method_type = serializers.CharField(source='payment_method.payment_type', read_only=True)
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 
+            'payment_method', 
+            'payment_method_name', 
+            'payment_method_type', 
+            'amount', 
+            'currency', 
+            'external_transaction_id', 
+            'processing_fee',
+            'net_amount', 'created_at',
+            'updated_at', 
+            'processed_at', 
+            'completed_at', 
+            'processed_by', 
+            'notes',
+             'internal_notes', 
+            'status'
+        ]
+        read_only_fields = ['created_at', 'updated_at'] 
+
 class AppointmentDetailSerializer(AppointmentSerializer):
     """Serializer for detail view of appointment"""
     appointment_services = AppointmentServiceSerializer(
         many=True, read_only=True)
     start_at = serializers.DateTimeField(
         source='appointment_services.first.start_at', read_only=True)
-
+    latest_payment = serializers.SerializerMethodField()
     class Meta(AppointmentSerializer.Meta):
 
         fields = AppointmentSerializer.Meta.fields + [
             'start_at',
             'appointment_services',
+            'latest_payment'
         ]
         read_only_fields = AppointmentSerializer.Meta.read_only_fields + \
             ['start_at']
+    
+    def get_latest_payment(self, obj):
+        if obj.payments.exists():
+            return AppointmentPaymentSerializer(obj.payments.order_by('-created_at').first()).data
+        else:
+            return None
 
 
 class AppointmentHistorySerializer(serializers.ModelSerializer):

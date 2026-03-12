@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from django.utils import timezone
-from gift.serializers import GiftCardSerializer, GiftCardTransactionSerializer
+from gift.serializers import GiftCardTransactionSerializer
 from .models import (
     PaymentMethod, Payment, PaymentDiscount, Refund
 )
@@ -125,3 +124,28 @@ class PaymentRefundSerializer(serializers.ModelSerializer):
 class PaymentRefundCreateSerializer(PaymentRefundSerializer):
     class Meta(PaymentRefundSerializer.Meta):
         fields = ['payment', 'amount', 'refund_type', 'refund_reason', 'notes']
+        
+class AppointmentPaymentSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 
+            'payment_method', 
+            'payment_method_name', 
+            'payment_method_type', 
+            'amount', 
+            'currency', 
+            'external_transaction_id', 
+            'processing_fee',
+            'net_amount', 
+            'created_at', 
+            'updated_at', 
+            'processed_at', 
+            'completed_at', 
+            'processed_by', 
+            'notes', 
+            'internal_notes', 
+            'status'
+        ]
+        read_only_fields = ['created_at', 'updated_at']

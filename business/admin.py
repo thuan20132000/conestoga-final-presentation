@@ -157,7 +157,7 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
         ('Notification Settings', {
             'fields': (
                 'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
-                'send_confirmation_sms'
+                'send_confirmation_sms',
             )
         }),
         ('Payment Settings', {
@@ -168,7 +168,7 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
         ('General Settings', {
             'fields': (
                 'allow_online_booking', 'require_client_phone', 'require_client_email',
-                'auto_confirm_appointments'
+                'auto_confirm_appointments', 'allow_online_gift_cards'
             )
         }),
     )

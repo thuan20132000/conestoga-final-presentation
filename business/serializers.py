@@ -50,6 +50,7 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
             'send_confirmation_sms', 'send_cancellation_sms',
             'currency', 'tax_rate', 'require_payment_advance', 'allow_online_booking',
             'require_client_phone', 'require_client_email', 'auto_confirm_appointments',
+            'allow_online_gift_cards',
         ]
         read_only_fields = ['id']
 

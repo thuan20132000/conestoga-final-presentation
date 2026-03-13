@@ -136,6 +136,9 @@ class BusinessSettings(SoftDeleteModel):
     require_client_email = models.BooleanField(default=False)
     auto_confirm_appointments = models.BooleanField(default=False)
     
+    # Gift card settings
+    allow_online_gift_cards = models.BooleanField(default=False)
+    
     def __str__(self):
         return f"Settings for {self.business.name}"
 

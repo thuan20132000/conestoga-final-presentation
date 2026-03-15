@@ -663,7 +663,11 @@ class BusinessBookingViewSet(BaseModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST
             )
             
-        categories_services = ServiceCategory.objects.filter(business_id=business_id)
+        categories_services = ServiceCategory.objects.filter(
+            business_id=business_id, 
+            is_active=True, 
+            is_online_booking=True
+        )
         serializer = BusinessBookingServiceCategorySerializer(categories_services, many=True)
         return self.response_success(serializer.data)
     

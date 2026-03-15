@@ -79,7 +79,7 @@ class SMSNotificationViewSet(BaseModelViewSet):
         page = self.paginate_queryset(queryset)
         
         total_sms_notifications = queryset.count()
-        PER_SMS_COST = 0.0083 * 2 # 2 SMS per notification
+        PER_SMS_COST = 0.03 # 1 SMS per notification
         total_sms_cost = total_sms_notifications * PER_SMS_COST
         metadata = {
             "total_notifications": total_sms_notifications,

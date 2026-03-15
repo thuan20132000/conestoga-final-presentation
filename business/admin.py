@@ -168,7 +168,7 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
         ('General Settings', {
             'fields': (
                 'allow_online_booking', 'require_client_phone', 'require_client_email',
-                'auto_confirm_appointments', 'allow_online_gift_cards', 'gift_card_processing_fee_enabled'
+                'auto_confirm_appointments', 'allow_online_gift_cards', 'gift_card_processing_fee_enabled', 'tax_with_cash_enabled'
             )
         }),
     )

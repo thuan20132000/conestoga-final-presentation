@@ -141,6 +141,8 @@ class BusinessSettings(SoftDeleteModel):
     
     gift_card_processing_fee_enabled = models.BooleanField(default=True)
     
+    tax_with_cash_enabled = models.BooleanField(default=True)
+    
     def __str__(self):
         return f"Settings for {self.business.name}"
 

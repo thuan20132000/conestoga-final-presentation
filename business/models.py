@@ -139,6 +139,8 @@ class BusinessSettings(SoftDeleteModel):
     # Gift card settings
     allow_online_gift_cards = models.BooleanField(default=False)
     
+    gift_card_processing_fee_enabled = models.BooleanField(default=True)
+    
     def __str__(self):
         return f"Settings for {self.business.name}"
 

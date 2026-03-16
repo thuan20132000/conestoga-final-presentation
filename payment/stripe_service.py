@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import stripe
 from django.conf import settings
@@ -17,16 +17,20 @@ STRIPE_APPLICATION_FEE_PERCENTAGE = 0.05
 class StripeService:
     def __init__(self, business_id: Optional[int] = None) -> None:
         self.business_id = business_id
-        self.api_key, self.webhook_secret, self.merchant_id= self._resolve_keys(business_id)
+        self.api_key, self.webhook_secret, self.merchant_id = self._resolve_keys(business_id)
         if not self.api_key:
             raise ValueError("Stripe API key is not configured")
         stripe.api_key = self.api_key
 
-    def _resolve_keys(self, business_id: Optional[int]) -> tuple[str, str]:
-        merchant_id = None
+    def _resolve_keys(self, business_id: Optional[int]) -> Tuple[str, str, Optional[str]]:
+        """
+        Resolve API key, webhook secret, and optional connected account ID (merchant_id)
+        for the given business. When business_id is None, only platform-level keys are used.
+        """
+        merchant_id: Optional[str] = None
         if business_id:
             gateway = (
-                PaymentGateway.objects.filter( 
+                PaymentGateway.objects.filter(
                     business_id=business_id,
                     gateway_type=GatewayTypeType.STRIPE,
                     is_active=True,
@@ -34,7 +38,7 @@ class StripeService:
                 .order_by("-is_default", "name")
                 .first()
             )
-            if gateway and gateway.is_active == True:
+            if gateway and gateway.is_active:
                 merchant_id = gateway.merchant_id
         return settings.STRIPE_SECRET_KEY, settings.STRIPE_WEBHOOK_SECRET, merchant_id
 
@@ -48,12 +52,78 @@ class StripeService:
         metadata: dict[str, str],
         description: str,
     ) -> Any:
-        return stripe.PaymentIntent.create(
-            amount=amount_cents,
-            currency=currency,
-            metadata=metadata,
-            description=description,
-            automatic_payment_methods={"enabled": True},
+        params: dict[str, Any] = {
+            "amount": amount_cents,
+            "currency": currency,
+            "metadata": metadata,
+            "description": description,
+            "automatic_payment_methods": {"enabled": True},
+        }
+
+        # If this business has a connected account (Stripe Connect), create a
+        # destination charge so funds go directly to the salon's account and
+        # the platform keeps an application fee.
+        if self.merchant_id:
+            params["application_fee_amount"] = self._calculate_application_fee_amount(
+                amount_cents
+            )
+            params["transfer_data"] = {"destination": self.merchant_id}
+
+        return stripe.PaymentIntent.create(**params)
+
+    # -------- Stripe Connect helpers --------
+
+    @staticmethod
+    def create_connect_account(
+        business_id: Any,
+        email: Optional[str] = None,
+        country: Optional[str] = None,
+    ) -> stripe.Account:
+        """
+        Create a Stripe Express Connect account for a business using the
+        platform secret key. The returned account.id should be stored as
+        PaymentGateway.merchant_id.
+        """
+        if not settings.STRIPE_SECRET_KEY:
+            raise ValueError("Stripe API key is not configured")
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        account_country = country or "CA"
+
+        return stripe.Account.create(
+            type="express",
+            country=account_country,
+            email=email,
+            capabilities={
+                "card_payments": {"requested": True},
+                "transfers": {"requested": True},
+            },
+            metadata={
+                "business_id": str(business_id),
+            },
+        )
+
+    @staticmethod
+    def create_account_link(
+        account_id: str,
+        refresh_url: str,
+        return_url: str,
+    ) -> stripe.AccountLink:
+        """
+        Create an onboarding Account Link for a given connected account.
+        The caller should redirect the user to account_link.url.
+        """
+        if not settings.STRIPE_SECRET_KEY:
+            raise ValueError("Stripe API key is not configured")
+
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        return stripe.AccountLink.create(
+            account=account_id,
+            refresh_url=refresh_url,
+            return_url=return_url,
+            type="account_onboarding",
         )
 
     def construct_event(self, payload: bytes, signature: str) -> Any:

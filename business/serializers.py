@@ -10,7 +10,7 @@ from .models import (
     BusinessOnlineBooking,
     BusinessBanner,
 )
-from payment.serializers import PaymentMethodSerializer
+from payment.serializers import PaymentMethodSerializer, PaymentGatewaySerializer
 from subscription.serializers import BusinessSubscriptionSerializer
 from staff.models import Staff
 from staff.services import StaffCredentialService
@@ -98,7 +98,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
             'country', 'description', 'logo', 'google_review_url', 'operating_hours',
-            'settings', 'online_booking', 'subscription', 'created_at', 'updated_at'
+            'settings', 'online_booking', 'subscription', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -219,10 +219,10 @@ class BusinessDashboardSerializer(BusinessDetailSerializer):
     """Serializer for business dashboard"""
     
     payment_methods = PaymentMethodSerializer(many=True, read_only=True)
-    
+    payment_gateway = PaymentGatewaySerializer(source='payment_gateways.first', read_only=True)
     class Meta(BusinessDetailSerializer.Meta):
-        fields = BusinessDetailSerializer.Meta.fields + ['payment_methods']
-        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields + ['payment_methods']
+        fields = BusinessDetailSerializer.Meta.fields + ['payment_methods', 'payment_gateway']
+        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields + ['payment_methods', 'payment_gateway']
 
 
 class BusinessRolesSerializer(serializers.ModelSerializer):

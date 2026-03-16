@@ -10,11 +10,10 @@ def get_business_managers_group_name(business_id):
 def money_quantize(amount) -> Decimal:
   return Decimal(amount).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
-def country_name_to_code(country_name) -> str:
-  return {
+_COUNTRY_NAME_TO_CODE = {
     "United States": "US",
     "Canada": "CA",
-    "United Kingdom": "UK",
+    "United Kingdom": "GB",
     "Australia": "AU",
     "New Zealand": "NZ",
     "South Africa": "ZA",
@@ -46,9 +45,8 @@ def country_name_to_code(country_name) -> str:
     "Romania": "RO",
     "Bulgaria": "BG",
     "Hungary": "HU",
-    "Czech Republic": "CZ",
-    "Slovakia": "SK",
-    "Poland": "PL",
-    "Romania": "RO",
-    "Bulgaria": "BG",
-  }[country_name]
+}
+
+
+def country_name_to_code(country_name: str, default: str = "CA") -> str:
+    return _COUNTRY_NAME_TO_CODE.get(country_name, default)

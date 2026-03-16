@@ -5,7 +5,7 @@ from .viewsets import (
     POSPaymentViewSet,
     PaymentMethodViewSet,
 )
-from .views import StripeConnectOnboardingView
+from .views import StripeConnectOnboardingView, StripeConnectLoginLinkView
 
 
 # Create router and register viewsets
@@ -20,5 +20,10 @@ urlpatterns = [
         'payments/stripe/connect/onboard/',
         StripeConnectOnboardingView.as_view({'post': 'create'}),
         name='stripe-connect-onboard',
+    ),
+    path(
+        'payments/stripe/connect/login-link/<str:merchant_id>/',
+        StripeConnectLoginLinkView.as_view({'get': 'retrieve'}),
+        name='stripe-connect-login-link',
     ),
 ]

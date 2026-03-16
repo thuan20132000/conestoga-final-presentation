@@ -21,7 +21,7 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
 class PaymentGatewaySerializer(serializers.ModelSerializer):
     class Meta:
         model = PaymentGateway
-        fields = ['id', 'name', 'gateway_type', 'is_active', 'is_default', 'test_mode', 'merchant_id', 'api_key', 'secret_key', 'webhook_secret']
+        fields = ['id', 'name', 'gateway_type', 'is_active', 'is_default', 'test_mode', 'merchant_id']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 class PaymentRefundSerializer(serializers.ModelSerializer):
@@ -97,7 +97,6 @@ class PaymentCreateSerializer(PaymentSerializer):
             'business',
             'client',
             'appointment',
-            'payment_method',
             'amount',
             'currency',
             'external_transaction_id',

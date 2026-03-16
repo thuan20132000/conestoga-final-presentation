@@ -18,9 +18,7 @@ class StripeConnectOnboardingView(BaseViewSet):
     
     def create(self, request):
         try:
-            print(f"Request: {request.data}")
-            business_id = request.query_params.get("business_id")
-            print(f"Business ID: {business_id}")
+            business_id = request.data.get("business_id")
             if not business_id:
                 return self.response_error(
                     message="business_id is required",
@@ -111,3 +109,18 @@ class StripeConnectOnboardingView(BaseViewSet):
                 message="Failed to create Stripe Connect onboarding link",
             )
 
+
+class StripeConnectLoginLinkView(BaseViewSet):
+    """
+    Generate a login link for the payment gateway
+    """
+    permission_classes = [IsAuthenticated, IsBusinessManager]
+    
+    def retrieve(self, request, merchant_id=None):
+        """Generate a login link for the payment gateway"""
+        try:
+            stripe_service = StripeService()
+            login_link = stripe_service.create_account_login_link(merchant_id)
+            return self.response_success(login_link)
+        except Exception as e:
+            return self.response_error(str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

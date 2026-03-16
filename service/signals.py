@@ -7,9 +7,9 @@ def add_service_to_all_staff(sender, instance, created, **kwargs):
     if not created:
         return
 
-    from staff.models import Staff, StaffService
-    business_staff = Staff.objects.filter(business=instance.business, is_active=True)
+    from staff.models import StaffService
+    staff_ids = instance.business.staff_set.filter(is_active=True).values_list('id', flat=True)
     StaffService.objects.bulk_create(
-        [StaffService(staff=staff, service=instance) for staff in business_staff],
+        [StaffService(staff_id=staff_id, service=instance) for staff_id in staff_ids],
         ignore_conflicts=True,
     )

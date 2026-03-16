@@ -74,6 +74,12 @@ class StripeService:
     # -------- Stripe Connect helpers --------
 
     @staticmethod
+    def _configure_platform_key() -> None:
+        if not settings.STRIPE_SECRET_KEY:
+            raise ValueError("Stripe API key is not configured")
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+    @staticmethod
     def create_connect_account(
         business_id: Any,
         email: Optional[str] = None,
@@ -84,10 +90,7 @@ class StripeService:
         platform secret key. The returned account.id should be stored as
         PaymentGateway.merchant_id.
         """
-        if not settings.STRIPE_SECRET_KEY:
-            raise ValueError("Stripe API key is not configured")
-
-        stripe.api_key = settings.STRIPE_SECRET_KEY
+        StripeService._configure_platform_key()
 
         account_country = country or "CA"
 
@@ -114,10 +117,7 @@ class StripeService:
         Create an onboarding Account Link for a given connected account.
         The caller should redirect the user to account_link.url.
         """
-        if not settings.STRIPE_SECRET_KEY:
-            raise ValueError("Stripe API key is not configured")
-
-        stripe.api_key = settings.STRIPE_SECRET_KEY
+        StripeService._configure_platform_key()
 
         return stripe.AccountLink.create(
             account=account_id,
@@ -256,3 +256,7 @@ class StripeService:
         except Exception as e:
             logger.error("error creating Stripe checkout session:: %s", e)
             raise e
+        
+    def create_account_login_link(self, account_id: str) -> stripe.Account.LoginLink:
+       
+        return stripe.Account.create_login_link(account_id)

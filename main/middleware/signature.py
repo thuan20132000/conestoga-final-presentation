@@ -16,7 +16,6 @@ def verify_signature(request):
     public_key = request.headers.get('X-API-KEY')
     signature = request.headers.get('X-SIGNATURE')
     timestamp = request.headers.get('X-TIMESTAMP')
-   
     if not (public_key and signature and timestamp):
         raise AuthenticationFailed({
             'status': False,

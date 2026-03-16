@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from gift.serializers import GiftCardTransactionSerializer
 from .models import (
-    PaymentMethod, Payment, PaymentDiscount, Refund
+    PaymentMethod, Payment, PaymentDiscount, Refund, PaymentGateway
 )
 from django.db.models import Sum
 from appointment.serializers import AppointmentDetailSerializer
@@ -17,6 +17,12 @@ class PaymentMethodSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['created_at', 'updated_at']
 
+
+class PaymentGatewaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentGateway
+        fields = ['id', 'name', 'gateway_type', 'is_active', 'is_default', 'test_mode', 'merchant_id']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class PaymentRefundSerializer(serializers.ModelSerializer):
     class Meta:
@@ -91,7 +97,6 @@ class PaymentCreateSerializer(PaymentSerializer):
             'business',
             'client',
             'appointment',
-            'payment_method',
             'amount',
             'currency',
             'external_transaction_id',

@@ -1,5 +1,6 @@
 from django.db import models
 from main.models import SoftDeleteModel
+from payment.models import CurrencyType
 
 
 class SubscriptionTier(models.TextChoices):
@@ -49,6 +50,8 @@ class SubscriptionPlan(SoftDeleteModel):
 
     is_active = models.BooleanField(default=True)
     ordering = models.IntegerField(default=0)
+    
+    currency = models.CharField(max_length=3, choices=CurrencyType.choices, default=CurrencyType.CAD)
 
     class Meta:
         ordering = ['ordering', 'tier']

@@ -21,6 +21,7 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             'has_analytics',
             'is_active',
             'ordering',
+            'currency',
         ]
         read_only_fields = fields
 

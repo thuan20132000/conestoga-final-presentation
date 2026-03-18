@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 price = stripe_service.create_stripe_price(
                     product_id=plan.stripe_product_id,
                     amount_cents=amount_cents,
-                    currency='usd',
+                    currency=plan.currency,
                     interval=interval,
                     interval_count=interval_count,
                 )

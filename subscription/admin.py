@@ -7,14 +7,14 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
     list_display = [
         'name', 'tier', 'price_monthly', 'price_quarterly', 'price_yearly',
         'trial_days', 'max_staff', 'has_ai_receptionist', 'has_online_booking',
-        'has_analytics', 'is_active', 'ordering',
+        'has_analytics', 'is_active', 'ordering', 'currency',
     ]
     list_filter = ['tier', 'is_active', 'has_ai_receptionist', 'has_online_booking']
     search_fields = ['name', 'description']
     readonly_fields = ['stripe_product_id', 'stripe_price_id_monthly', 'stripe_price_id_quarterly', 'stripe_price_id_yearly']
     fieldsets = (
         ('Plan Info', {
-            'fields': ('name', 'tier', 'description', 'trial_days', 'is_active', 'ordering'),
+            'fields': ('name', 'tier', 'description', 'trial_days', 'is_active', 'ordering', 'currency'),
         }),
         ('Pricing', {
             'fields': ('price_monthly', 'price_quarterly', 'price_yearly'),

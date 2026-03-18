@@ -20,6 +20,7 @@ from .serializers import (
     TimeEntrySerializer,
     TimeEntryPartialUpdateSerializer,
     StaffWorkingHoursOverrideSerializer,
+    TimeEntryCreateSerializer,
 )
 from django_filters import rest_framework as filters
 from business.serializers import BusinessRolesSerializer
@@ -431,6 +432,18 @@ class TimeEntryViewSet(BaseModelViewSet):
     
     def get_serializer_class(self):
         return TimeEntrySerializer
+    
+    def create(self, request, *args, **kwargs):
+        """Create time entry"""
+        try:
+            serializer = TimeEntryCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                instance = serializer.save()
+                return self.response_success(TimeEntrySerializer(instance).data)
+            else:
+                return self.response_error(serializer.errors)
+        except Exception as e:
+            return self.response_error(str(e))
     
     def partial_update(self, request, *args, **kwargs):
         """Partial update time entry"""

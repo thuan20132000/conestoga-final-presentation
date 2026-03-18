@@ -342,6 +342,13 @@ class TimeEntryPartialUpdateSerializer(serializers.ModelSerializer):
         fields = ['clock_out', 'clock_in']
         read_only_fields = ['total_minutes', 'overtime_minutes']
 
+class TimeEntryCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating time entry"""
+    class Meta:
+        model = TimeEntry
+        fields = ['staff', 'clock_in', 'clock_out']
+        read_only_fields = ['total_minutes', 'overtime_minutes']
+
 class TimeEntrySerializer(serializers.ModelSerializer):
     """Serializer for TimeEntry model"""
     staff_name = serializers.CharField(source='staff.first_name', read_only=True)

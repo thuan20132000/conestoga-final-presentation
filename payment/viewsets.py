@@ -177,6 +177,17 @@ class PaymentViewSet(BaseModelViewSet):
         serializer = self.get_serializer(payment)
         return Response(serializer.data)
     
+    @action(detail=True, methods=['post'], url_path='send-receipt')
+    def send_receipt(self, request, pk=None):
+        """Send a payment receipt email to the client"""
+        payment = self.get_object()
+        service = PaymentService()
+        sent = service.send_receipt(payment)
+        print("sent:: ", sent)
+        if not sent:
+            return self.response_error('Client has no email address on file')
+        return self.response_success({'detail': 'Receipt sent successfully'})
+
     @action(detail=True, methods=['post'])
     def fail_payment(self, request, pk=None):
         """Mark a payment as failed"""

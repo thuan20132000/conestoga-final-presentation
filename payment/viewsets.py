@@ -181,11 +181,11 @@ class PaymentViewSet(BaseModelViewSet):
     def send_receipt(self, request, pk=None):
         """Send a payment receipt email to the client"""
         payment = self.get_object()
+        custom_email = request.data.get('custom_email', None)
         service = PaymentService()
-        sent = service.send_receipt(payment)
-        print("sent:: ", sent)
+        sent = service.send_receipt(payment, custom_email)
         if not sent:
-            return self.response_error('Client has no email address on file')
+            return self.response_error('Client has no email address on file or custom email is not provided')
         return self.response_success({'detail': 'Receipt sent successfully'})
 
     @action(detail=True, methods=['post'])

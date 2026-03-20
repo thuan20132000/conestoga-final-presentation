@@ -108,11 +108,9 @@ class PaymentService:
         payment.save()
         return payment
 
-    def send_receipt(self, payment: Payment) -> bool:
-        print("payment:: ", payment)
+    def send_receipt(self, payment: Payment, custom_email: str = None) -> bool:
         client = payment.appointment.client
-        print("client:: ", client)
-        if not client or not client.email:
+        if not client or not client.email and not custom_email:
             return False
         appointment = payment.appointment
         services = []
@@ -141,7 +139,7 @@ class PaymentService:
         print("context:: ", context)
         EmailService().send_async(
             subject=f"Your receipt from {context['business_name']}",
-            to_email=client.email,
+            to_email=custom_email or client.email,
             template='emails/payment_receipt.html',
             context=context,
         )

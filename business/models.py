@@ -101,6 +101,12 @@ class BusinessSettings(SoftDeleteModel):
         ('America/Los_Angeles', 'America/Los_Angeles'),
         ('America/Chicago', 'America/Chicago'),
         ('America/Phoenix', 'America/Phoenix'),
+        ('America/Denver', 'America/Denver'),
+        ('America/Kansas_City', 'America/Kansas_City'),
+        ('America/Minneapolis', 'America/Minneapolis'),
+        ('America/Houston', 'America/Houston'),
+        ('America/Dallas', 'America/Dallas'),
+        ('Asia/Ho_Chi_Minh', 'Asia/Ho_Chi_Minh'),
     ]
         
     """Additional settings and preferences for the business"""
@@ -123,7 +129,9 @@ class BusinessSettings(SoftDeleteModel):
     send_reminder_sms = models.BooleanField(default=False)
     reminder_hours_before = models.PositiveIntegerField(default=24, help_text="Hours before appointment to send reminder")
     send_confirmation_sms = models.BooleanField(default=False)
+    send_confirmation_email = models.BooleanField(default=False)
     send_cancellation_sms = models.BooleanField(default=False)
+    send_cancellation_email = models.BooleanField(default=False)
     
     # Payment settings
     currency = models.CharField(max_length=3, default="CAD")

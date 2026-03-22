@@ -1,0 +1,14 @@
+Appointment Confirmed - {{ business_name }}
+
+Hi {{ client_name|default:"there" }},
+
+Your appointment has been confirmed. We look forward to seeing you!
+
+Appointment Details:
+- Appointment #: {{ appointment_id }}
+- Date & Time: {{ start_at }}
+- Business: {{ business_name }}
+
+{% if business_phone %}Need to cancel or reschedule? Contact us: {{ business_phone }}{% endif %}
+
+Thank you for choosing {{ business_name }}!

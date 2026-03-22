@@ -157,7 +157,8 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
         ('Notification Settings', {
             'fields': (
                 'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
-                'send_confirmation_sms',
+                'send_confirmation_sms', 'send_confirmation_email',
+                'send_cancellation_sms', 'send_cancellation_email',
             )
         }),
         ('Payment Settings', {

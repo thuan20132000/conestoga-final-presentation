@@ -1,0 +1,14 @@
+Appointment Rescheduled - {{ business_name }}
+
+Hi {{ client_name|default:"there" }},
+
+Your appointment has been rescheduled. Please see the updated details below.
+
+Updated Appointment Details:
+- Appointment #: {{ appointment_id }}
+- New Date & Time: {{ start_at }}
+- Business: {{ business_name }}
+
+{% if business_phone %}Need to make changes? Contact us: {{ business_phone }}{% endif %}
+
+Thank you for choosing {{ business_name }}!

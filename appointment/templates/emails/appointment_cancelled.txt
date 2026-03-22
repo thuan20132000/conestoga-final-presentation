@@ -1,0 +1,14 @@
+Appointment Cancelled - {{ business_name }}
+
+Hi {{ client_name|default:"there" }},
+
+Your appointment has been cancelled. We hope to see you again soon!
+
+Cancelled Appointment Details:
+- Appointment #: {{ appointment_id }}
+- Date & Time: {{ start_at }}
+- Business: {{ business_name }}
+
+{% if business_phone %}Have questions? Contact us: {{ business_phone }}{% endif %}
+
+Thank you for choosing {{ business_name }}!

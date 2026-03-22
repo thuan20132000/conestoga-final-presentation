@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from notifications.models import Notification
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, EmailService, SMSService
 from business.models import BusinessSettings
 import logging
 from main.utils import get_business_managers_group_name
@@ -15,6 +15,7 @@ from django.db.models import QuerySet, Sum, Count, Value, DateField, F, Q
 from client.models import Client
 from payment.models import Payment, PaymentStatusType
 from dateutil import parser
+from main.utils import get_reminder_schedule_name
 
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
@@ -278,7 +279,6 @@ class BusinessBookingService:
         try:
             
             with transaction.atomic():
-                created_appointment = Appointment.objects.create(**appointment)
                 
                 total_duration = self._get_appointment_services_duration(appointment_services)
                 
@@ -286,7 +286,6 @@ class BusinessBookingService:
                     appointment['client_id'], 
                     total_duration
                 )
-                
                 if client_minimum_booking_duration > total_duration:
                     appointment_services[0]['service_duration'] = client_minimum_booking_duration
                     if isinstance(appointment_services[0]['start_at'], str):
@@ -295,9 +294,11 @@ class BusinessBookingService:
                         start_at_dt = appointment_services[0]['start_at']
                     end_at_dt = start_at_dt + timedelta(minutes=client_minimum_booking_duration)
                     appointment_services[0]['end_at'] = end_at_dt
-                    created_appointment.end_at = end_at_dt
-                    created_appointment.save()
-                    
+                
+                created_appointment = Appointment.objects.create(
+                    **appointment,                    
+                )
+
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
                         id=appointment_service['id'],
@@ -412,25 +413,41 @@ class AppointmentNotificationService:
         start_at,
         metadata,
         business_twilio_phone_number,
+        client_email=None,
+        by_email=False,
+        by_sms=False,
     ):
         try:
             business_id = self.appointment.business.id
-            title = f"🔔 Appointment Confirmed - {business_name}"
             body_message = f"Your appointment #{appointment_id} has been confirmed at {start_at} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
-            
+
+    
+            if client_phone and by_sms:
+                SMSService().send_async(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                )
+
+            if client_email and by_email:
+                print("sending confirmation email to:: ", client_email)
+                EmailService().send_async(
+                    subject=f"Appointment Confirmed - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_confirmation.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at,
+                        "business_phone": business_phone,
+                    },
+                )
+
         except Exception as e:
-            logger.error(f"Error sending confirmation SMS: {e}")
-            raise Exception(f"Error sending confirmation SMS: {e}")
+            logger.error(f"Error sending confirmation notification: {e}")
+            raise Exception(f"Error sending confirmation notification: {e}")
 
     def send_client_reminder_notification(
         self,
@@ -441,29 +458,63 @@ class AppointmentNotificationService:
         appointment_id,
         start_at,
         metadata,
-        schedule_name,
         schedule_time,
         business_id,
         business_twilio_phone_number,
+        business_timezone: str,
+        client_email=None,
+        by_sms=False,
+        by_email=False,
     ):
         try:
+            print("sending reminder notification to:: ", client_email)
+            print("by_sms:: ", by_sms)
+            print("by_email:: ", by_email)
+            
             title = f"🔔 Appointment Reminder - {business_name}"
             body_message = f"Your appointment #{appointment_id} at {start_at} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            
-            self.dispatcher.dispatch_scheduled(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                schedule_name=schedule_name,
-                schedule_time=schedule_time,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
+
+            if client_phone and by_sms:
+                reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='sms'
+                )
+                SMSService().send_scheduled(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    schedule_name=reminder_schedule_name,
+                    schedule_time=schedule_time,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                    schedule_expression_timezone=business_timezone,
+                )
+
+            if client_email and by_email:
+                reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='email'
+                )
+                EmailService().send_scheduled(
+                    subject=f"Appointment Reminder - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_reminder.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at,
+                        "business_phone": business_phone,
+                    },
+                    schedule_name=reminder_schedule_name,
+                    schedule_time=schedule_time,
+                    schedule_expression_timezone=business_timezone,
+                )
+
         except Exception as e:
-            logger.error(f"Error sending reminder SMS: {e}")
-            raise Exception(f"Error sending reminder SMS: {e}")
+            logger.error(f"Error sending reminder notification: {e}")
+            raise Exception(f"Error sending reminder notification: {e}")
 
     def send_client_rescheduled_notification(
         self,
@@ -474,24 +525,46 @@ class AppointmentNotificationService:
         appointment_id,
         business_id,
         start_at_str,
-        metadata,   
+        metadata,
         business_twilio_phone_number,
+        client_email=None,
+        by_sms=False,
+        by_email=False,
     ):
         try:
             body_message = f"Your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            title = f"🔔 Appointment Rescheduled - {business_name}"
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
+
+            if client_phone and by_sms:
+                SMSService().send_async(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                )
+                reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='sms'
+                )
+                SMSService().destroy_scheduled(schedule_name=reminder_schedule_name)
+
+            if client_email and by_email:
+                EmailService().send_async(
+                    subject=f"Appointment Rescheduled - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_rescheduled.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at_str,
+                        "business_phone": business_phone,
+                    },
+                )
+
         except Exception as e:
-            logger.error(f"Error sending rescheduled SMS: {e}")
-            raise Exception(f"Error sending rescheduled SMS: {e}")
+            logger.error(f"Error sending rescheduled notification: {e}")
+            raise Exception(f"Error sending rescheduled notification: {e}")
     
     def send_client_cancellation_notification(
         self,
@@ -503,28 +576,54 @@ class AppointmentNotificationService:
         business_id,
         start_at_str,
         metadata,
-        schedule_name,
         business_twilio_phone_number,
+        client_email=None,
+        by_sms=False,
+        by_email=False,
     ):
         try:
             body_message = f"Your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
-            title = f"Appointment Cancelled - {business_name}"
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
-            self.dispatcher.dispatch_destroy_scheduled(
-                channel=Notification.Channel.SMS,
-                schedule_name=schedule_name,
-            )
+
+            if client_phone and by_sms:
+                SMSService().send_async(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                )
+            reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='sms'
+                )
+            if reminder_schedule_name:
+                SMSService().destroy_scheduled(schedule_name=reminder_schedule_name)
+
+            if client_email and by_email:
+                EmailService().send_async(
+                    subject=f"Appointment Cancelled - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_cancelled.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at_str,
+                        "business_phone": business_phone,
+                    },
+                )
+
+            reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='email'
+                )
+            if reminder_schedule_name:
+                EmailService().destroy_scheduled(schedule_name=reminder_schedule_name)
+                
         except Exception as e:
-            logger.error(f"Error sending cancellation SMS: {e}")
-            raise Exception(f"Error sending cancellation SMS: {e}")
+            logger.error(f"Error sending cancellation notification: {e}")
+            raise Exception(f"Error sending cancellation notification: {e}")
     
     # staff notifications
     def send_staff_appointment_confirmation_notification(
@@ -619,8 +718,10 @@ class AppointmentNotificationService:
             
             title = f"Leave a Review - {business.name}"
             schedule_name = f"leave-review-sms3-{business.id}-{appointment.id}"
-            schedule_time = datetime.now() + timedelta(seconds=10)
-            
+            schedule_time = timezone.now() + timedelta(seconds=10)
+            bs = BusinessSettings.objects.filter(business_id=business.id).first()
+            review_tz = bs.timezone if bs else None
+
             NotificationDispatcher().dispatch_scheduled(
                 title=title,
                 body=body_message,
@@ -631,6 +732,7 @@ class AppointmentNotificationService:
                 business_twilio_phone_number=business.twilio_phone_number,
                 schedule_name=schedule_name,
                 schedule_time=schedule_time,
+                schedule_expression_timezone=review_tz,
             )
         except Exception as e:
             raise Exception(f"Error sending review request Push: {e}")

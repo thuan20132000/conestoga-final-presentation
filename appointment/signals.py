@@ -145,13 +145,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         by_email=is_send_email_rescheduled_confirmation,
                     )
 
-                # send push notification to business managers
-                appointment_notification_service.send_manager_rescheduled_appointment_notification(
-                    business_name=business_name,
-                    business_id=business_id,
-                    client_name=client_name,
-                    start_time_str=start_at_str,
-                )
+
 
                 # Appointment cancelled
                 is_send_sms_cancellation_confirmation = send_cancellation_sms and metadata.get(
@@ -176,6 +170,15 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 
                 if appointment_status == AppointmentStatusType.CANCELLED.value:
                     appointment_notification_service.send_manager_cancellation_appointment_notification(
+                        business_name=business_name,
+                        business_id=business_id,
+                        client_name=client_name,
+                        start_time_str=start_at_str,
+                    )
+                    
+                # send push notification to business managers when appointment is rescheduled
+                if metadata.get('is_rescheduled', False) == True:
+                    appointment_notification_service.send_manager_rescheduled_appointment_notification(
                         business_name=business_name,
                         business_id=business_id,
                         client_name=client_name,

@@ -372,6 +372,7 @@ class POSPaymentService:
                 # update appointment services
                 if appointment_services:
                     for appointment_service in appointment_services:
+                        custom_price = appointment_service['custom_price'] or appointment_service['service_price']
                         appointment_service_obj, created = AppointmentService.objects.update_or_create(
                             id=appointment_service['id'],
                             appointment_id=appointment.id,
@@ -381,7 +382,7 @@ class POSPaymentService:
                                 'is_staff_request': appointment_service['is_staff_request'],
                                 'start_at': appointment_service['start_at'],
                                 'end_at': appointment_service['end_at'],
-                                'custom_price': appointment_service['custom_price'] or 0,
+                                'custom_price': custom_price,
                                 'tip_amount': appointment_service['tip_amount'] or 0,
                                 'appointment_id': appointment.id,
                                 'metadata': metadata,

@@ -11,6 +11,7 @@ from main import common_settings
 import boto3
 import json
 from pathlib import Path
+
 # from pywebpush import webpush
 from webpush import send_group_notification, send_user_notification
 import asyncio
@@ -18,6 +19,7 @@ import time
 from django.contrib.auth.models import User
 import threading
 from staff.models import Staff
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,19 +52,19 @@ schedule_client = boto3.client("scheduler", region_name=AWS_REGION)
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
+
+
 @dataclass
 class SendResult:
     ok: bool
     error: Optional[str] = None
 
+
 class EmailService:
     def send(self, subject, to_email, template, context):
         try:
             html_content = render_to_string(template, context)
-            text_content = render_to_string(
-                template.replace(".html", ".txt"),
-                context
-            )
+            text_content = render_to_string(template.replace(".html", ".txt"), context)
 
             payload = {
                 "to_email": to_email,
@@ -74,15 +76,17 @@ class EmailService:
 
             response = lambda_client.invoke(
                 FunctionName=LAMBDA_SEND_EMAIL_ARN,
-                InvocationType='RequestResponse',
-                Payload=json.dumps(payload).encode('utf-8'),
+                InvocationType="RequestResponse",
+                Payload=json.dumps(payload).encode("utf-8"),
             )
 
             body_bytes = response["Payload"].read()
             body_str = body_bytes.decode("utf-8")
             result = json.loads(body_str) if body_str else {}
 
-            logger.info("Email sent to %s: %s with result: %s", to_email, subject, result)
+            logger.info(
+                "Email sent to %s: %s with result: %s", to_email, subject, result
+            )
             return SendResult(ok=True)
         except Exception as exc:
             logger.exception("Email send failed")
@@ -91,10 +95,11 @@ class EmailService:
     def send_async(self, subject, to_email, template, context):
         def _send():
             self.send(subject, to_email, template, context)
+
         thread = threading.Thread(target=_send)
         thread.start()
         return SendResult(ok=True)
-    
+
     def send_scheduled(
         self,
         subject,
@@ -138,26 +143,26 @@ class EmailService:
         except Exception as exc:  # noqa: BLE001
             logger.exception("Email schedule failed")
             return SendResult(ok=False, error=str(exc))
-        
+
     def destroy_scheduled(self, schedule_name: str) -> SendResult:
         try:
             schedule_client.delete_schedule(
-                Name=schedule_name,
-                GroupName="bookngon-calendar"
+                Name=schedule_name, GroupName="bookngon-calendar"
             )
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Email destroy scheduled failed")
             return SendResult(ok=False, error=str(exc))
-        
+
+
 class SMSService:
     group_name: str = "bookngon-calendar"
 
     def send(
-        self, 
-        to_phone: str, 
-        body: str, 
-        business_id: Optional[int] = None, 
+        self,
+        to_phone: str,
+        body: str,
+        business_id: Optional[int] = None,
         business_twilio_phone_number: Optional[str] = None,
     ) -> SendResult:
         try:
@@ -165,17 +170,17 @@ class SMSService:
             from_phone_number = common_settings.SMS_DEFAULT_SENDER
             if business_twilio_phone_number:
                 from_phone_number = business_twilio_phone_number
-                
+
             payload = {
                 "phone_number": to_phone,
                 "message": message,
-                "from_phone_number": from_phone_number
+                "from_phone_number": from_phone_number,
             }
-            
+
             response = lambda_client.invoke(
                 FunctionName=LAMBDA_SEND_SMS_ARN,
-                InvocationType='RequestResponse',
-                Payload=json.dumps(payload).encode('utf-8'),
+                InvocationType="RequestResponse",
+                Payload=json.dumps(payload).encode("utf-8"),
             )
             # Body is a StreamingBody; decode to string then JSON
             body_bytes = response["Payload"].read()
@@ -183,7 +188,7 @@ class SMSService:
             result = json.loads(body_str) if body_str else {}
             # Optionally look at FunctionError or LogResult
 
-            if result.get('statusCode', 0) != 200:
+            if result.get("statusCode", 0) != 200:
                 print(f"Failed to send SMS: {result}")
                 Notification.objects.create(
                     channel=Notification.Channel.SMS,
@@ -209,9 +214,16 @@ class SMSService:
             logger.exception("SMS send failed")
             return SendResult(ok=False, error=str(exc))
 
-    def send_async(self, to_phone: str, body: str, business_id: Optional[int] = None, business_twilio_phone_number: Optional[str] = None) -> SendResult:
+    def send_async(
+        self,
+        to_phone: str,
+        body: str,
+        business_id: Optional[int] = None,
+        business_twilio_phone_number: Optional[str] = None,
+    ) -> SendResult:
         def _send():
             self.send(to_phone, body, business_id, business_twilio_phone_number)
+
         thread = threading.Thread(target=_send)
         thread.start()
         return SendResult(ok=True)
@@ -235,7 +247,7 @@ class SMSService:
             from_phone_number = common_settings.SMS_DEFAULT_SENDER
             if business_twilio_phone_number:
                 from_phone_number = business_twilio_phone_number
-                
+
             response = schedule_client.create_schedule(
                 Name=schedule_name,
                 ScheduleExpression=at_expression,
@@ -247,11 +259,13 @@ class SMSService:
                 Target={
                     "Arn": LAMBDA_SEND_SMS_ARN,
                     "RoleArn": SCHEDULER_POLICY_ARN,
-                    "Input": json.dumps({
-                        "phone_number": to_phone,
-                        "message": message,
-                        "from_phone_number": from_phone_number
-                    })
+                    "Input": json.dumps(
+                        {
+                            "phone_number": to_phone,
+                            "message": message,
+                            "from_phone_number": from_phone_number,
+                        }
+                    ),
                 },
                 ScheduleExpressionTimezone=iana_tz,
                 GroupName=self.group_name,
@@ -277,8 +291,7 @@ class SMSService:
         try:
 
             schedule_client.delete_schedule(
-                Name=schedule_name,
-                GroupName=self.group_name
+                Name=schedule_name, GroupName=self.group_name
             )
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
@@ -287,16 +300,22 @@ class SMSService:
 
 
 class PushService:
-    def send_group(self, group_name: str, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
+    def send_group(
+        self, group_name: str, title: str, body: str, data: Optional[Dict] = None
+    ) -> SendResult:
         try:
             payload = {"title": title, "body": body}
-            response = send_group_notification(group_name=group_name, payload=payload, ttl=1000)
+            response = send_group_notification(
+                group_name=group_name, payload=payload, ttl=1000
+            )
             return SendResult(ok=True)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")
             return SendResult(ok=False, error=str(exc))
 
-    def send_user(self, user: User, title: str, body: str, data: Optional[Dict] = None) -> SendResult:
+    def send_user(
+        self, user: User, title: str, body: str, data: Optional[Dict] = None
+    ) -> SendResult:
         try:
             payload = {"title": title, "body": body}
             response = send_user_notification(user=user, payload=payload, ttl=1000)
@@ -304,6 +323,15 @@ class PushService:
         except Exception as exc:  # noqa: BLE001
             logger.exception("Push send failed")
             return SendResult(ok=False, error=str(exc))
+
+    def send_client(
+        self, client, title: str, body: str, data: Optional[Dict] = None
+    ) -> SendResult:
+        """Send push notification to a Client via their group."""
+        group_name = f"client_{client.id}"
+        return self.send_group(group_name, title, body, data)
+
+
 class NotificationDispatcher:
     def __init__(self) -> None:
         self.sms = SMSService()
@@ -321,7 +349,7 @@ class NotificationDispatcher:
         group_name: Optional[str] = None,
         business_twilio_phone_number: Optional[str] = None,
     ) -> SendResult:
-        
+
         if channel == Notification.Channel.SMS:
             return self.sms.send(to, body, business_id, business_twilio_phone_number)
         if channel == Notification.Channel.PUSH:
@@ -329,17 +357,17 @@ class NotificationDispatcher:
                 return self.push.send_group(group_name, title, body, data)
             if isinstance(to, Staff):
                 return self.push.send_user(to, title, body, data)
-        
+
         if channel == Notification.Channel.EMAIL:
             return self.email.send(
                 subject=title,
                 to_email=to,
                 template="emails/gift_card.html",
-                context=data
+                context=data,
             )
-        
+
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
-    
+
     def dispatchAsync(
         self,
         channel: str,
@@ -353,17 +381,17 @@ class NotificationDispatcher:
     ) -> SendResult:
         def _dispatch():
             result = self.dispatch(
-                channel, 
-                to, 
-                title, 
-                body, 
-                business_id, 
-                data, 
-                group_name, 
+                channel,
+                to,
+                title,
+                body,
+                business_id,
+                data,
+                group_name,
                 business_twilio_phone_number,
             )
             return result
-        
+
         thread = threading.Thread(target=_dispatch)
         thread.start()
         return SendResult(ok=True)
@@ -393,9 +421,9 @@ class NotificationDispatcher:
             )
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
 
-    def dispatch_destroy_scheduled(self, channel: str, schedule_name: str) -> SendResult:
+    def dispatch_destroy_scheduled(
+        self, channel: str, schedule_name: str
+    ) -> SendResult:
         if channel == Notification.Channel.SMS:
             return self.sms.destroy_scheduled(schedule_name)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
-
-

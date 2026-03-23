@@ -403,6 +403,26 @@ class AppointmentNotificationService:
         self.appointment = appointment
         self.dispatcher = NotificationDispatcher()
 
+    def _build_services_context(self):
+        """Build services list, total price, and total duration from appointment metadata."""
+        services = []
+        total_price = 0
+        total_duration = 0
+        metadata = self.appointment.metadata or {}
+        appointment_services = metadata.get('appointment_services', [])
+        for svc in appointment_services:
+            price = svc.get('custom_price') or svc.get('service_price') or svc.get('price') or 0
+            duration = svc.get('custom_duration') or svc.get('service_duration') or svc.get('duration_minutes') or 0
+            services.append({
+                'service_name': svc.get('service_name') or svc.get('name') or 'Service',
+                'staff_name': svc.get('staff_name') or '',
+                'price': price,
+                'duration': duration,
+            })
+            total_price += float(price)
+            total_duration += int(duration)
+        return services, total_price, total_duration
+
     def send_client_confirmation_notification(
         self,
         client_name,
@@ -431,7 +451,8 @@ class AppointmentNotificationService:
                 )
 
             if client_email and by_email:
-                print("sending confirmation email to:: ", client_email)
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
                 EmailService().send_async(
                     subject=f"Appointment Confirmed - {business_name}",
                     to_email=client_email,
@@ -442,6 +463,10 @@ class AppointmentNotificationService:
                         "appointment_id": appointment_id,
                         "start_at": start_at,
                         "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
                     },
                 )
 
@@ -492,10 +517,12 @@ class AppointmentNotificationService:
 
             if client_email and by_email:
                 reminder_schedule_name = get_reminder_schedule_name(
-                    business_id, 
-                    appointment_id, 
+                    business_id,
+                    appointment_id,
                     channel='email'
                 )
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
                 EmailService().send_scheduled(
                     subject=f"Appointment Reminder - {business_name}",
                     to_email=client_email,
@@ -506,6 +533,10 @@ class AppointmentNotificationService:
                         "appointment_id": appointment_id,
                         "start_at": start_at,
                         "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
                     },
                     schedule_name=reminder_schedule_name,
                     schedule_time=schedule_time,
@@ -549,6 +580,8 @@ class AppointmentNotificationService:
                 SMSService().destroy_scheduled(schedule_name=reminder_schedule_name)
 
             if client_email and by_email:
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
                 EmailService().send_async(
                     subject=f"Appointment Rescheduled - {business_name}",
                     to_email=client_email,
@@ -559,6 +592,10 @@ class AppointmentNotificationService:
                         "appointment_id": appointment_id,
                         "start_at": start_at_str,
                         "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
                     },
                 )
 
@@ -600,6 +637,8 @@ class AppointmentNotificationService:
                 SMSService().destroy_scheduled(schedule_name=reminder_schedule_name)
 
             if client_email and by_email:
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
                 EmailService().send_async(
                     subject=f"Appointment Cancelled - {business_name}",
                     to_email=client_email,
@@ -610,6 +649,10 @@ class AppointmentNotificationService:
                         "appointment_id": appointment_id,
                         "start_at": start_at_str,
                         "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
                     },
                 )
 

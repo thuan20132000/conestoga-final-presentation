@@ -175,7 +175,15 @@ class StaffTurnService:
 
     @staticmethod
     @transaction.atomic
-    def mark_in_service(business_id, staff_turn_id, service_id=None, service_price=None, turn_type=None, date=None):
+    def mark_in_service(
+        business_id, 
+        staff_turn_id, 
+        service_id=None, 
+        service_price=None, 
+        turn_type=None, 
+        date=None,
+        is_client_request=False
+    ):
         """Mark a staff member as in service and create a Turn record.
 
         FULL turn: staff becomes unavailable (busy serving).
@@ -208,6 +216,7 @@ class StaffTurnService:
             status=TurnStatus.IN_SERVICE,
             in_service_at=timezone.now(),
             turn_type=turn_type,
+            is_client_request=is_client_request,
         )
         return turn
 

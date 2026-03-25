@@ -57,6 +57,11 @@ class MarkBusySerializer(serializers.Serializer):
         required=False,
         default=TurnType.FULL.value,
     )
+    is_client_request = serializers.BooleanField(
+        help_text="Whether the staff was requested by the client",
+        required=False,
+        default=False,
+    )
 
 
 class CompleteServiceSerializer(serializers.Serializer):
@@ -77,6 +82,7 @@ class TurnSerializer(serializers.ModelSerializer):
             'status',
             'in_service_at',
             'turn_type',
+            'is_client_request',
             'completed_at',
             'created_at',
         ]

@@ -155,16 +155,16 @@ class StaffTurnViewSet(BaseModelViewSet):
             serializer.is_valid(raise_exception=True)
             business_id = self._get_business_id(request)
             turn_type = serializer.validated_data.get('turn_type', None)
-            print("turn_type:: ", turn_type)
+            is_client_request = serializer.validated_data.get('is_client_request', False)
             turn = StaffTurnService.mark_in_service(
                 business_id=business_id,
                 staff_turn_id=serializer.validated_data.get('staff_turn_id'),
                 service_id=serializer.validated_data.get('service_id'),
                 service_price=serializer.validated_data.get('service_price'),
-                turn_type=serializer.validated_data.get('turn_type', None),
+                turn_type=turn_type,
                 date=serializer.validated_data.get('date'),
+                is_client_request=is_client_request,
             )
-            print("turn:: ", turn.__dict__)
             return self.response_success(
                 TurnSerializer(turn).data,
                 message="Staff marked as in service",

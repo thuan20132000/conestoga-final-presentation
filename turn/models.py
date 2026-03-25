@@ -108,6 +108,11 @@ class Turn(SoftDeleteModel):
         help_text="Turn type for the current service (set when marked busy, cleared on complete)",
     )
     
+    is_client_request = models.BooleanField(
+        default=False,
+        help_text="Whether the staff was requested by the client",
+    )
+    
     class Meta:
         unique_together = ['staff_turn', 'service', 'created_at']
         ordering = ['-created_at']

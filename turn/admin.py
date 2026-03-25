@@ -10,5 +10,5 @@ class StaffTurnAdmin(admin.ModelAdmin):
 
 @admin.register(Turn)
 class TurnAdmin(admin.ModelAdmin):
-    list_filter = ['status', 'staff_turn__date']
+    list_filter = ['status', 'staff_turn__date', 'is_client_request']
     ordering = ['-created_at']

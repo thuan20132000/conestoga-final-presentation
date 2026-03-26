@@ -48,6 +48,7 @@ class AssignByServicePriceSerializer(serializers.Serializer):
 
 class MarkBusySerializer(serializers.Serializer):
     staff_turn_id = serializers.IntegerField()
+    date = serializers.DateField(required=False)
     service_id = serializers.IntegerField(
         help_text="Service ID for the turn",
         required=False,

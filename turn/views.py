@@ -157,13 +157,14 @@ class StaffTurnViewSet(BaseModelViewSet):
             business_id = self._get_business_id(request)
             turn_type = serializer.validated_data.get('turn_type', None)
             is_client_request = serializer.validated_data.get('is_client_request', False)
+            date = serializer.validated_data.get('date', timezone.now().date())
             turn = StaffTurnService.mark_in_service(
                 business_id=business_id,
                 staff_turn_id=serializer.validated_data.get('staff_turn_id'),
                 service_id=serializer.validated_data.get('service_id'),
                 service_price=serializer.validated_data.get('service_price'),
                 turn_type=turn_type,
-                date=serializer.validated_data.get('date'),
+                date=date,
                 is_client_request=is_client_request,
             )
             return self.response_success(

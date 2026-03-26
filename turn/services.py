@@ -70,7 +70,7 @@ class StaffTurnService:
         """Remove staff from the turn queue (soft-delete)."""
         staff_turn.is_deleted = True
         staff_turn.deleted_at = timezone.now()
-        staff_turn.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+        staff_turn.save(update_fields=['is_deleted', 'deleted_at', 'updated_at', 'date'])
         return staff_turn
     
     @staticmethod

@@ -430,6 +430,30 @@ class StaffTurnService:
         return list(staff_map.values())
 
     @staticmethod
+    @transaction.atomic
+    def update_turn(turn_id, **kwargs):
+        """Update an existing Turn record's editable fields."""
+        try:
+            turn = Turn.objects.select_for_update().get(
+                id=turn_id,
+                is_deleted=False,
+            )
+        except Turn.DoesNotExist:
+            raise ValueError("Turn not found")
+
+        update_fields = []
+        for field in ('service_id', 'service_price', 'turn_type', 'is_client_request', 'completed_at', 'status'):
+            if field in kwargs and kwargs[field] is not None:
+                setattr(turn, field, kwargs[field])
+                update_fields.append(field)
+
+        if update_fields:
+            update_fields.append('updated_at')
+            turn.save(update_fields=update_fields)
+
+        return turn
+
+    @staticmethod
     def check_if_staff_is_in_service(staff_turn, date=None):
         """Check if a staff turn is in service."""
         date = date or timezone.now().date()

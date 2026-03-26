@@ -15,6 +15,7 @@ from .serializers import (
     StaffTurnReorderSerializer,
     StaffTurnSerializer,
     TurnSerializer,
+    UpdateTurnSerializer,
 )
 from .services import StaffTurnService
 
@@ -249,6 +250,19 @@ class StaffTurnViewSet(BaseModelViewSet):
             return self.response_success(None, message="Staff removed from queue")
         except Exception as e:
             print("error:: ", e)
+            return self.response_error(str(e))
+
+    @action(detail=False, methods=['post'], url_path='update-turn')
+    def update_turn(self, request):
+        """Update an existing turn's details (service, price, turn type, client request)."""
+        try:
+            serializer = UpdateTurnSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data = serializer.validated_data
+            turn_id = data.pop('turn_id')
+            turn = StaffTurnService.update_turn(turn_id=turn_id, **data)
+            return self.response_success(TurnSerializer(turn).data)
+        except Exception as e:
             return self.response_error(str(e))
 
     @action(detail=False, methods=['post'], url_path='complete-service')

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import StaffTurn, Turn, TurnType
+from .models import StaffTurn, Turn, TurnStatus, TurnType
 
 
 class StaffTurnSerializer(serializers.ModelSerializer):
@@ -88,6 +88,22 @@ class TurnSerializer(serializers.ModelSerializer):
         ]
 
 
+class UpdateTurnSerializer(serializers.Serializer):
+    turn_id = serializers.IntegerField()
+    service_id = serializers.IntegerField(required=False)
+    service_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, required=False,
+    )
+    turn_type = serializers.ChoiceField(
+        choices=TurnType.choices, required=False,
+    )
+    is_client_request = serializers.BooleanField(required=False)
+    completed_at = serializers.DateTimeField(required=False)
+    status = serializers.ChoiceField(
+        choices=TurnStatus.choices, required=False,
+    )
+
+
 class NextTurnSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='staff.get_full_name', read_only=True)
     staff_photo = serializers.ImageField(source='staff.photo', read_only=True)
@@ -127,5 +143,5 @@ class JoinedStaffWithHistorySerializer(serializers.ModelSerializer):
         ]
 
     def get_turns(self, obj):
-        turns = obj.turn.filter(is_deleted=False).order_by('updated_at')
+        turns = obj.turn.filter(is_deleted=False).order_by('created_at')
         return TurnSerializer(turns, many=True).data

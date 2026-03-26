@@ -251,7 +251,58 @@ POST /api/staff-turns/complete-service/
 
 **Response:** Returns the updated StaffTurn. Full turn moves staff to back; half turn keeps position.
 
-### 6. Get Completed Turns
+### 6. Update Turn
+
+Update an existing turn's details. All fields except `turn_id` are optional — only provided fields get updated.
+
+```
+POST /api/staff-turns/update-turn/
+```
+
+**Request Body:**
+```json
+{
+  "turn_id": 1,
+  "service_id": 3,
+  "service_price": 50.00,
+  "turn_type": "FULL",
+  "is_client_request": true,
+  "completed_at": "2026-03-25T14:30:00Z",
+  "status": "completed"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| turn_id | Yes | Turn ID to update |
+| service_id | No | Change the service |
+| service_price | No | Change the service price |
+| turn_type | No | Change turn type (FULL or HALF) |
+| is_client_request | No | Whether client requested this staff |
+| completed_at | No | Override the completion timestamp |
+| status | No | Change turn status (pending, in_service, completed) |
+
+**Response:**
+```json
+{
+  "results": {
+    "id": 1,
+    "service": 3,
+    "service_name": "Gel Nails",
+    "service_price": "50.00",
+    "status": "in_service",
+    "in_service_at": "2026-03-25T10:00:00Z",
+    "turn_type": "FULL",
+    "is_client_request": true,
+    "completed_at": "2026-03-25T14:30:00Z",
+    "created_at": "2026-03-25T10:00:00Z"
+  },
+  "success": true,
+  "status_code": 200
+}
+```
+
+### 7. Get Completed Turns
 
 Get all completed turns for a business on a given date, grouped by staff with individual turn records.
 
@@ -315,7 +366,7 @@ GET /api/staff-turns/completed/?business_id={uuid}&date={YYYY-MM-DD}
 }
 ```
 
-### 7. Send Staff to Back
+### 8. Send Staff to Back
 
 Manually move a staff member to the back of the queue.
 
@@ -330,7 +381,7 @@ POST /api/staff-turns/send-to-back/
 }
 ```
 
-### 8. Reorder Queue
+### 9. Reorder Queue
 
 Manually set the order of the entire queue.
 
@@ -348,7 +399,7 @@ POST /api/staff-turns/reorder/
 
 **Response:** Returns the full reordered queue.
 
-### 9. Skip Turn
+### 10. Skip Turn
 
 Move a staff member one position back (swap with the next person).
 
@@ -363,7 +414,7 @@ POST /api/staff-turns/skip/
 }
 ```
 
-### 10. Join Queue
+### 11. Join Queue
 
 Add a staff member to the back of the queue.
 
@@ -378,7 +429,7 @@ POST /api/staff-turns/join/
 }
 ```
 
-### 11. Leave Queue
+### 12. Leave Queue
 
 Remove a staff member from the queue.
 

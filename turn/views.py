@@ -10,7 +10,7 @@ from .models import StaffTurn, TurnService as TurnServiceModel
 from .serializers import (
     CompleteServiceSerializer,
     JoinedStaffWithHistorySerializer,
-    MarkBusySerializer,
+    MarkInServiceSerializer,
     NextTurnSerializer,
     StaffTurnReorderSerializer,
     StaffTurnSerializer,
@@ -18,6 +18,7 @@ from .serializers import (
     TurnSerializer,
     TurnServiceSerializer,
     UpdateTurnSerializer,
+    StaffTurnPrioritySerializer,
 )
 from .services import StaffTurnService, TurnServiceManager
 
@@ -69,26 +70,6 @@ class StaffTurnViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
 
-    @action(detail=False, methods=['get'], url_path='next')
-    def next_available_staffs(self, request):
-        """Get the next available staff in the turn queue.
-        Optionally filter by turn_service_id to only return assigned staff.
-        """
-        try:
-            business_id = self._get_business_id(request)
-            date_str = request.query_params.get('date')
-            date = date_str or timezone.now().date()
-            turn_service_id = request.query_params.get('turn_service_id')
-
-            turns = StaffTurnService.get_next_available(
-                business_id=business_id, date=date, turn_service_id=turn_service_id
-            )
-            if not turns:
-                return self.response_success(None, message="No available staff in queue")
-            return self.response_success(StaffTurnSerializer(turns, many=True).data)
-        except Exception as e:
-            return self.response_error(str(e))
-
     @action(detail=False, methods=['get'], url_path='next-turns')
     def next_turn(self, request):
         """Get the next staff who should serve based on service price.
@@ -112,7 +93,7 @@ class StaffTurnViewSet(BaseModelViewSet):
             if not result:
                 return self.response_success(None, message="No available staff in queue")
 
-            next_turns = NextTurnSerializer(result, many=True).data
+            next_turns = StaffTurnPrioritySerializer(result, many=True).data
 
             return self.response_success(next_turns)
         except Exception as e:
@@ -156,7 +137,7 @@ class StaffTurnViewSet(BaseModelViewSet):
         Creates a Turn record linked to the turn service.
         """
         try:
-            serializer = MarkBusySerializer(data=request.data)
+            serializer = MarkInServiceSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             business_id = self._get_business_id(request)
             turn_type = serializer.validated_data.get('turn_type', None)

@@ -99,7 +99,7 @@ class AssignByServicePriceSerializer(serializers.Serializer):
     date = serializers.DateField(required=False)
 
 
-class MarkBusySerializer(serializers.Serializer):
+class MarkInServiceSerializer(serializers.Serializer):
     staff_turn_id = serializers.IntegerField()
     date = serializers.DateField(required=False)
     turn_service_id = serializers.IntegerField(
@@ -208,3 +208,16 @@ class JoinedStaffWithHistorySerializer(serializers.ModelSerializer):
     def get_turns(self, obj):
         turns = obj.turn.filter(is_deleted=False).order_by('created_at')
         return TurnSerializer(turns, many=True).data
+
+class StaffTurnPrioritySerializer(NextTurnSerializer):
+
+    last_turn = serializers.SerializerMethodField()
+    class Meta:
+        model = StaffTurn
+        fields = NextTurnSerializer.Meta.fields + ['last_turn']
+
+    def get_last_turn(self, obj):
+        lt = Turn.objects.filter(staff_turn=obj, is_deleted=False).order_by('-created_at').first()
+        if lt:
+            return TurnSerializer(lt).data
+        return None

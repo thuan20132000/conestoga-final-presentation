@@ -1,11 +1,64 @@
 from rest_framework import serializers
-from .models import StaffTurn, Turn, TurnStatus, TurnType
+from service.models import Service
+from .models import (
+    StaffTurn, Turn, TurnService, StaffTurnServiceAssignment,
+    TurnStatus, TurnType,
+)
+
+
+class ServiceMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = ['id', 'name', 'price', 'duration_minutes']
+
+
+class TurnServiceSerializer(serializers.ModelSerializer):
+    services = ServiceMiniSerializer(many=True, read_only=True)
+    service_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = TurnService
+        fields = [
+            'id',
+            'business',
+            'name',
+            'services',
+            'service_ids',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class StaffTurnServiceAssignmentSerializer(serializers.ModelSerializer):
+    staff_name = serializers.CharField(source='staff.get_full_name', read_only=True)
+    staff_id = serializers.IntegerField(source='staff.id', read_only=True)
+    staff_photo = serializers.ImageField(source='staff.photo', read_only=True)
+    turn_service_name = serializers.CharField(source='turn_service.name', read_only=True)
+
+    class Meta:
+        model = StaffTurnServiceAssignment
+        fields = [
+            'id',
+            'staff_id',
+            'staff_name',
+            'staff_photo',
+            'turn_service',
+            'turn_service_name',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
 
 
 class StaffTurnSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='staff.get_full_name', read_only=True)
     staff_id = serializers.IntegerField(source='staff.id', read_only=True)
-    staff_photo = serializers.ImageField(source='staff.photo', read_only=True)
+    staff_photo = serializers.ImageField(source='staff.photo', read_only=True)    
 
     class Meta:
         model = StaffTurn
@@ -34,9 +87,9 @@ class StaffTurnReorderSerializer(serializers.Serializer):
 
 
 class AssignByServicePriceSerializer(serializers.Serializer):
-    service_id = serializers.IntegerField(
+    turn_service_id = serializers.IntegerField(
         required=False,
-        help_text="Service ID — only staff who can perform this service will be considered",
+        help_text="Turn service ID — only staff assigned to this turn service will be considered",
     )
     service_price = serializers.DecimalField(
         max_digits=10,
@@ -49,8 +102,8 @@ class AssignByServicePriceSerializer(serializers.Serializer):
 class MarkBusySerializer(serializers.Serializer):
     staff_turn_id = serializers.IntegerField()
     date = serializers.DateField(required=False)
-    service_id = serializers.IntegerField(
-        help_text="Service ID for the turn",
+    turn_service_id = serializers.IntegerField(
+        help_text="Turn service ID for the turn",
         required=False,
     )
     turn_type = serializers.CharField(
@@ -71,14 +124,18 @@ class CompleteServiceSerializer(serializers.Serializer):
 
 
 class TurnSerializer(serializers.ModelSerializer):
-    service_name = serializers.CharField(source='service.name', read_only=True)
+    turn_service_name = serializers.CharField(
+        source='turn_service.name', read_only=True, default=None,
+    )
+    services = serializers.SerializerMethodField()
 
     class Meta:
         model = Turn
         fields = [
             'id',
-            'service',
-            'service_name',
+            'turn_service',
+            'turn_service_name',
+            'services',
             'service_price',
             'status',
             'in_service_at',
@@ -88,10 +145,15 @@ class TurnSerializer(serializers.ModelSerializer):
             'created_at',
         ]
 
+    def get_services(self, obj):
+        if obj.turn_service:
+            return ServiceMiniSerializer(obj.turn_service.services.all(), many=True).data
+        return []
+
 
 class UpdateTurnSerializer(serializers.Serializer):
     turn_id = serializers.IntegerField()
-    service_id = serializers.IntegerField(required=False)
+    turn_service_id = serializers.IntegerField(required=False)
     service_price = serializers.DecimalField(
         max_digits=10, decimal_places=2, required=False,
     )

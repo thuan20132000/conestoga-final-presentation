@@ -121,10 +121,11 @@ class StaffTurnViewSet(BaseModelViewSet):
         """Move a staff to the back of the queue after they finish serving."""
         try:
             staff_id = request.data.get('staff_id')
+            date = request.data.get('date', timezone.now().date())
             staff = Staff.objects.get(
                 id=staff_id, business_id=self._get_business_id(request)
             )
-            turn = StaffTurnService.send_to_back(staff)
+            turn = StaffTurnService.send_to_back(staff, date=date)
             return self.response_success(StaffTurnSerializer(turn).data)
         except Staff.DoesNotExist:
             return self.response_error("Staff not found")
@@ -136,10 +137,11 @@ class StaffTurnViewSet(BaseModelViewSet):
         """Move a staff to the top of the queue."""
         try:
             staff_id = request.data.get('staff_id')
+            date = request.data.get('date', timezone.now().date())
             staff = Staff.objects.get(
                 id=staff_id, business_id=self._get_business_id(request)
             )
-            turn = StaffTurnService.send_to_top(staff)
+            turn = StaffTurnService.send_to_top(staff, date=date)
             return self.response_success(StaffTurnSerializer(turn).data)
         except Staff.DoesNotExist:
             return self.response_error("Staff not found")
@@ -199,10 +201,11 @@ class StaffTurnViewSet(BaseModelViewSet):
         """Skip a staff member's turn (move them one position back)."""
         try:
             staff_id = request.data.get('staff_id')
+            date = request.data.get('date', timezone.now().date())
             staff = Staff.objects.get(
                 id=staff_id, business_id=self._get_business_id(request)
             )
-            turn = StaffTurnService.skip_turn(staff)
+            turn = StaffTurnService.skip_turn(staff, date=date)
             return self.response_success(StaffTurnSerializer(turn).data)
         except Staff.DoesNotExist:
             return self.response_error("Staff not found")
@@ -231,15 +234,12 @@ class StaffTurnViewSet(BaseModelViewSet):
         try:
             staff_turn_id = request.data.get('staff_turn_id')
             date = request.data.get('date', timezone.now().date())
-            print("staff_turn_id:: ", staff_turn_id)
-            print("date:: ", date)
             staff_turn = StaffTurn.objects.get(
                 business_id=self._get_business_id(request),
                 id=staff_turn_id,
                 date=date,
                 is_deleted=False,
             )
-            print("staff_turn:: ", staff_turn.__dict__)
             in_service = StaffTurnService.check_if_staff_is_in_service(staff_turn, date=date)
             if in_service:
                 return self.response_error(
@@ -247,11 +247,9 @@ class StaffTurnViewSet(BaseModelViewSet):
                     message="Staff is in service, please complete the service first"
                 )
             
-            print("leaving queue ... ")
             StaffTurnService.leave_queue(staff_turn=staff_turn)
             return self.response_success(None, message="Staff removed from queue")
         except Exception as e:
-            print("error:: ", e)
             return self.response_error(str(e))
 
     @action(detail=False, methods=['post'], url_path='update-turn')

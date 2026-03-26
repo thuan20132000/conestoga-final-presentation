@@ -150,7 +150,15 @@ class BusinessSettings(SoftDeleteModel):
     gift_card_processing_fee_enabled = models.BooleanField(default=True)
     
     tax_with_cash_enabled = models.BooleanField(default=True)
-    
+
+    # Turn management settings
+    half_turn_threshold = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=25.00,
+        help_text="Service price threshold: above this = full turn, at or below = half turn",
+    )
+
     def __str__(self):
         return f"Settings for {self.business.name}"
 

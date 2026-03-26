@@ -213,10 +213,11 @@ class StaffTurnViewSet(BaseModelViewSet):
         """Manually add a staff to the turn queue."""
         try:
             staff_id = request.data.get('staff_id')
+            date = request.data.get('date', timezone.now().date())
             staff = Staff.objects.get(
                 id=staff_id, business_id=self._get_business_id(request)
             )
-            turn = StaffTurnService.join_queue(staff)
+            turn = StaffTurnService.join_queue(staff, date=date)
             return self.response_success(StaffTurnSerializer(turn).data)
         except Staff.DoesNotExist:
             return self.response_error("Staff not found")

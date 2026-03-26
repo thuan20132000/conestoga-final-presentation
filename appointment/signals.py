@@ -145,30 +145,27 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         by_email=is_send_email_rescheduled_confirmation,
                     )
 
-
-
-                # Appointment cancelled
-                is_send_sms_cancellation_confirmation = send_cancellation_sms and metadata.get(
-                    'is_send_sms_cancellation_confirmation', False)
-                is_send_email_cancellation_confirmation = send_cancellation_email and metadata.get(
-                    'is_send_email_cancellation_confirmation', False)
-                
-                appointment_notification_service.send_client_cancellation_notification(
-                    client_name=client_name,
-                    client_phone=client_phone,
-                    business_phone=business_phone,
-                    business_name=business_name,
-                    appointment_id=appointment_id,
-                    business_id=business_id,
-                    start_at_str=start_at_str,
-                    metadata=metadata,
-                    business_twilio_phone_number=business_twilio_phone_number,
-                    client_email=client_email,
-                    by_sms=is_send_sms_cancellation_confirmation,
-                    by_email=is_send_email_cancellation_confirmation,
-                )
-
                 if appointment_status == AppointmentStatusType.CANCELLED.value:
+                    is_send_sms_cancellation_confirmation = send_cancellation_sms and metadata.get(
+                        'is_send_sms_cancellation_confirmation', False)
+                    is_send_email_cancellation_confirmation = send_cancellation_email and metadata.get(
+                        'is_send_email_cancellation_confirmation', False)
+
+                    appointment_notification_service.send_client_cancellation_notification(
+                        client_name=client_name,
+                        client_phone=client_phone,
+                        business_phone=business_phone,
+                        business_name=business_name,
+                        appointment_id=appointment_id,
+                        business_id=business_id,
+                        start_at_str=start_at_str,
+                        metadata=metadata,
+                        business_twilio_phone_number=business_twilio_phone_number,
+                        client_email=client_email,
+                        by_sms=is_send_sms_cancellation_confirmation,
+                        by_email=is_send_email_cancellation_confirmation,
+                    )
+
                     appointment_notification_service.send_manager_cancellation_appointment_notification(
                         business_name=business_name,
                         business_id=business_id,

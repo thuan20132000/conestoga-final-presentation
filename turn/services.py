@@ -3,7 +3,10 @@ from decimal import Decimal
 from django.db import models, transaction
 from django.utils import timezone
 
-from .models import StaffTurn, Turn, TurnStatus, TurnType, DEFAULT_HALF_TURN_THRESHOLD
+from .models import (
+    StaffTurn, Turn, TurnService, StaffTurnServiceAssignment,
+    TurnStatus, TurnType, DEFAULT_HALF_TURN_THRESHOLD,
+)
 
 
 class StaffTurnService:
@@ -98,26 +101,24 @@ class StaffTurnService:
                 is_deleted=False,
             )
             .select_related('staff')
-            .prefetch_related('turn__service')
+            .prefetch_related('turn__turn_service__services')
             .order_by('joined_at')
         )
 
     @staticmethod
-    def _get_eligible_staff_ids(service_id):
-        """Get staff IDs who can perform a given service."""
-        from staff.models import StaffService
+    def _get_eligible_staff_ids(turn_service_id):
+        """Get staff IDs who are assigned to a given turn service."""
         return list(
-            StaffService.objects.filter(
-                service_id=service_id,
-                is_active=True,
+            StaffTurnServiceAssignment.objects.filter(
+                turn_service_id=turn_service_id,
                 is_deleted=False,
             ).values_list('staff_id', flat=True)
         )
 
     @staticmethod
-    def get_next_available(business_id, date=None, service_id=None):
+    def get_next_available(business_id, date=None, turn_service_id=None):
         """Get the next available staff member in the queue.
-        If service_id is provided, only considers staff who can perform that service.
+        If turn_service_id is provided, only considers staff assigned to that turn service.
         """
         date = date or timezone.now().date()
         qs = StaffTurn.objects.filter(
@@ -126,8 +127,8 @@ class StaffTurnService:
             is_deleted=False,
             is_available=True,
         )
-        if service_id:
-            eligible_ids = StaffTurnService._get_eligible_staff_ids(service_id)
+        if turn_service_id:
+            eligible_ids = StaffTurnService._get_eligible_staff_ids(turn_service_id)
             qs = qs.filter(staff_id__in=eligible_ids)
         return qs.select_related('staff').order_by('position')
 
@@ -176,11 +177,11 @@ class StaffTurnService:
     @staticmethod
     @transaction.atomic
     def mark_in_service(
-        business_id, 
-        staff_turn_id, 
-        service_id=None, 
-        service_price=None, 
-        turn_type=None, 
+        business_id,
+        staff_turn_id,
+        turn_service_id=None,
+        service_price=None,
+        turn_type=None,
         date=None,
         is_client_request=False
     ):
@@ -202,16 +203,13 @@ class StaffTurnService:
 
         turn_type = turn_type or TurnType.FULL.value
 
-        # HALF turn: staff stays available and keeps position
-        # FULL turn: staff becomes unavailable
         if turn_type != TurnType.HALF.value:
             staff_turn.is_available = False
             staff_turn.save(update_fields=['is_available', 'updated_at'])
 
-        # Create a Turn record
         turn = Turn.objects.create(
             staff_turn=staff_turn,
-            service_id=service_id,
+            turn_service_id=turn_service_id,
             service_price=service_price or 0,
             status=TurnStatus.IN_SERVICE,
             in_service_at=timezone.now(),
@@ -234,22 +232,22 @@ class StaffTurnService:
 
     @staticmethod
     @transaction.atomic
-    def reorder_queue(business_id, ordered_staff_ids, date=None):
-        """Manually reorder the queue. ordered_staff_ids is a list of staff IDs in desired order."""
+    def reorder_queue(business_id, ordered_staff_turn_ids, date=None):
+        """Manually reorder the queue. ordered_staff_turn_ids is a list of staff turn IDs in desired order."""
         date = date or timezone.now().date()
-        turns = StaffTurn.objects.filter(
+        staff_turns = StaffTurn.objects.filter(
             business_id=business_id,
             date=date,
             is_deleted=False,
         ).select_for_update()
 
-        turn_map = {str(t.staff_id): t for t in turns}
-        for idx, staff_id in enumerate(ordered_staff_ids, start=1):
-            staff_id_str = str(staff_id)
-            if staff_id_str in turn_map:
-                turn = turn_map[staff_id_str]
-                turn.position = idx
-                turn.save(update_fields=['position', 'updated_at'])
+        for idx, staff_turn_id in enumerate(ordered_staff_turn_ids, start=1):
+            staff_turn = staff_turns.get(id=staff_turn_id)
+            if staff_turn:
+                staff_turn.position = idx
+                staff_turn.save()
+                
+        return staff_turns
 
     @staticmethod
     @transaction.atomic
@@ -299,14 +297,14 @@ class StaffTurnService:
         return TurnType.HALF
 
     @staticmethod
-    def get_next_turns(business_id, service_id=None, service_price=None, date=None):
+    def get_next_turns(business_id, turn_service_id=None, service_price=None, date=None):
         """Get the next staff member who should serve, based on service price.
 
         Full turn (price > threshold): first available staff (front of queue).
         Half turn (price <= threshold): last available staff (back of queue).
         No price provided: returns first available (front of queue).
 
-        Returns a dict with the StaffTurn and the turn_type, or None.
+        Returns a queryset of StaffTurn ordered by position.
         """
         date = date or timezone.now().date()
 
@@ -316,16 +314,16 @@ class StaffTurnService:
             is_deleted=False,
             is_available=True,
         )
-        if service_id:
-            eligible_ids = StaffTurnService._get_eligible_staff_ids(service_id)
+        if turn_service_id:
+            eligible_ids = StaffTurnService._get_eligible_staff_ids(turn_service_id)
             nt = nt.filter(staff_id__in=eligible_ids)
-            
+
         return nt.select_related('staff').order_by('position').all()
 
     @staticmethod
-    def get_last_available(business_id, date=None, service_id=None):
+    def get_last_available(business_id, date=None, turn_service_id=None):
         """Get the last available staff member in the queue (for half turns).
-        If service_id is provided, only considers staff who can perform that service.
+        If turn_service_id is provided, only considers staff assigned to that turn service.
         """
         date = date or timezone.now().date()
         qs = StaffTurn.objects.filter(
@@ -334,8 +332,8 @@ class StaffTurnService:
             is_deleted=False,
             is_available=True,
         )
-        if service_id:
-            eligible_ids = StaffTurnService._get_eligible_staff_ids(service_id)
+        if turn_service_id:
+            eligible_ids = StaffTurnService._get_eligible_staff_ids(turn_service_id)
             qs = qs.filter(staff_id__in=eligible_ids)
         return qs.select_related('staff').order_by('-position').first()
 
@@ -398,7 +396,8 @@ class StaffTurnService:
                 status=TurnStatus.COMPLETED,
                 is_deleted=False,
             )
-            .select_related('staff_turn__staff', 'service')
+            .select_related('staff_turn__staff', 'turn_service')
+            .prefetch_related('turn_service__services')
             .order_by('completed_at')
         )
 
@@ -442,7 +441,7 @@ class StaffTurnService:
             raise ValueError("Turn not found")
 
         update_fields = []
-        for field in ('service_id', 'service_price', 'turn_type', 'is_client_request', 'completed_at', 'status'):
+        for field in ('turn_service_id', 'service_price', 'turn_type', 'is_client_request', 'completed_at', 'status'):
             if field in kwargs and kwargs[field] is not None:
                 setattr(turn, field, kwargs[field])
                 update_fields.append(field)
@@ -463,3 +462,96 @@ class StaffTurnService:
             status=TurnStatus.IN_SERVICE,
             is_deleted=False,
         ).exists()
+
+
+class TurnServiceManager:
+    """Manages TurnService CRUD and staff assignment operations."""
+
+    @staticmethod
+    @transaction.atomic
+    def create_turn_service(business, name, service_ids=None):
+        ts = TurnService.objects.create(business=business, name=name)
+        if service_ids:
+            ts.services.set(service_ids)
+        return ts
+
+    @staticmethod
+    @transaction.atomic
+    def update_turn_service(turn_service_id, **kwargs):
+        try:
+            ts = TurnService.objects.get(id=turn_service_id, is_deleted=False)
+        except TurnService.DoesNotExist:
+            raise ValueError("Turn service not found")
+
+        service_ids = kwargs.pop('service_ids', None)
+        for field in ('name', 'is_active'):
+            if field in kwargs and kwargs[field] is not None:
+                setattr(ts, field, kwargs[field])
+        ts.save()
+
+        if service_ids is not None:
+            ts.services.set(service_ids)
+
+        return ts
+
+    @staticmethod
+    @transaction.atomic
+    def delete_turn_service(turn_service_id):
+        try:
+            ts = TurnService.objects.get(id=turn_service_id, is_deleted=False)
+        except TurnService.DoesNotExist:
+            raise ValueError("Turn service not found")
+        ts.is_deleted = True
+        ts.deleted_at = timezone.now()
+        ts.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+        return ts
+
+    @staticmethod
+    def get_turn_services(business_id):
+        return (
+            TurnService.objects.filter(business_id=business_id, is_deleted=False)
+            .prefetch_related('services', 'staff_assignments__staff')
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def assign_staff(turn_service_id, staff):
+        """Bulk-assign staff to a turn service (idempotent)."""
+        ts = TurnService.objects.get(id=turn_service_id, is_deleted=False)
+        return StaffTurnServiceAssignment.objects.create(
+            turn_service=ts,
+            staff=staff,
+        )
+
+    @staticmethod
+    @transaction.atomic
+    def remove_staff(turn_service_id, staff_id):
+        """Soft-delete staff assignments from a turn service."""
+        return StaffTurnServiceAssignment.objects.filter(
+            turn_service_id=turn_service_id,
+            staff_id=staff_id,
+            is_deleted=False,
+        ).delete()
+
+    @staticmethod
+    def get_staff_for_turn_service(turn_service_id):
+        """List staff assigned to a turn service."""
+        return (
+            StaffTurnServiceAssignment.objects.filter(
+                turn_service_id=turn_service_id,
+                is_deleted=False,
+            )
+            .select_related('staff')
+        )
+
+    @staticmethod
+    def get_turn_services_for_staff(staff_id):
+        """List turn services assigned to a staff member."""
+        ts_ids = StaffTurnServiceAssignment.objects.filter(
+            staff_id=staff_id,
+            is_deleted=False,
+        ).values_list('turn_service_id', flat=True)
+        return TurnService.objects.filter(
+            id__in=ts_ids,
+            is_deleted=False,
+        ).prefetch_related('services')

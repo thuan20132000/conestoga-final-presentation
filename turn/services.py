@@ -134,45 +134,44 @@ class StaffTurnService:
 
     @staticmethod
     @transaction.atomic
-    def send_to_back(staff, date=None):
+    def send_to_back(business_id, staff_turn_id, date=None):
         """Move a staff member to the back of the queue after finishing service."""
         date = date or timezone.now().date()
         try:
-            turn = StaffTurn.objects.select_for_update().get(
-                business=staff.business,
-                staff=staff,
+            staff_turn = StaffTurn.objects.select_for_update().get(
+                business_id=business_id,
+                id=staff_turn_id,
                 date=date,
                 is_deleted=False,
             )
         except StaffTurn.DoesNotExist:
-            raise ValueError("Staff is not in the turn queue")
+            raise ValueError("Staff turn not found")
 
-        turn.position = StaffTurnService._get_next_position(
-            staff.business_id, date
+        staff_turn.position = StaffTurnService._get_next_position(
+            business_id, date
         )
-        turn.is_available = True
-        turn.save(update_fields=[
-                  'position', 'is_available', 'updated_at'])
-        return turn
+        staff_turn.is_available = True
+        staff_turn.save(update_fields=['position', 'is_available', 'updated_at'])
+        return staff_turn
 
     @staticmethod
     @transaction.atomic
-    def send_to_top(staff, date=None):
+    def send_to_top(business_id, staff_turn_id, date=None):
         """Move a staff member to the top of the queue."""
         date = date or timezone.now().date()
         try:
-            turn = StaffTurn.objects.select_for_update().get(
-                business=staff.business,
-                staff=staff,
+            staff_turn = StaffTurn.objects.select_for_update().get(
+                business_id=business_id,
+                id=staff_turn_id,
                 date=date,
                 is_deleted=False,
             )
         except StaffTurn.DoesNotExist:
-            raise ValueError("Staff is not in the turn queue")
+            raise ValueError("Staff turn not found")
 
-        turn.position = 1
-        turn.save(update_fields=['position', 'is_available', 'updated_at'])
-        return turn
+        staff_turn.position = 1
+        staff_turn.save(update_fields=['position', 'updated_at', 'is_available'])
+        return staff_turn
 
     @staticmethod
     @transaction.atomic

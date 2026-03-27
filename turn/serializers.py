@@ -79,9 +79,11 @@ class StaffTurnSerializer(serializers.ModelSerializer):
 
 
 class StaffTurnReorderSerializer(serializers.Serializer):
-    ordered_staff_ids = serializers.ListField(
-        child=serializers.UUIDField(),
-        help_text="List of staff IDs in desired turn order",
+    ordered_staff_turn_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        help_text="List of staff turn IDs in desired turn order. If not provided, the queue will be reordered based on the staff's position.",
+        required=False,
+        default=[],
     )
     date = serializers.DateField(required=False)
 

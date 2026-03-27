@@ -168,10 +168,11 @@ class StaffTurnViewSet(BaseModelViewSet):
             serializer = StaffTurnReorderSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             business_id = self._get_business_id(request)
+            ordered_staff_turn_ids = serializer.validated_data.get('ordered_staff_turn_ids', [])
             date = serializer.validated_data.get('date', timezone.now().date())
             StaffTurnService.reorder_queue(
                 business_id=business_id,
-                ordered_staff_ids=serializer.validated_data['ordered_staff_ids'],
+                ordered_staff_turn_ids=ordered_staff_turn_ids,
                 date=date,
             )
             queue = StaffTurnService.get_queue(business_id, date)

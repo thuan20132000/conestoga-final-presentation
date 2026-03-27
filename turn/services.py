@@ -232,22 +232,22 @@ class StaffTurnService:
 
     @staticmethod
     @transaction.atomic
-    def reorder_queue(business_id, ordered_staff_ids, date=None):
-        """Manually reorder the queue. ordered_staff_ids is a list of staff IDs in desired order."""
+    def reorder_queue(business_id, ordered_staff_turn_ids, date=None):
+        """Manually reorder the queue. ordered_staff_turn_ids is a list of staff turn IDs in desired order."""
         date = date or timezone.now().date()
-        turns = StaffTurn.objects.filter(
+        staff_turns = StaffTurn.objects.filter(
             business_id=business_id,
             date=date,
             is_deleted=False,
         ).select_for_update()
 
-        turn_map = {str(t.staff_id): t for t in turns}
-        for idx, staff_id in enumerate(ordered_staff_ids, start=1):
-            staff_id_str = str(staff_id)
-            if staff_id_str in turn_map:
-                turn = turn_map[staff_id_str]
-                turn.position = idx
-                turn.save(update_fields=['position', 'updated_at'])
+        for idx, staff_turn_id in enumerate(ordered_staff_turn_ids, start=1):
+            staff_turn = staff_turns.get(id=staff_turn_id)
+            if staff_turn:
+                staff_turn.position = idx
+                staff_turn.save()
+                
+        return staff_turns
 
     @staticmethod
     @transaction.atomic

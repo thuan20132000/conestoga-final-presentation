@@ -103,15 +103,13 @@ class StaffTurnViewSet(BaseModelViewSet):
     def send_to_back(self, request):
         """Move a staff to the back of the queue after they finish serving."""
         try:
-            staff_id = request.data.get('staff_id')
+            staff_turn_id = request.data.get('staff_turn_id')
             date = request.data.get('date', timezone.now().date())
-            staff = Staff.objects.get(
-                id=staff_id, business_id=self._get_business_id(request)
-            )
-            turn = StaffTurnService.send_to_back(staff, date=date)
-            return self.response_success(StaffTurnSerializer(turn).data)
-        except Staff.DoesNotExist:
-            return self.response_error("Staff not found")
+            business_id = self._get_business_id(request)
+            staff_turn = StaffTurnService.send_to_back(business_id, staff_turn_id, date=date)
+            return self.response_success(StaffTurnSerializer(staff_turn).data)
+        except StaffTurn.DoesNotExist:
+            return self.response_error("Staff turn not found")
         except Exception as e:
             return self.response_error(str(e))
 
@@ -119,15 +117,13 @@ class StaffTurnViewSet(BaseModelViewSet):
     def send_to_top(self, request):
         """Move a staff to the top of the queue."""
         try:
-            staff_id = request.data.get('staff_id')
+            staff_turn_id = request.data.get('staff_turn_id')
             date = request.data.get('date', timezone.now().date())
-            staff = Staff.objects.get(
-                id=staff_id, business_id=self._get_business_id(request)
-            )
-            turn = StaffTurnService.send_to_top(staff, date=date)
-            return self.response_success(StaffTurnSerializer(turn).data)
-        except Staff.DoesNotExist:
-            return self.response_error("Staff not found")
+            business_id = self._get_business_id(request)
+            staff_turn = StaffTurnService.send_to_top(business_id, staff_turn_id, date=date)
+            return self.response_success(StaffTurnSerializer(staff_turn).data)
+        except StaffTurn.DoesNotExist:
+            return self.response_error("Staff turn not found")
         except Exception as e:
             return self.response_error(str(e))
 

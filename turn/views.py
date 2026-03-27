@@ -245,6 +245,20 @@ class StaffTurnViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error(str(e))
 
+    @action(detail=False, methods=['post'], url_path='delete-turn')
+    def delete_turn(self, request):
+        """Soft-delete a turn record."""
+        try:
+            turn_id = request.data.get('turn_id')
+            staff_turn_id = request.data.get('staff_turn_id')
+            
+            if not turn_id or not staff_turn_id:
+                return self.response_error("turn_id and staff_turn_id are required")
+            StaffTurnService.delete_turn(turn_id=turn_id, staff_turn_id=staff_turn_id)
+            return self.response_success(None, message="Turn deleted successfully")
+        except Exception as e:
+            return self.response_error(str(e))
+
     @action(detail=False, methods=['post'], url_path='complete-service')
     def complete_service(self, request):
         """Complete a service and update queue position.

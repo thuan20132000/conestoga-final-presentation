@@ -355,6 +355,31 @@ Response:
 }
 ```
 
+#### Delete a turn
+
+```
+POST /api/staff-turns/delete-turn/
+Content-Type: application/json
+```
+
+Request:
+```json
+{
+  "turn_id": 100,
+  "staff_turn_id": 42
+}
+```
+
+Response:
+```json
+{
+  "results": null,
+  "success": true,
+  "status_code": 200,
+  "message": "Turn deleted successfully"
+}
+```
+
 ## Notes
 - Responses are generated via OpenAI Chat Completions; adjust `SYSTEM_PROMPT` in `receptionist/views.py` as needed.
 - Voice flow uses TwiML `Gather` to collect speech/DTMF and loops back to continue the conversation.

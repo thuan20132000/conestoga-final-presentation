@@ -452,6 +452,29 @@ class StaffTurnService:
         return turn
 
     @staticmethod
+    @transaction.atomic
+    def delete_turn(turn_id, staff_turn_id):
+        """Soft-delete a Turn record."""
+        try:
+            turn = Turn.objects.get(id=turn_id, is_deleted=False)
+            staff_turn = StaffTurn.objects.select_for_update().get(id=staff_turn_id, is_deleted=False)
+            has_other_in_service = Turn.objects.filter(
+                staff_turn_id=staff_turn_id,
+                is_deleted=False,
+                status=TurnStatus.IN_SERVICE,
+                turn_type=TurnType.FULL.value,
+            ).exclude(id=turn_id).exists()
+
+            staff_turn.is_available = not has_other_in_service
+            staff_turn.save(update_fields=['is_available', 'updated_at'])
+            turn.is_deleted = True
+            turn.deleted_at = timezone.now()
+            turn.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+            return turn
+        except (Turn.DoesNotExist, StaffTurn.DoesNotExist):
+            raise ValueError("Turn or staff turn not found")
+
+    @staticmethod
     def check_if_staff_is_in_service(staff_turn, date=None):
         """Check if a staff turn is in service."""
         date = date or timezone.now().date()

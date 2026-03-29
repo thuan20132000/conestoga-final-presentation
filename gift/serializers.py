@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from .models import GiftCard, GiftCardTransaction, GiftCardStatusType, GiftCardTransactionType
 from decimal import Decimal
 from business.models import Business
@@ -73,13 +74,13 @@ class GiftCardCreateSerializer(serializers.ModelSerializer):
     def validate_initial_amount(self, value):
         """Validate initial amount"""
         if value <= 0:
-            raise serializers.ValidationError("Initial amount must be greater than zero")
+            raise serializers.ValidationError(_("Initial amount must be greater than zero"))
         return value
     
     def validate_expires_at(self, value):
         """Validate expiration date"""
         if value and value <= timezone.now():
-            raise serializers.ValidationError("Expiration date must be in the future")
+            raise serializers.ValidationError(_("Expiration date must be in the future"))
         return value
 
 
@@ -104,12 +105,12 @@ class GiftCardOnlinePaymentIntentSerializer(serializers.Serializer):
 
     def validate_initial_amount(self, value):
         if value <= 0:
-            raise serializers.ValidationError("Initial amount must be greater than zero")
+            raise serializers.ValidationError(_("Initial amount must be greater than zero"))
         return value
 
     def validate_expires_at(self, value):
         if value and value <= timezone.now():
-            raise serializers.ValidationError("Expiration date must be in the future")
+            raise serializers.ValidationError(_("Expiration date must be in the future"))
         return value
 
 
@@ -129,7 +130,7 @@ class GiftCardRedeemSerializer(serializers.Serializer):
     def validate_amount(self, value):
         """Validate redemption amount"""
         if value <= 0:
-            raise serializers.ValidationError("Redemption amount must be greater than zero")
+            raise serializers.ValidationError(_("Redemption amount must be greater than zero"))
         return value
     
     def validate(self, data):
@@ -140,14 +141,16 @@ class GiftCardRedeemSerializer(serializers.Serializer):
         try:
             gift_card = GiftCard.objects.get(card_code=card_code)
         except GiftCard.DoesNotExist:
-            raise serializers.ValidationError({"card_code": "Gift card not found"})
+            raise serializers.ValidationError({"card_code": _("Gift card not found")})
         
         if not gift_card.is_active:
-            raise serializers.ValidationError({"card_code": "Gift card is not active"})
+            raise serializers.ValidationError({"card_code": _("Gift card is not active")})
         
         if amount > gift_card.current_balance:
             raise serializers.ValidationError({
-                "amount": f"Insufficient balance. Available balance: ${gift_card.current_balance}"
+                "amount": _("Insufficient balance. Available balance: ${balance}").format(
+                    balance=gift_card.current_balance
+                )
             })
         
         data['gift_card'] = gift_card
@@ -165,15 +168,15 @@ class GiftCardValidateSerializer(serializers.Serializer):
         try:
             gift_card = GiftCard.objects.get(card_code=card_code)
         except GiftCard.DoesNotExist:
-            raise serializers.ValidationError({"card_code": "Gift card not found"})
+            raise serializers.ValidationError({"card_code": _("Gift card not found")})
         
         if not gift_card.is_active:
             if gift_card.is_expired:
-                raise serializers.ValidationError({"card_code": "Gift card has expired"})
+                raise serializers.ValidationError({"card_code": _("Gift card has expired")})
             elif gift_card.status == GiftCardStatusType.REDEEMED:
-                raise serializers.ValidationError({"card_code": "Gift card has been fully redeemed"})
+                raise serializers.ValidationError({"card_code": _("Gift card has been fully redeemed")})
             else:
-                raise serializers.ValidationError({"card_code": "Gift card is not active"})
+                raise serializers.ValidationError({"card_code": _("Gift card is not active")})
         
         data['gift_card'] = gift_card
         return data
@@ -196,19 +199,19 @@ class GiftCardCheckoutSerializer(serializers.Serializer):
 
     def validate_amount(self, value):
         if value <= 0:
-            raise serializers.ValidationError("Amount must be greater than zero")
+            raise serializers.ValidationError(_("Amount must be greater than zero"))
         return value
     
     def validate_currency(self, value):
         print("value:: ", value)
         if value not in CurrencyType.values:
-            raise serializers.ValidationError("Invalid currency")
+            raise serializers.ValidationError(_("Invalid currency"))
         return value
     
     def validate_metadata(self, value):
         if value is not None and not isinstance(value, dict):
-            raise serializers.ValidationError("Metadata must be a dictionary")
+            raise serializers.ValidationError(_("Metadata must be a dictionary"))
         if "business_id" not in value:
-            raise serializers.ValidationError("Business ID must be provided")
+            raise serializers.ValidationError(_("Business ID must be provided"))
         return value
     

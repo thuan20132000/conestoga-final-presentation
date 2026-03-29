@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Client, ClientOTP
+from django.utils.translation import gettext_lazy as _
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -55,7 +56,7 @@ class ClientSerializer(serializers.ModelSerializer):
                 queryset = queryset.exclude(pk=self.instance.pk)
             if queryset.exists():
                 raise serializers.ValidationError(
-                    "A client with this email already exists."
+                    _("A client with this email already exists.")
                 )
         return value
 
@@ -67,7 +68,7 @@ class ClientSerializer(serializers.ModelSerializer):
                 queryset = queryset.exclude(pk=self.instance.pk)
             if queryset.exists():
                 raise serializers.ValidationError(
-                    "A client with this phone number already exists."
+                    _("A client with this phone number already exists.")
                 )
         return value
 
@@ -229,7 +230,7 @@ class ClientRegisterSerializer(serializers.Serializer):
         email = attrs.get("email", "").strip()
         phone = attrs.get("phone", "").strip()
         if not email and not phone:
-            raise serializers.ValidationError("Either email or phone is required.")
+            raise serializers.ValidationError(_("Either email or phone is required."))
         return attrs
 
 

@@ -22,6 +22,7 @@ from django.db import transaction
 from payment.models import RefundTypeType
 from appointment.models import Appointment
 from appointment.serializers import AppointmentSerializer
+from django.utils.translation import gettext as _
 class PaymentMethodViewSet(BaseModelViewSet):
     """ViewSet for managing payment methods"""
     queryset = PaymentMethod.objects.all()
@@ -48,7 +49,7 @@ class PaymentMethodViewSet(BaseModelViewSet):
         
         if not payment_method_id or not business_id:
             return Response(
-                {'error': 'payment_method_id and business_id are required'},
+                {'error': _('payment_method_id and business_id are required')},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -66,11 +67,11 @@ class PaymentMethodViewSet(BaseModelViewSet):
             payment_method.is_default = True
             payment_method.save()
             
-            return Response({'message': 'Default payment method updated'})
+            return Response({'message': _('Default payment method updated')})
             
         except PaymentMethod.DoesNotExist:
             return Response(
-                {'error': 'Payment method not found'},
+                {'error': _('Payment method not found')},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -156,7 +157,7 @@ class PaymentViewSet(BaseModelViewSet):
         
         if payment.is_completed:
             return Response(
-                {'error': 'Payment is already completed'},
+                {'error': _('Payment is already completed')},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -185,8 +186,8 @@ class PaymentViewSet(BaseModelViewSet):
         service = PaymentService()
         sent = service.send_receipt(payment, custom_email)
         if not sent:
-            return self.response_error('Client has no email address on file or custom email is not provided')
-        return self.response_success({'detail': 'Receipt sent successfully'})
+            return self.response_error(_('Client has no email address on file or custom email is not provided'))
+        return self.response_success({'detail': _('Receipt sent successfully')})
 
     @action(detail=True, methods=['post'])
     def fail_payment(self, request, pk=None):
@@ -195,11 +196,11 @@ class PaymentViewSet(BaseModelViewSet):
         
         if payment.is_completed:
             return Response(
-                {'error': 'Cannot fail a completed payment'},
+                {'error': _('Cannot fail a completed payment')},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        failure_reason = request.data.get('failure_reason', 'Payment processing failed')
+        failure_reason = request.data.get('failure_reason', _('Payment processing failed'))
         
         payment.failure_reason = failure_reason
         failed_status = PaymentStatusType.FAILED

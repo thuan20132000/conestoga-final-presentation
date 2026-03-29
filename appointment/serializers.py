@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from .models import Appointment, AppointmentService
 from business.models import Business
 from service.models import Service
@@ -200,7 +201,7 @@ class AppointmentAvailabilitySerializer(serializers.Serializer):
     def validate_appointment_date(self, value):
         """Validate appointment date"""
         if value < timezone.now().date():
-            raise serializers.ValidationError("Date cannot be in the past")
+            raise serializers.ValidationError(_("Date cannot be in the past"))
         return value
 
     def validate(self, data):
@@ -217,7 +218,7 @@ class AppointmentAvailabilitySerializer(serializers.Serializer):
 
         if not operating_hours or not operating_hours.is_open:
             raise serializers.ValidationError(
-                "Business is closed on this date")
+                _("Business is closed on this date"))
 
         return data
 

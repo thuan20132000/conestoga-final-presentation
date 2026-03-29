@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from .models import Review
 from appointment.models import Appointment, AppointmentStatusType
 from appointment.serializers import AppointmentDetailSerializer
@@ -39,16 +40,16 @@ class ReviewSerializer(serializers.ModelSerializer):
     def validate_appointment(self, value):
         """Validate that appointment exists and is completed"""
         if not value:
-            raise serializers.ValidationError("Appointment is required.")
+            raise serializers.ValidationError(_("Appointment is required."))
         
         # Check if appointment is cancelled
         if value.status == AppointmentStatusType.CANCELLED:
             raise serializers.ValidationError(
-                "Cannot review a cancelled appointment."
+                _("Cannot review a cancelled appointment.")
             )
             
         if Review.objects.filter(appointment=value).exists():
-            raise serializers.ValidationError("A review already exists for this appointment.")
+            raise serializers.ValidationError(_("A review already exists for this appointment."))
         
         return value
     
@@ -57,7 +58,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     def validate_rating(self, value):
         """Validate rating is between 1 and 5"""
         if value < 1 or value > 5:
-            raise serializers.ValidationError("Rating must be between 1 and 5.")
+            raise serializers.ValidationError(_("Rating must be between 1 and 5."))
         return value
 
     

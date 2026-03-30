@@ -58,10 +58,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'cancelled_at',
             'is_active',
             'payment_status',
+            'send_review_request',
+            'checked_in_at'
+        ]
+        read_only_fields = [
+            'id', 
+            'created_at', 
+            'updated_at',
+            'checked_in_at',
+            'confirmed_at', 
+            'completed_at', 
+            'cancelled_at', 
+            'is_active', 
             'send_review_request'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at',
-                            'confirmed_at', 'completed_at', 'cancelled_at', 'is_active', 'send_review_request']
 
     def validate(self, data):
         """Validate appointment data"""
@@ -73,7 +83,7 @@ class AppointmentUpdateSerializer(AppointmentSerializer):
     class Meta:
         model = Appointment
         fields = [
-            'business', 'client', 'appointment_date', 'status', 'notes', 'internal_notes', 'booked_by', 'booking_source', 'is_active', 'metadata'
+            'business', 'client', 'appointment_date', 'status', 'notes', 'internal_notes', 'booked_by', 'booking_source', 'is_active', 'metadata', 'checked_in_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at',
                             'confirmed_at', 'completed_at', 'cancelled_at']

@@ -209,6 +209,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 appointment.start_at = request.data.get('start_at', appointment.start_at)
                 appointment.end_at = request.data.get('end_at', appointment.end_at)
                 appointment.metadata = request.data.get('metadata', appointment.metadata)
+                appointment.checked_in_at = request.data.get('checked_in_at', appointment.checked_in_at)
                 appointment.save()
                 
                 # update appointment services

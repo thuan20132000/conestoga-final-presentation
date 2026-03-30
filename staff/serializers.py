@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.utils.translation import gettext_lazy as _
 from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
 from business.serializers import BusinessSettingsSerializer, BusinessSerializer
 
@@ -89,7 +90,7 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
                 business=business, email=value
             ).exclude(pk=self.instance.pk if self.instance else None).exists():
                 raise serializers.ValidationError(
-                    "A staff member with this email already exists for this business."
+                    _("A staff member with this email already exists for this business.")
                 )
         return value
 
@@ -178,12 +179,12 @@ class LoginSerializer(serializers.Serializer):
         if username and password:
             user = authenticate(username=username, password=password)
             if not user:
-                raise serializers.ValidationError('Unable to log in with provided credentials.')
+                raise serializers.ValidationError(_('Unable to log in with provided credentials.'))
             if not user.is_active:
-                raise serializers.ValidationError('User account is disabled.')
+                raise serializers.ValidationError(_('User account is disabled.'))
             attrs['user'] = user
         else:
-            raise serializers.ValidationError('Must include "username" and "password".')
+            raise serializers.ValidationError(_('Must include "username" and "password".'))
         
         return attrs
 
@@ -226,14 +227,14 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         """Validate that email is unique"""
         if Staff.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
+            raise serializers.ValidationError(_("A user with this email already exists."))
         return value
     
     def validate(self, attrs):
         """Validate that passwords match"""
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({
-                'password_confirm': "Password fields didn't match."
+                'password_confirm': _("Password fields didn't match.")
             })
         return attrs
     

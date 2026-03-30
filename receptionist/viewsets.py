@@ -23,6 +23,7 @@ from .filters import (
     SystemLogFilter, BusinessFilter
 )
 from main.viewsets import BaseModelViewSet
+from django.utils.translation import gettext as _
 
 class AIConfigurationViewSet(BaseModelViewSet):
     """ViewSet for AIConfiguration model."""
@@ -204,7 +205,7 @@ class ConversationMessageViewSet(BaseModelViewSet):
             messages = self.get_queryset().filter(role=role)
             serializer = self.get_serializer(messages, many=True)
             return Response(serializer.data)
-        return Response({'error': 'Role parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': _('Role parameter is required')}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class IntentViewSet(BaseModelViewSet):
@@ -296,7 +297,7 @@ class SystemLogViewSet(BaseModelViewSet):
             logs = self.get_queryset().filter(level=level)
             serializer = self.get_serializer(logs, many=True)
             return Response(serializer.data)
-        return Response({'error': 'Level parameter is required'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': _('Level parameter is required')}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def errors(self, request):

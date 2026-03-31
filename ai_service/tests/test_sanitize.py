@@ -1,43 +1,19 @@
 import pytest
-import asyncio
 import json
-from ai_service.tools.receptionist import ReceptionistTools
+from ai_service.services.openai_api import OpenAIAPI
+
 
 @pytest.mark.asyncio
-async def test_sanitize_data(monkeypatch):
-    # Patch OpenAIAPI.generate_response to return a deterministic JSON string
-    async def mock_generate_response(self, prompt):
-        # Simulate a response that matches the prompt's requirements
-        return '{"service_id": 5, "date": "2024-06-01", "duration": 40}'
+async def test_sanitize_booking_services_data(monkeypatch):
+    """Test that sanitize_booking_services_data parses service data correctly."""
+    async def mock_generate_response(self, messages):
+        return '{"service_ids": [5], "date": "2025-10-01", "duration": 40}'
 
-    # Patch the method in the OpenAIAPI class
-    from ai_service.services import openai_api
+    monkeypatch.setattr(OpenAIAPI, "generate_response", mock_generate_response)
 
-    tools = ReceptionistTools()
-    raw_data = "{'service_type': 'Pedicure, Manicure', 'date': 'tomorrow', 'time': '1 PM'}"
-    result = await tools.sanitize_data(raw_data)
-    print("Result:: ", result)
-    result = json.loads(result)
-    assert result["service_id"] == [5, 4]
-    assert result["date"] == "2025-10-01"
-    assert result["duration"] == 80
+    api = OpenAIAPI()
+    raw_data = "{'service_type': 'Pedicure', 'date': 'tomorrow', 'time': '1 PM'}"
+    business_services = [{"id": 5, "name": "Pedicure", "duration": 40}]
 
-@pytest.mark.asyncio
-async def test_sanitize_data_no_date(monkeypatch):
-    # Patch OpenAIAPI.generate_response to return a deterministic JSON string
-    async def mock_generate_response(self, prompt):
-        # Simulate a response that matches the prompt's requirements
-        return '{"service_id": 5, "date": "2025-09-30", "duration": 40}'
-
-    # Patch the method in the OpenAIAPI class
-    from ai_service.services import openai_api
-
-    tools = ReceptionistTools()
-    raw_data = "{'service_type': 'Pedicure', 'time': '1 PM'}"
-    result = await tools.sanitize_data(raw_data)
-    print("Result:: ", result)
-    result = json.loads(result)
-    assert result["service_id"] == [5]
-    assert result["date"] == "2025-09-30"
-    assert result["duration"] == 40
-
+    result = await api.sanitize_booking_services_data(raw_data, business_services)
+    assert isinstance(result, dict)

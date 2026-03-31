@@ -188,7 +188,7 @@ class TwilioHandler:
                     pass
 
                 elif event_type == "history_added":
-                    self._handle_history_event(event)
+                    await self._handle_history_event(event)
 
                 elif event_type == "agent_end":
                     logger.info("Agent ended session")
@@ -251,8 +251,8 @@ class TwilioHandler:
         self._pending_marks.clear()
         logger.debug("Cleared Twilio audio buffer (interruption)")
 
-    def _handle_history_event(self, event) -> None:
-        """Track conversation transcript from history_added events."""
+    async def _handle_history_event(self, event) -> None:
+        """Track conversation transcript and save to database."""
         item = event.item
         timestamp = datetime.now().isoformat()
 
@@ -279,3 +279,11 @@ class TwilioHandler:
                     }
                 )
                 logger.debug(f"Transcript [{speaker}]: {text[:80]}...")
+
+                # Save to database
+                db_role = "user" if role == "user" else "assistant"
+                await CallSessionService.save_message(
+                    call_sid=self._call_sid,
+                    role=db_role,
+                    content=text,
+                )

@@ -7,7 +7,13 @@ from asgiref.sync import sync_to_async
 from django.utils import timezone
 
 from ai_service.services.openai_api import OpenAIAPI
-from receptionist.models import AIConfiguration, AIConfigurationStatus, CallSession, SystemLog
+from receptionist.models import (
+    AIConfiguration,
+    AIConfigurationStatus,
+    CallSession,
+    ConversationMessage,
+    SystemLog,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +58,31 @@ class CallSessionService:
                 logger.error(f"Failed to analyze conversation for {call_sid}: {e}")
 
         await CallSession.objects.filter(call_sid=call_sid).aupdate(**update_kwargs)
+
+    @staticmethod
+    async def save_message(
+        call_sid: str,
+        role: str,
+        content: str,
+    ) -> None:
+        """Save a conversation message to the database.
+
+        Args:
+            call_sid: The call session ID.
+            role: Message role — 'user' or 'assistant'.
+            content: The message text.
+        """
+        try:
+            call = await CallSession.objects.aget(call_sid=call_sid)
+            await ConversationMessage.objects.acreate(
+                call=call,
+                role=role,
+                content=content,
+            )
+        except CallSession.DoesNotExist:
+            logger.warning(f"Cannot save message: CallSession {call_sid} not found")
+        except Exception as e:
+            logger.error(f"Failed to save conversation message for {call_sid}: {e}")
 
     @staticmethod
     async def create_system_log(

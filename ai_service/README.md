@@ -23,11 +23,16 @@ ai_service/
   config.py                  # Pydantic Settings (env vars)
 
   agents/
-    receptionist.py          # RealtimeAgent factory (per-business)
+    receptionist.py          # Triage agent with handoffs (per-business)
+    faq_agent.py             # FAQ sub-agent (business info, services)
+    booking_agent.py         # Booking sub-agent (availability, appointments)
+    customer_agent.py        # Customer sub-agent (lookup, registration)
 
   tools/
     context.py               # CallContext dataclass (per-call state)
-    booking_tools.py         # 7 @function_tool functions
+    faq_tools.py             # get_business_information, get_service_information
+    booking_tools.py         # check_availability, book/look_up/cancel_appointment
+    customer_tools.py        # get_customer_information
 
   handlers/
     twilio_handler.py        # Twilio <-> OpenAI audio bridge
@@ -69,10 +74,11 @@ TwilioHandler (handlers/twilio_handler.py)
     - Buffer flush loop: sends buffered audio to OpenAI every 20ms
     - Realtime event loop: forwards OpenAI audio back to Twilio
 
-Tool Calls (automatic via SDK)
-  - OpenAI requests a tool call -> SDK dispatches to @function_tool
-  - Tool receives RunContextWrapper[CallContext] with booking service
-  - Result returned to OpenAI -> AI generates voice response
+Multi-Agent Handoffs
+  - Receptionist (triage) determines caller intent
+  - Hands off to FAQ Agent, Booking Agent, or Customer Agent
+  - Sub-agents can hand off to each other as needed
+  - SDK auto-dispatches @function_tool calls per active agent
 
 Call End
   - Twilio sends "stop" event
@@ -80,19 +86,29 @@ Call End
   - CallSession record updated in database
 ```
 
-## Available Tools
+## Agents & Tools
 
-All tools are defined in `tools/booking_tools.py` using `@function_tool`:
+### Receptionist (triage)
+No tools — routes callers to the right sub-agent via handoffs.
 
+### FAQ Agent (`tools/faq_tools.py`)
 | Tool | Description |
 |------|-------------|
 | `get_business_information` | Business hours, contact, location |
 | `get_service_information` | All active salon services |
+
+### Booking Agent (`tools/booking_tools.py`)
+| Tool | Description |
+|------|-------------|
 | `check_availability` | Available time slots for a date/service |
-| `get_customer_information` | Look up or create customer by phone |
 | `book_appointment` | Book an appointment |
 | `look_up_appointment` | Find appointments by phone/date |
 | `cancel_appointment` | Cancel an appointment |
+
+### Customer Agent (`tools/customer_tools.py`)
+| Tool | Description |
+|------|-------------|
+| `get_customer_information` | Look up or create customer by phone |
 
 ## Configuration
 
@@ -118,7 +134,7 @@ Each business has an `AIConfiguration` record in Django with:
 
 ## Adding New Tools
 
-1. Add an async function in `tools/booking_tools.py`:
+1. Add an async function in the appropriate tools file (`faq_tools.py`, `booking_tools.py`, or `customer_tools.py`):
 
 ```python
 @function_tool
@@ -137,7 +153,9 @@ async def my_new_tool(
     return json.dumps(result, default=str)
 ```
 
-2. Add it to the `ALL_BOOKING_TOOLS` list at the bottom of the file.
+2. Add it to the corresponding tools list (`FAQ_TOOLS`, `BOOKING_TOOLS`, or `CUSTOMER_TOOLS`).
+
+3. To add a new sub-agent, create `agents/my_agent.py` with a `RealtimeAgent`, then add a `realtime_handoff()` to it in `agents/receptionist.py`.
 
 The SDK auto-generates the JSON schema from type hints and docstrings. No manual schema definition needed.
 

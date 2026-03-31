@@ -1,13 +1,12 @@
 """Business booking service layer that handles all booking-related operations."""
 from typing import Dict, Any, List, Optional
-from ai_service.services.openai_api import OpenAIAPI
 from business.models import Business, OperatingHours, BusinessSettings
 from service.models import Service, ServiceCategory
 from client.models import Client
 from appointment.models import Appointment, AppointmentService, AppointmentStatusType, BookingSourceType
 from staff.models import Staff, StaffService, StaffWorkingHours, StaffOffDay
 from django.utils import timezone
-from django.db import transaction
+from django.db import transaction, models
 from asgiref.sync import sync_to_async
 from datetime import datetime, timedelta, time
 import json
@@ -16,7 +15,6 @@ from appointment.serializers import AppointmentDetailSerializer
 from business.serializers import BusinessSerializer
 from service.serializers import ServiceSerializer
 from client.serializers import ClientSerializer
-
 from logging import getLogger
 logger = getLogger(__name__)
 
@@ -27,13 +25,11 @@ class BusinessBookingService:
     def __init__(self, business_id: int):
         """
         Initialize the business booking service.
-        
+
         Args:
             business_id: ID of the business this service operates for
         """
-        self._openai_api = OpenAIAPI()
         self.business_id = business_id
-        # Business will be loaded when needed in async methods
 
     @sync_to_async
     def _get_business(self):
@@ -134,44 +130,81 @@ class BusinessBookingService:
         return await self._get_services_sync()
 
     async def check_availability(
-        self, 
-        date: str, 
-        time: str = "any", 
+        self,
+        date: str,
+        time: str = "any",
         service_type: str = None
     ) -> Dict[str, Any]:
         """
         Check availability for booking.
-        
+
+        Looks up services by name via ORM, sums their durations,
+        then queries available time slots.
+
         Args:
-            date: Date for the appointment
+            date: Date for the appointment (YYYY-MM-DD)
             time: Preferred time (default: "any")
-            service_type: Type of service
-            
+            service_type: Service name or keyword to search for
+
         Returns:
             Dictionary containing available time slots
         """
-        print("Checking availability...")
-        print(f"Date: {date}, Time: {time}, Service type: {service_type}")
+        logger.info(f"Checking availability: date={date}, time={time}, service_type={service_type}")
 
-        # Prepare raw data for sanitization
-        raw_data = f"{{ 'service_type': '{service_type}', 'date': '{date}', 'time': '{time}' }}"
-        print(f"Raw data: {raw_data}")
+        service_ids, total_duration = await self._resolve_services(service_type)
 
-        # Sanitize the booking data using AI
-        business_services_data = await self._get_services_sync()
-        sanitized_data = await self._openai_api.sanitize_booking_services_data(raw_data, business_services_data)
-        print(f"Sanitized data: {sanitized_data}")
+        if not service_ids:
+            return {'available_slots': [], 'error': f'No services found matching: {service_type}'}
 
-        # Check availability with sanitized data
         availability_data = await self._check_availability_sync(
-            booking_date=sanitized_data.get("date"),
-            service_duration=sanitized_data.get("duration"),
-            service_ids=sanitized_data.get("service_ids"),
-            preferred_time=time
+            booking_date=date,
+            service_duration=total_duration,
+            service_ids=service_ids,
+            preferred_time=time,
         )
-        
-        print(f"Check availability data: {json.dumps(availability_data, indent=4, default=str)}")
+
+        logger.info(f"Found {availability_data.get('total_slots', 0)} available slots")
         return availability_data
+
+    @sync_to_async
+    def _resolve_services(self, service_type: str) -> tuple[List[int], int]:
+        """
+        Look up services by name/description and return their IDs and total duration.
+
+        Args:
+            service_type: Service name or keyword to search for
+
+        Returns:
+            Tuple of (service_ids, total_duration_minutes)
+        """
+        if not service_type:
+            return [], 0
+
+        services = Service.objects.filter(
+            business_id=self.business_id,
+            is_active=True,
+        ).filter(
+            models.Q(name__icontains=service_type)
+            | models.Q(description__icontains=service_type)
+        )
+
+        # first service
+        service = services.first()
+        if service:
+            service_ids = [service.id]
+            total_duration = service.duration_minutes
+        else:
+            service_ids = []
+            total_duration = 0
+
+        # service_ids = list(services.values_list('id', flat=True))
+        # total_duration = sum(s.duration_minutes or 0 for s in services)
+        
+        # # return the first service id
+        # service_ids = [service_ids[0]]
+
+        logger.info(f"Resolved '{service_type}' -> ids={service_ids}, duration={total_duration}min")
+        return service_ids, total_duration
 
     def _get_staff_name(self, staff_id: int) -> str:
         """
@@ -252,7 +285,7 @@ class BusinessBookingService:
             }
             
         except Exception as e:
-            print(f"Error checking availability: {str(e)}")
+            logger.error(f"Error checking availability: {e}")
             return {'available_slots': [], 'error': str(e)}
 
     @sync_to_async
@@ -333,12 +366,7 @@ class BusinessBookingService:
         Returns:
             Dictionary containing booking confirmation details
         """
-        print("====================Booking appointment...====================")
-        print(f"Phone number: {phone_number}")
-        print(f"Name: {name}")
-        print(f"Date: {date}")
-        print(f"Service IDs: {service_ids}")
-        print(f"Time slot: {available_time_slot}")
+        logger.info(f"====================Booking appointment: phone={phone_number}, name={name}, date={date}, services={service_ids}====================")
 
         # Use service to find client
         service = AppointmentBusinessBookingService(self.business_id)
@@ -383,7 +411,7 @@ class BusinessBookingService:
                 end_at=available_time_slot.get('end_at')
             )
 
-        print(f"Booking created: Appointment ID {appointment.id}")
+        logger.info(f"Booking created: Appointment ID {appointment.id}")
     
         return self._serialize_appointment(appointment)
 
@@ -430,9 +458,7 @@ class BusinessBookingService:
         Returns:
             List of appointments
         """
-        print("====================Looking up appointment...====================")
-        print(f"Phone number: {phone_number}")
-        print(f"Date: {date}")
+        logger.info(f"Looking up appointments: phone={phone_number}, date={date}")
 
         # Build query
         query = Appointment.objects.filter(
@@ -452,7 +478,7 @@ class BusinessBookingService:
                 pass  # Invalid date format, ignore filter
         
         appointments = list(query)
-        print(f"Found {len(appointments)} appointments")
+        logger.info(f"Found {len(appointments)} appointments")
         
         return [self._serialize_appointment(apt) for apt in appointments]
 
@@ -497,8 +523,7 @@ class BusinessBookingService:
         Returns:
             Dictionary containing cancellation confirmation
         """
-        print("====================Cancelling appointment...====================")
-        print(f"Appointment ID: {appointment_id}, Phone: {phone_number}")
+        logger.info(f"Cancelling appointment: id={appointment_id}, phone={phone_number}")
         
         try:
             # Find client using service
@@ -520,7 +545,7 @@ class BusinessBookingService:
                     'message': 'Appointment not found or already cancelled'
                 }
             
-            print(f"Appointment {appointment_id} cancelled successfully")
+            logger.info(f"Appointment {appointment_id} cancelled successfully")
             
             return {
                 'success': True,
@@ -529,7 +554,7 @@ class BusinessBookingService:
             }
             
         except Exception as e:
-            print(f"Error canceling appointment: {str(e)}")
+            logger.error(f"Error canceling appointment: {e}")
             return {
                 'success': False,
                 'message': f'Error: {str(e)}'

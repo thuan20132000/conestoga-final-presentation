@@ -1,4 +1,4 @@
-"""Booking tools for the AI receptionist agent, using @function_tool decorator."""
+"""Booking tools for appointment management."""
 
 import json
 import logging
@@ -10,6 +10,8 @@ from agents.run_context import RunContextWrapper
 
 from ai_service.tools.context import CallContext
 
+logger = logging.getLogger(__name__)
+
 
 class TimeSlot(BaseModel):
     """An available time slot for booking."""
@@ -18,32 +20,6 @@ class TimeSlot(BaseModel):
     end_at: str
     duration: int
     employee_id: int
-
-logger = logging.getLogger(__name__)
-
-
-@function_tool
-async def get_business_information(
-    ctx: RunContextWrapper[CallContext],
-    info_type: str,
-) -> str:
-    """Get comprehensive business information including hours, contact details,
-    location, and general information.
-
-    Args:
-        info_type: Type of information requested. One of: general, contact, location, all.
-    """
-    data = await ctx.context.booking_service.get_business_information(info_type)
-    return json.dumps(data, default=str)
-
-
-@function_tool
-async def get_service_information(
-    ctx: RunContextWrapper[CallContext],
-) -> str:
-    """Get detailed information about all available salon services and packages."""
-    data = await ctx.context.booking_service.get_service_information()
-    return json.dumps(data, default=str)
 
 
 @function_tool
@@ -62,26 +38,6 @@ async def check_availability(
     """
     data = await ctx.context.booking_service.check_availability(
         date=date, time=time, service_type=service_type
-    )
-    return json.dumps(data, default=str)
-
-
-@function_tool
-async def get_customer_information(
-    ctx: RunContextWrapper[CallContext],
-    customer_phone: str,
-    customer_name: Optional[str] = None,
-) -> str:
-    """Get information about a specific customer by phone number.
-    Creates a new customer record if not found.
-
-    Args:
-        customer_phone: Phone number of the customer.
-        customer_name: Name of the customer (used if creating new record).
-    """
-    data = await ctx.context.booking_service.get_or_create_customer(
-        phone_number=customer_phone,
-        customer_name=customer_name or "Unknown",
     )
     return json.dumps(data, default=str)
 
@@ -108,7 +64,7 @@ async def book_appointment(
         available_time_slot: Time slot object with start_at, end_at, duration, and employee_id.
         service_type: Type of service to book (optional).
     """
-    logger.info(f"Booking appointment: {name}, {phone_number}, {service_ids}, {date}")
+    print(f"1. ====================Booking appointment: {name}, {phone_number}, {service_ids}, {date}, {available_time_slot}====================")
     data = await ctx.context.booking_service.book_appointment(
         phone_number=phone_number,
         name=name,
@@ -117,6 +73,7 @@ async def book_appointment(
         available_time_slot=available_time_slot.model_dump(),
         notes="",
     )
+    print(f"2. ====================Booking appointment data: {data}====================")
     return json.dumps(data, default=str)
 
 
@@ -169,11 +126,8 @@ async def cancel_appointment(
     return json.dumps(data, default=str)
 
 
-ALL_BOOKING_TOOLS = [
-    get_business_information,
-    get_service_information,
+BOOKING_TOOLS = [
     check_availability,
-    get_customer_information,
     book_appointment,
     look_up_appointment,
     cancel_appointment,

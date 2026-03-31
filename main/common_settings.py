@@ -18,13 +18,16 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "main.middleware.language.PreferredLanguageFallbackMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "main.middleware.TimezoneMiddleware",
+    "main.middleware.request.RequestMiddleware",
+    "main.middleware.signature.SignatureVerificationMiddleware",
 ]
 
 ROOT_URLCONF = "main.urls"
@@ -104,6 +107,13 @@ AUTH_USER_MODEL = "staff.Staff"
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
+LANGUAGES = [
+    ("en", "English"),
+    ("vi", "Vietnamese"),
+]
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
 
 TIME_ZONE = "America/Toronto"
 
@@ -122,6 +132,8 @@ AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
 AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
+SIGNATURE_SECRET_KEY = config("SIGNATURE_SECRET_KEY")
 
 
 STATICFILES_LOCATION = "static"
@@ -247,6 +259,11 @@ CORS_ALLOW_HEADERS = [
     "X-Forwarded-Server",
     "X-Forwarded-Port",
     "X-Forwarded-Proto",
+    "X-API-KEY",
+    "X-SIGNATURE",
+    "X-TIMESTAMP",
+    "X-Business-Id",
+    "X-Client-Id",
 ]
 # Notification provider settings (placeholders)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@bookngon.com")
@@ -275,7 +292,7 @@ STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
 AWS_REGION = config('AWS_REGION')
 AWS_LAMBDA_SEND_SMS_ARN = config('AWS_LAMBDA_SEND_SMS_ARN')
 AWS_SCHEDULER_POLICY_ARN = config('AWS_SCHEDULER_POLICY_ARN')
-
+AWS_LAMBDA_SEND_EMAIL_ARN = config('AWS_LAMBDA_SEND_EMAIL_ARN')
 
 # WebPush Configuration
 VAPID_PRIVATE_KEY = config('VAPID_PRIVATE_KEY', default="")
@@ -293,3 +310,6 @@ WEBPUSH_SETTINGS = {
 ONLINE_BOOKING_URL = config('ONLINE_BOOKING_URL', default='http://127.0.0.1:3000')
 
 CALENDAR_LOGIN_URL = config('CALENDAR_LOGIN_URL', default='http://127.0.0.1:3001')
+
+# Google OAuth (for client login)
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')

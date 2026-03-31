@@ -10,9 +10,9 @@ from main.viewsets import BaseViewSet
 from .serializers import PushInformationSerializer, PushGroupSerializer, PushSubscriptionSerializer
 from main.viewsets import BaseModelViewSet
 from django_filters import rest_framework as filters
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from rest_framework.pagination import PageNumberPagination
-
+from main.utils import get_business_managers_group_name
 dispatcher = NotificationDispatcher()
 
 
@@ -26,7 +26,7 @@ class NotificationViewSet(BaseModelViewSet):
     serializer_class = NotificationSerializer
     filterset_class = NotificationFilter
     search_fields = ["to", "title", "body"]
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     pagination_class = PageNumberPagination
     page_size = 100
     page_size_query_param = "page_size"
@@ -59,7 +59,7 @@ class SMSNotificationFilter(filters.FilterSet):
 class SMSNotificationViewSet(BaseModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     filterset_class = SMSNotificationFilter
     search_fields = ["to", "title", "body"]
     pagination_class = PageNumberPagination
@@ -79,7 +79,7 @@ class SMSNotificationViewSet(BaseModelViewSet):
         page = self.paginate_queryset(queryset)
         
         total_sms_notifications = queryset.count()
-        PER_SMS_COST = 0.0083 * 2 # 2 SMS per notification
+        PER_SMS_COST = 0.03 # 1 SMS per notification
         total_sms_cost = total_sms_notifications * PER_SMS_COST
         metadata = {
             "total_notifications": total_sms_notifications,
@@ -119,13 +119,26 @@ class WebPushViewSet(BaseViewSet):
                     "user_agent": request.data.get("user_agent"),
                 }
             )
-           
+         
+            user = request.user
+            business = user.business
+          
             if created:
-                push_information = PushInformation.objects.create(
-                    subscription=subscription,
-                    user=request.user,
-                    group_id=request.data.get("group",None),
-                )
+                if not business:
+                    return self.response_error("User is not associated with a business")
+                
+                if user.role.is_managers():
+                    group = Group.objects.filter(name=get_business_managers_group_name(business.id)).first()
+                    push_information = PushInformation.objects.create(
+                        subscription=subscription,
+                        user=user,
+                        group=group,
+                    )
+                else:
+                    push_information = PushInformation.objects.create(
+                        subscription=subscription,
+                        user=user,
+                    )
             else:
                 push_information = PushInformation.objects.filter(subscription=subscription).first()
                 
@@ -140,7 +153,6 @@ class WebPushViewSet(BaseViewSet):
         try:
             endpoint = request.data.get("endpoint")
             subscription = SubscriptionInfo.objects.filter(endpoint=endpoint).first()
-            print("================= WebPush Unsubscribe subscription:: ", subscription)
             if subscription:
                 PushInformation.objects.filter(subscription=subscription).delete()
                 subscription.delete()

@@ -66,10 +66,7 @@ class PaymentAdmin(admin.ModelAdmin):
         'payment_id', 'client', 'business', 'appointment', 'amount', 'currency',
         'payment_method', 'status', 'transaction_type', 'created_at', 'completed_at'
     ]
-    list_filter = [
-        'status', 'transaction_type', 'currency', 'business', 'payment_method__payment_type',
-        'created_at', 'completed_at'
-    ]
+    list_filter = ['business']
     search_fields = [
         'payment_id', 'client__name', 'client__email', 'external_transaction_id', 'appointment__service__name'
     ]

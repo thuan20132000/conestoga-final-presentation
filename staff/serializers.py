@@ -1,12 +1,13 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
-from business.serializers import BusinessSettingsSerializer, BusinessSerializer, BusinessDetailSerializer
+from django.utils.translation import gettext_lazy as _
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
+from business.serializers import BusinessSettingsSerializer, BusinessSerializer
 
 
 class StaffServiceSerializer(serializers.ModelSerializer):
     """Serializer for StaffService model"""
-    service_name = serializers.SerializerMethodField()
+    service_name = serializers.CharField(source='service.name', read_only=True)
     service_duration = serializers.IntegerField(source='service.duration_minutes', read_only=True)
     service_price = serializers.DecimalField(source='service.price', read_only=True, max_digits=10, decimal_places=2)
     service_category_name = serializers.CharField(source='service.category.name', read_only=True)
@@ -33,13 +34,6 @@ class StaffServiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at']
     
-    def get_service_name(self, obj):
-        try:
-            from service.models import Service
-            service = Service.objects.get(id=obj.service_id)
-            return service.name
-        except:
-            return f"Service {obj.service_id}"
 
 
 class StaffSerializer(serializers.ModelSerializer):
@@ -62,7 +56,8 @@ class StaffSerializer(serializers.ModelSerializer):
             'created_at', 
             'updated_at', 
             'business_id', 
-            'is_deleted'
+            'is_deleted',
+            'commission_rate',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -73,12 +68,19 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = [
-            'first_name', 'last_name', 'email', 'phone', 'role',
+            'first_name', 
+            'last_name', 
+            'email', 
+            'phone', 
+            'role',
             'is_active',
             'is_online_booking_allowed',
             'is_payment_processing_allowed',
-            'hire_date', 'bio', 'photo',
+            'hire_date', 
+            'bio', 
+            'photo',
             'business',
+            'commission_rate',
         ]
     
     def validate_email(self, value):
@@ -88,17 +90,25 @@ class StaffCreateUpdateSerializer(serializers.ModelSerializer):
                 business=business, email=value
             ).exclude(pk=self.instance.pk if self.instance else None).exists():
                 raise serializers.ValidationError(
-                    "A staff member with this email already exists for this business."
+                    _("A staff member with this email already exists for this business.")
                 )
         return value
 
 class StaffWorkingHoursSerializer(serializers.ModelSerializer):
     """Serializer for StaffWorkingHours model"""
     day_name = serializers.CharField(source='get_day_of_week_display', read_only=True)
+    is_override = serializers.BooleanField(default=False)
     class Meta:
         model = StaffWorkingHours
         fields = '__all__'
-
+        
+class StaffWorkingHoursOverrideSerializer(serializers.ModelSerializer):
+    """Serializer for StaffWorkingHoursOverride model"""
+    is_override = serializers.BooleanField(default=True)
+    class Meta:
+        model = StaffWorkingHoursOverride
+        fields = ['id', 'date', 'start_time', 'end_time', 'is_working', 'reason', 'is_override', 'staff']
+        
 class StaffWorkingHoursCreateUpdateSerializer(serializers.ModelSerializer):
     """Serializer for creating and updating staff working hours"""
     class Meta:
@@ -125,16 +135,30 @@ class StaffCalendarSerializer(StaffSerializer):
     class Meta:
         model = Staff
         fields = StaffSerializer.Meta.fields + ['working_hours', 'is_off_day']
-        
+
     def get_working_hours(self, obj):
         """Get working hours for staff"""
         try:    
+            appointment_date = self.context.get('appointment_date')
             weekday = self.context.get('weekday')
+            
+            # Check if there is an override for the appointment date
+            override = obj.working_hours_overrides.filter(date=appointment_date).first()
+            
+            if override:
+                return StaffWorkingHoursOverrideSerializer(override).data
+            
+            # Check if the staff is working on the appointment date
             working_hours = obj.working_hours.filter(day_of_week=weekday).first()
-            return StaffWorkingHoursSerializer(working_hours).data
+            
+            if working_hours:
+                return StaffWorkingHoursSerializer(working_hours).data
+            else:
+                return None
+        
         except Exception as e:
             return None
-    
+        
     def get_is_off_day(self, obj):
         """Get if staff is off day"""
         try:
@@ -155,12 +179,12 @@ class LoginSerializer(serializers.Serializer):
         if username and password:
             user = authenticate(username=username, password=password)
             if not user:
-                raise serializers.ValidationError('Unable to log in with provided credentials.')
+                raise serializers.ValidationError(_('Unable to log in with provided credentials.'))
             if not user.is_active:
-                raise serializers.ValidationError('User account is disabled.')
+                raise serializers.ValidationError(_('User account is disabled.'))
             attrs['user'] = user
         else:
-            raise serializers.ValidationError('Must include "username" and "password".')
+            raise serializers.ValidationError(_('Must include "username" and "password".'))
         
         return attrs
 
@@ -203,14 +227,14 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         """Validate that email is unique"""
         if Staff.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with this email already exists.")
+            raise serializers.ValidationError(_("A user with this email already exists."))
         return value
     
     def validate(self, attrs):
         """Validate that passwords match"""
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({
-                'password_confirm': "Password fields didn't match."
+                'password_confirm': _("Password fields didn't match.")
             })
         return attrs
     
@@ -265,7 +289,6 @@ class UserProfileSerializer(StaffSerializer):
             'photo',
             'created_at', 
             'updated_at',
-            'business',
             'business_settings',
         ]
         read_only_fields = ['id', 'username', 'created_at', 'updated_at']
@@ -284,7 +307,7 @@ class UserProfileSerializer(StaffSerializer):
     def get_business_settings(self, obj):
         """Get business settings"""
         try:
-            if obj.role.name in ['Owner', 'Manager']:
+            if obj.role.name in ['Owner', 'Manager','Receptionist']:
                 return BusinessSettingsSerializer(obj.business.settings).data
             else:
                 return None
@@ -304,9 +327,27 @@ class BusinessBookingStaffSerializer(serializers.ModelSerializer):
 
 class TimeEntryPartialUpdateSerializer(serializers.ModelSerializer):
     """Serializer for partial update time entry"""
+    
+    clock_in = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+    )
+    
+    clock_out = serializers.DateTimeField(
+        required=False,
+        allow_null=True,
+    )
+    
     class Meta:
         model = TimeEntry
         fields = ['clock_out', 'clock_in']
+        read_only_fields = ['total_minutes', 'overtime_minutes']
+
+class TimeEntryCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating time entry"""
+    class Meta:
+        model = TimeEntry
+        fields = ['staff', 'clock_in', 'clock_out']
         read_only_fields = ['total_minutes', 'overtime_minutes']
 
 class TimeEntrySerializer(serializers.ModelSerializer):

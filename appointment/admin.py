@@ -30,7 +30,7 @@ class AppointmentAdmin(SimpleHistoryAdmin):
     list_select_related = ['client', 'business']
     readonly_fields = ['created_at', 'updated_at']
     fieldsets = [
-        (None, {'fields': ['client', 'business', 'appointment_date', 'status', 'booked_by', 'booking_source', 'created_at', 'updated_at', 'is_active']}),
+        (None, {'fields': ['client', 'business', 'appointment_date', 'status', 'booked_by', 'booking_source', 'created_at', 'updated_at', 'is_active', 'metadata']}),
     ]
     inlines = [AppointmentServiceInlineAdmin]
     

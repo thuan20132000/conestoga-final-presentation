@@ -1,6 +1,5 @@
 from payment.models import Payment, PaymentStatusType
 from django.db import transaction
-from django.db.transaction import atomic
 from django.db import transaction
 from typing import TypedDict, Optional, Any
 from payment.models import PaymentMethod, PaymentDiscount
@@ -9,9 +8,9 @@ from django.utils import timezone
 from business.models import Business
 from django.db.models import Sum, Count
 from datetime import datetime
-from client.models import Client
 from gift.models import GiftCardTransaction
 from gift.services import GiftCardService
+from notifications.services import EmailService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -108,6 +107,43 @@ class PaymentService:
     def update_payment(self, payment: Payment) -> Payment:
         payment.save()
         return payment
+
+    def send_receipt(self, payment: Payment, custom_email: str = None) -> bool:
+        client = payment.appointment.client
+        if not client or not client.email and not custom_email:
+            return False
+        appointment = payment.appointment
+        services = []
+        if appointment:
+            for appt_service in appointment.appointment_services.select_related('service', 'staff').all():
+                services.append({
+                    'service_name': appt_service.service.name if appt_service.service else 'Service',
+                    'staff_name': appt_service.staff.get_full_name() if appt_service.staff else '',
+                    'price': appt_service.custom_price or (appt_service.service.price if appt_service.service else 0),
+                })
+
+        context = {
+            'client_name': f"{client.first_name} {client.last_name or ''}".strip(),
+            'business_name': payment.business.name if payment.business else '',
+            'appointment_date': appointment.appointment_date.strftime('%B %d, %Y') if appointment and appointment.appointment_date else '',
+            'payment_method_name': payment.payment_method.name if payment.payment_method else payment.payment_method_type,
+            'payment_id': str(payment.payment_id),
+            'services': services,
+            'total': payment.amount,
+            'currency': payment.currency,
+            'processing_fee': payment.processing_fee,
+            'business_phone': payment.business.phone_number if payment.business else '',
+            'business_address': payment.business.address if payment.business else '',
+        }
+
+        print("context:: ", context)
+        EmailService().send_async(
+            subject=f"Your receipt from {context['business_name']}",
+            to_email=custom_email or client.email,
+            template='emails/payment_receipt.html',
+            context=context,
+        )
+        return True
 
     def get_payment(self, payment_id: int) -> Payment:
         return Payment.objects.get(id=payment_id)
@@ -336,6 +372,7 @@ class POSPaymentService:
                 # update appointment services
                 if appointment_services:
                     for appointment_service in appointment_services:
+                        custom_price = appointment_service['custom_price'] or appointment_service['service_price']
                         appointment_service_obj, created = AppointmentService.objects.update_or_create(
                             id=appointment_service['id'],
                             appointment_id=appointment.id,
@@ -345,7 +382,7 @@ class POSPaymentService:
                                 'is_staff_request': appointment_service['is_staff_request'],
                                 'start_at': appointment_service['start_at'],
                                 'end_at': appointment_service['end_at'],
-                                'custom_price': appointment_service['custom_price'] or 0,
+                                'custom_price': custom_price,
                                 'tip_amount': appointment_service['tip_amount'] or 0,
                                 'appointment_id': appointment.id,
                                 'metadata': metadata,

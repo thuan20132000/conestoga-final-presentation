@@ -30,5 +30,7 @@ urlpatterns = [
     path('api/', include('review.urls')),
     path('api/', include('gift.urls')),
     path('api/', include('notifications.urls')),
+    path('api/subscription/', include('subscription.urls')),
+    path('api/', include('turn.urls')),
     path('webhooks/stripe/', StripeWebhookAPIView.as_view(), name='stripe_webhook'),
 ]

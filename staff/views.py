@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import authenticate
-from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry
+from .models import Staff, StaffService, StaffWorkingHours, StaffOffDay, TimeEntry, StaffWorkingHoursOverride
 from .serializers import (
     StaffSerializer,
     StaffCreateUpdateSerializer,
@@ -19,6 +19,8 @@ from .serializers import (
     UserProfileSerializer,
     TimeEntrySerializer,
     TimeEntryPartialUpdateSerializer,
+    StaffWorkingHoursOverrideSerializer,
+    TimeEntryCreateSerializer,
 )
 from django_filters import rest_framework as filters
 from business.serializers import BusinessRolesSerializer
@@ -26,7 +28,7 @@ from main.viewsets import BaseModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.views import TokenVerifyView
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from staff.services import TimeEntryService, StaffCredentialService
 from django.db import transaction
 from django.db.models import Sum
@@ -43,7 +45,7 @@ class StaffFilter(filters.FilterSet):
 class StaffViewSet(BaseModelViewSet):
     """ViewSet for Staff management"""
     queryset = Staff.objects.filter(is_deleted=False)
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     ordering_fields = ['created_at','updated_at','first_name','last_name']
     ordering = ['-created_at']
     
@@ -96,9 +98,7 @@ class StaffViewSet(BaseModelViewSet):
     def working_hours(self, request, pk=None):
         """Get staff working hours"""
         staff = self.get_object()
-        print("staff", staff)
         working_hours = staff.working_hours.all()
-        print("working_hours", working_hours)
         serializer = StaffWorkingHoursSerializer(working_hours, many=True)
         return self.response_success(serializer.data)
     
@@ -145,11 +145,59 @@ class StaffViewSet(BaseModelViewSet):
             return self.response_success(staff_code)
         except Exception as e:
             return self.response_error(str(e))
+        
+    @action(detail=True, methods=['post'], url_path='override-working-hours')
+    def override_working_hours(self, request, *args, **kwargs):
+        """Create or update working hours override for a specific date."""
+        try:
+            staff = self.get_object()
+            date = request.data.get('date')
+            start_time = request.data.get('start_time')
+            end_time = request.data.get('end_time')
+            reason = request.data.get('reason')
+            is_working = request.data.get('is_working', True)
+
+            if not date:
+                return self.response_error({'date': 'This field is required.'})
+
+            instance, created = StaffWorkingHoursOverride.objects.update_or_create(
+                staff=staff,
+                date=date,
+                defaults={
+                    'is_working': is_working,
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'reason': reason,
+                }
+            )
+            message = 'Working hours override created successfully' 
+            if not created:
+                message = 'Working hours override updated successfully'
                 
+            return self.response_success(
+                message=message,
+                data=StaffWorkingHoursOverrideSerializer(instance).data
+            )
+        except Exception as e:
+            return self.response_error(str(e))      
+        
+    @action(detail=True, methods=['delete'], url_path='destroy-working-hours-override')
+    def delete_working_hours_override(self, request, *args, **kwargs):
+        """Delete working hours override for a specific date."""
+        try:
+            staff = self.get_object()
+            date = request.data.get('date')
+            if not date:
+                return self.response_error({'date': 'This field is required.'})
+            
+            StaffWorkingHoursOverride.objects.filter(staff=staff, date=date).delete()
+            return self.response_success(data=None, message='Working hours override deleted successfully')
+        except Exception as e:
+            return self.response_error(str(e))
 class StaffServiceViewSet(BaseModelViewSet):
     """ViewSet for Staff services"""
     queryset = StaffService.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         return StaffServiceSerializer
@@ -168,7 +216,7 @@ class StaffServiceViewSet(BaseModelViewSet):
 class StaffWorkingHoursViewSet(BaseModelViewSet):
     """ViewSet for Staff working hours"""
     queryset = StaffWorkingHours.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -178,7 +226,7 @@ class StaffWorkingHoursViewSet(BaseModelViewSet):
 class StaffOffDayViewSet(BaseModelViewSet):
     """ViewSet for Staff off days"""
     queryset = StaffOffDay.objects.all()
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -379,11 +427,23 @@ class TimeEntryFilter(filters.FilterSet):
 class TimeEntryViewSet(BaseModelViewSet):
     """ViewSet for TimeEntry"""
     queryset = TimeEntry.objects.filter(is_deleted=False)
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     filterset_class = TimeEntryFilter
     
     def get_serializer_class(self):
         return TimeEntrySerializer
+    
+    def create(self, request, *args, **kwargs):
+        """Create time entry"""
+        try:
+            serializer = TimeEntryCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                instance = serializer.save()
+                return self.response_success(TimeEntrySerializer(instance).data)
+            else:
+                return self.response_error(serializer.errors)
+        except Exception as e:
+            return self.response_error(str(e))
     
     def partial_update(self, request, *args, **kwargs):
         """Partial update time entry"""
@@ -457,3 +517,34 @@ class TimeEntryViewSet(BaseModelViewSet):
             return self.response_success(TimeEntrySerializer(entry).data)
         except Exception as e:
             return self.response_error(str(e),message=str(e))
+    
+class StaffWorkingHoursOverrideViewSet(BaseModelViewSet):
+    """ViewSet for Staff working hours override"""
+    queryset = StaffWorkingHoursOverride.objects.all()
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
+
+    def get_queryset(self):
+        return self.queryset.filter(staff__business_id=self.request.user.business_id)
+    
+    def get_serializer_class(self):
+        return StaffWorkingHoursOverrideSerializer
+    
+    
+    def create(self, request, *args, **kwargs):
+        """Create working hours override"""
+        try:
+            serializer = StaffWorkingHoursOverrideSerializer(data={
+                'staff': request.data.get('staff_id'),
+                'date': request.data.get('date'),
+                'start_time': request.data.get('start_time'),
+                'end_time': request.data.get('end_time'),
+                'is_working': request.data.get('is_working', True),
+                'reason': request.data.get('reason'),
+            })
+            if serializer.is_valid():
+                instance = serializer.save()
+                return self.response_success(StaffWorkingHoursOverrideSerializer(instance).data)
+            else:
+                return self.response_error(serializer.errors)
+        except Exception as e:
+            return self.response_error(str(e))

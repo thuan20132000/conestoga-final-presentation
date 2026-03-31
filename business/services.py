@@ -12,6 +12,8 @@ from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
 import csv
 from main.common_settings import ONLINE_BOOKING_URL
+from staff.services import StaffCredentialService
+from subscription.models import BusinessSubscription, SubscriptionStatus, SubscriptionPlan
 
 
 class BusinessInitializerService:
@@ -46,9 +48,9 @@ class BusinessInitializerService:
             buffer_time_minutes=0,
             send_reminder_emails=True,
             send_reminder_sms=False,
-            reminder_hours_before=24,
+            reminder_hours_before=2,
             send_confirmation_sms=False,
-            currency='CAD',
+            currency="CAD",
             tax_rate=0.13,
             require_payment_advance=False,
             allow_online_booking=True,
@@ -61,16 +63,20 @@ class BusinessInitializerService:
         """Create default business roles"""
         defaults_roles = [
             {
-                'name': 'Technician',
-                'description': 'Technician of the business',
+                "name": "Technician",
+                "description": "Technician of the business",
             },
             {
-                'name': 'Manager',
-                'description': 'Manager of the business',
+                "name": "Manager",
+                "description": "Manager of the business",
             },
             {
-                'name': 'Receptionist',
-                'description': 'Receptionist of the business',
+                "name": "Receptionist",
+                "description": "Receptionist of the business",
+            },
+            {
+                "name": "Owner",
+                "description": "Owner of the business",
             },
         ]
         for role in defaults_roles:
@@ -89,9 +95,30 @@ class BusinessInitializerService:
                 'role': technician_role,
             },
             {
-                'first_name': 'Jane',
-                'last_name': 'Tran',
-                'email': 'jane.tran@example.com',
+                'first_name': 'Tony',
+                'last_name': 'Le',
+                'email': 'tony.le@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Chris',
+                'last_name': 'Pham',
+                'email': 'chris.pham@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Diana',
+                'last_name': 'Le',
+                'email': 'diana.le@example.com',
+                'phone': '1234567891',
+                'role': technician_role,
+            },
+            {
+                'first_name': 'Eric',
+                'last_name': 'Vu',
+                'email': 'eric.vu@example.com',
                 'phone': '1234567891',
                 'role': technician_role,
             },
@@ -99,7 +126,7 @@ class BusinessInitializerService:
         for staff in defaults_staff:
             Staff.objects.create(business=self.business, **staff)
 
-    def _create_manager(self):
+    def _create_manager(self,):
         """Create default managers"""
         manager_role = BusinessRoles.objects.get(name='Manager', business=self.business)
         defaults_managers = {   
@@ -119,11 +146,9 @@ class BusinessInitializerService:
             OperatingHours.objects.create(
                 business=self.business,
                 day_of_week=day,
-                is_open=True if day < 5 else False,
-                open_time=time(9, 0) if day < 5 else None,
-                close_time=time(17, 0) if day < 5 else None,
-                break_start_time=time(12, 0) if day < 5 else None,
-                break_end_time=time(13, 0) if day < 5 else None,
+                is_open=True,
+                open_time=time(9, 30),
+                close_time=time(19, 30),
             )
 
     def _create_payment_methods(self):
@@ -139,7 +164,7 @@ class BusinessInitializerService:
                 'name': 'Credit Card',
                 'payment_type': 'credit_card',
                 'description': 'Credit Card payment',
-                'is_active': True,
+                'is_active': False,
             },
             {
                 'name': 'Debit Card',
@@ -151,7 +176,7 @@ class BusinessInitializerService:
                 'name': 'Online Payment',
                 'payment_type': 'online',
                 'description': 'Online payment',
-                'is_active': True,
+                'is_active': False,
             },
             {
                 'name': 'Gift Card',
@@ -185,7 +210,7 @@ class BusinessInitializerService:
             interval_minutes=self.business.settings.time_slot_interval,
             buffer_time_minutes=self.business.settings.buffer_time_minutes,
             is_active=True,
-            shareable_link=f'{ONLINE_BOOKING_URL}/booking?business_id={self.business.id}',
+            shareable_link=f'{ONLINE_BOOKING_URL}/?business_id={self.business.id}',
         )
 
     def _create_service_categories(self):
@@ -227,7 +252,7 @@ class BusinessInitializerService:
                     sort_order=row[0],
                     is_online_booking=True,
                 )
-   
+
 class BellebizBusinessInitializerService(BusinessInitializerService):
     def __init__(self, business):
         self.business = business
@@ -325,3 +350,71 @@ class BellebizBusinessInitializerService(BusinessInitializerService):
             )
 
 
+
+class BusinessRegisterService(BusinessInitializerService):
+    """Service for registering a new business"""
+    service_csv_path = "dummy/services_by_salon_2026-01-26.csv"
+    category_csv_path = "dummy/service_categories_by_salon_2026-01-26.csv"
+    
+    
+    def __init__(self, business: dict, owner: dict):
+        super().__init__(business, self.service_csv_path, self.category_csv_path)
+        self.business_data = business
+        self.owner_data = owner
+
+    def initialize(self):
+        with transaction.atomic():
+            self.business = self._create_business()
+            self._create_business_settings()
+            self._create_business_roles()
+            self._create_operating_hours()
+            self._create_payment_methods()
+            self._create_business_managers_group()
+            self._create_online_booking()
+            self._create_service_categories()
+            self._create_services()
+            self._subscribe_free_trial()
+            self._create_staff()
+            owner = self._create_owner()
+            self.owner = owner
+            return owner
+            
+            
+    def _create_business(self):
+        """Create default business"""
+        business_data = {
+            'name': self.business_data.get('name'),
+            'business_type': self.business_data.get('business_type'),
+            'phone_number': self.business_data.get('phone_number','+15550001'),
+            'email': self.business_data.get('email','info1@luxenails.com'),
+            'website': self.business_data.get('website', 'https://bookngon.com'),
+            'address': self.business_data.get('address', '456 Queen Street'),
+            'city': self.business_data.get('city', 'Toronto'),
+            'state_province': self.business_data.get('state_province', 'ON'),
+            'postal_code': self.business_data.get('postal_code', 'M5H 2M9'),
+            'country': self.business_data.get('country', 'Canada'),
+            'currency': self.business_data.get('currency', 'CAD'),
+            'description': self.business_data.get('description', 'Description of the business'),
+            'logo': self.business_data.get('logo'),
+            'google_review_url': self.business_data.get('google_review_url', 'https://www.google.com/search?q=123+Main+St+Toronto+ON'),
+            'status': self.business_data.get('status', 'active'),
+        }
+        business = Business.objects.create(**business_data)
+        return business
+            
+    def _create_owner(self):
+        """Create default owner"""
+        owner_role = BusinessRoles.objects.get(name='Owner', business=self.business)
+        owner = Staff.objects.create(business=self.business, role=owner_role, **self.owner_data)
+        
+        StaffCredentialService.create_or_reset_credentials(owner, send_sms=True)
+        return owner
+
+    def _subscribe_free_trial(self):
+        """Subscribe to free trial"""
+        subscription = BusinessSubscription.objects.create(
+            business=self.business,
+            plan=SubscriptionPlan.objects.get(name='Free Trial', is_active=True),
+            status=SubscriptionStatus.TRIALING,
+        )
+        return subscription

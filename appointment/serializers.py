@@ -1,13 +1,11 @@
 from rest_framework import serializers
 from django.utils import timezone
-from django.db.models import Q
-from datetime import datetime, timedelta
+from django.utils.translation import gettext_lazy as _
 from .models import Appointment, AppointmentService
-from client.models import Client
 from business.models import Business
 from service.models import Service
 from staff.models import Staff
-
+from payment.models import Payment
 
 class AppointmentSerializer(serializers.ModelSerializer):
     """Serializer for Appointment model"""
@@ -18,6 +16,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
     client_email = serializers.EmailField(
         source='client.email', read_only=True)
     client_phone = serializers.CharField(source='client.phone', read_only=True)
+    client_minimum_booking_duration = serializers.IntegerField(
+        source='client.minimum_booking_duration_minutes', 
+        read_only=True, 
+    )
+    client_notes = serializers.CharField(
+        source='client.notes', read_only=True)
     business_phone_number = serializers.CharField(
         source='business.phone_number', read_only=True)
     business_twilio_phone_number = serializers.CharField(
@@ -37,6 +41,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'client_name',
             'client_email',
             'client_phone',
+            'client_minimum_booking_duration',
+            'client_notes',
             'appointment_date',
             'status',
             'notes',
@@ -52,10 +58,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'cancelled_at',
             'is_active',
             'payment_status',
+            'send_review_request',
+            'checked_in_at'
+        ]
+        read_only_fields = [
+            'id', 
+            'created_at', 
+            'updated_at',
+            'checked_in_at',
+            'confirmed_at', 
+            'completed_at', 
+            'cancelled_at', 
+            'is_active', 
             'send_review_request'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at',
-                            'confirmed_at', 'completed_at', 'cancelled_at', 'is_active', 'send_review_request']
 
     def validate(self, data):
         """Validate appointment data"""
@@ -67,7 +83,7 @@ class AppointmentUpdateSerializer(AppointmentSerializer):
     class Meta:
         model = Appointment
         fields = [
-            'business', 'client', 'appointment_date', 'status', 'notes', 'internal_notes', 'booked_by', 'booking_source', 'is_active', 'metadata'
+            'business', 'client', 'appointment_date', 'status', 'notes', 'internal_notes', 'booked_by', 'booking_source', 'is_active', 'metadata', 'checked_in_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at',
                             'confirmed_at', 'completed_at', 'cancelled_at']
@@ -195,7 +211,7 @@ class AppointmentAvailabilitySerializer(serializers.Serializer):
     def validate_appointment_date(self, value):
         """Validate appointment date"""
         if value < timezone.now().date():
-            raise serializers.ValidationError("Date cannot be in the past")
+            raise serializers.ValidationError(_("Date cannot be in the past"))
         return value
 
     def validate(self, data):
@@ -212,7 +228,7 @@ class AppointmentAvailabilitySerializer(serializers.Serializer):
 
         if not operating_hours or not operating_hours.is_open:
             raise serializers.ValidationError(
-                "Business is closed on this date")
+                _("Business is closed on this date"))
 
         return data
 
@@ -232,21 +248,54 @@ class AppointmentStatsSerializer(serializers.Serializer):
     no_show_rate = serializers.DecimalField(max_digits=5, decimal_places=2)
 
 
+class AppointmentPaymentSerializer(serializers.ModelSerializer):
+    
+    payment_method_name = serializers.CharField(source='payment_method.name', read_only=True)
+    payment_method_type = serializers.CharField(source='payment_method.payment_type', read_only=True)
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 
+            'payment_method', 
+            'payment_method_name', 
+            'payment_method_type', 
+            'amount', 
+            'currency', 
+            'external_transaction_id', 
+            'processing_fee',
+            'net_amount', 'created_at',
+            'updated_at', 
+            'processed_at', 
+            'completed_at', 
+            'processed_by', 
+            'notes',
+             'internal_notes', 
+            'status'
+        ]
+        read_only_fields = ['created_at', 'updated_at'] 
+
 class AppointmentDetailSerializer(AppointmentSerializer):
     """Serializer for detail view of appointment"""
     appointment_services = AppointmentServiceSerializer(
         many=True, read_only=True)
     start_at = serializers.DateTimeField(
         source='appointment_services.first.start_at', read_only=True)
-    
+    latest_payment = serializers.SerializerMethodField()
     class Meta(AppointmentSerializer.Meta):
 
         fields = AppointmentSerializer.Meta.fields + [
             'start_at',
             'appointment_services',
+            'latest_payment'
         ]
         read_only_fields = AppointmentSerializer.Meta.read_only_fields + \
             ['start_at']
+    
+    def get_latest_payment(self, obj):
+        if obj.payments.exists():
+            return AppointmentPaymentSerializer(obj.payments.order_by('-created_at').first()).data
+        else:
+            return None
 
 
 class AppointmentHistorySerializer(serializers.ModelSerializer):
@@ -268,6 +317,7 @@ class BusinessTicketReportSummarySerializer(serializers.Serializer):
     total_staffs = serializers.IntegerField( required=False )
     from_date = serializers.DateField( required=False )
     to_date = serializers.DateField( required=False )
+    payment_stats = serializers.JSONField(required=False)
 
 class StaffTicketReportSummarySerializer(serializers.Serializer):
     """Serializer for staff ticket report summary"""
@@ -330,6 +380,7 @@ class BusinessSalaryReportSummarySerializer(serializers.Serializer):
     """Serializer for business-level salary report summary"""
     total_sales = serializers.DecimalField(max_digits=10, decimal_places=2)
     total_commission = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    total_revenue = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     total_services = serializers.IntegerField()
     total_staffs = serializers.IntegerField()
     from_date = serializers.DateField()

@@ -34,7 +34,7 @@ class GiftCardAdmin(admin.ModelAdmin):
             'fields': ('issued_at', 'expires_at', 'redeemed_at')
         }),
         ('Additional Information', {
-            'fields': ('payment', 'notes', 'created_at', 'updated_at')
+            'fields': ('payment', 'notes', 'created_at', 'updated_at', 'is_online_purchase')
         }),
         ('Status Properties', {
             'fields': ('is_active', 'is_expired', 'is_redeemed'),

@@ -265,7 +265,7 @@ class Payment(models.Model):
         ]
 
     def __str__(self):
-        return f"Payment {self.payment_id} - {self.client} - ${self.amount}"
+        return f"Payment {self.payment_id} - {self.appointment} - ${self.amount}"
 
     def save(self, *args, **kwargs):
         # Calculate processing fee

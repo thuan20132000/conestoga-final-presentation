@@ -12,7 +12,7 @@ from .serializers import (
 )
 from main.viewsets import BaseModelViewSet
 from rest_framework.permissions import IsAuthenticated
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 
 
 class ServiceCategoryFilter(filters.FilterSet):
@@ -27,7 +27,7 @@ class ServiceCategoryViewSet(BaseModelViewSet):
     queryset = ServiceCategory.objects.all()
     serializer_class = ServiceCategorySerializer
     filterset_class = ServiceCategoryFilter
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     
     def get_queryset(self):
         """Get queryset for service categories"""

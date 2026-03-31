@@ -1,9 +1,20 @@
 from rest_framework import serializers
 from django.db.models import Sum, Avg
+from django.db import transaction
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings, BusinessRoles, BusinessOnlineBooking, BusinessBanner
+    BusinessType,
+    Business,
+    OperatingHours,
+    BusinessSettings,
+    BusinessRoles,
+    BusinessOnlineBooking,
+    BusinessBanner,
 )
-from payment.serializers import PaymentMethodSerializer
+from payment.serializers import PaymentMethodSerializer, PaymentGatewaySerializer
+from subscription.serializers import BusinessSubscriptionSerializer
+from staff.models import Staff
+from staff.services import StaffCredentialService
+
 class BusinessTypeSerializer(serializers.ModelSerializer):
     """Serializer for BusinessType model"""
     
@@ -36,9 +47,13 @@ class BusinessSettingsSerializer(serializers.ModelSerializer):
             'id', 'timezone', 'advance_booking_days', 'min_advance_booking_hours', 
             'max_advance_booking_days', 'time_slot_interval', 'buffer_time_minutes',
             'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
-            'send_confirmation_sms', 'send_cancellation_sms',
+            'send_confirmation_sms', 'send_confirmation_email', 'send_cancellation_sms',
+            'send_cancellation_email',
+            'preferred_language',
             'currency', 'tax_rate', 'require_payment_advance', 'allow_online_booking',
             'require_client_phone', 'require_client_email', 'auto_confirm_appointments',
+            'allow_online_gift_cards', 'gift_card_processing_fee_enabled', 'tax_with_cash_enabled',
+            'half_turn_threshold',
         ]
         read_only_fields = ['id']
 
@@ -78,6 +93,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
     operating_hours = OperatingHoursSerializer(many=True, read_only=True)
     settings = BusinessSettingsSerializer(read_only=True)
     online_booking = BusinessOnlineBookingSerializer(read_only=True)
+    subscription = BusinessSubscriptionSerializer(read_only=True)
     
     class Meta:
         model = Business
@@ -85,7 +101,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'business_type', 'business_type_name', 'phone_number',
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
             'country', 'description', 'logo', 'google_review_url', 'operating_hours',
-            'settings', 'online_booking', 'created_at', 'updated_at'
+            'settings', 'online_booking', 'subscription', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -206,10 +222,10 @@ class BusinessDashboardSerializer(BusinessDetailSerializer):
     """Serializer for business dashboard"""
     
     payment_methods = PaymentMethodSerializer(many=True, read_only=True)
-    
+    payment_gateway = PaymentGatewaySerializer(source='payment_gateways.first', read_only=True)
     class Meta(BusinessDetailSerializer.Meta):
-        fields = BusinessDetailSerializer.Meta.fields + ['payment_methods']
-        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields + ['payment_methods']
+        fields = BusinessDetailSerializer.Meta.fields + ['payment_methods', 'payment_gateway']
+        read_only_fields = BusinessDetailSerializer.Meta.read_only_fields + ['payment_methods', 'payment_gateway']
 
 
 class BusinessRolesSerializer(serializers.ModelSerializer):
@@ -281,3 +297,23 @@ class BusinessInfoSerializer(serializers.ModelSerializer):
 
     def get_active_banner(self, obj):
         return BusinessBannerSerializer(obj.banners.filter(is_active=True).first()).data
+    
+    
+class OwnerRegisterSerializer(serializers.Serializer):
+    """Serializer for owner registration"""
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
+    phone = serializers.CharField(required=True)
+    email = serializers.EmailField(required=False)
+    
+class BusinessRegisterSerializer(serializers.Serializer):
+    """
+    Serializer orchestrating business + owner registration in one request.
+    """
+
+    business = BusinessSerializer()
+    owner = OwnerRegisterSerializer()
+    
+    class Meta:
+        fields = ['business', 'owner']
+        read_only_fields = ['business', 'owner']

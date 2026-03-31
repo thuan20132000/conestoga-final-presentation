@@ -1,12 +1,10 @@
 from rest_framework import status
-from rest_framework.decorators import APIView, action
-from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from datetime import datetime, timedelta, date
-from django_filters import rest_framework as filters
+from django_filters import rest_framework as filters, CharFilter, BaseCSVFilter
 from django.db import transaction
 
 from payment.models import Payment, PaymentStatusType
@@ -14,11 +12,10 @@ from business.models import Business
 from service.models import ServiceCategory
 from .models import Appointment, AppointmentService
 from client.models import Client
-from client.serializers import ClientSerializer, BookingClientSerializer, BookingClientCreateSerializer
+from client.serializers import BookingClientSerializer, BookingClientCreateSerializer
 
 from .serializers import (
     AppointmentSerializer,
-    AppointmentAvailabilitySerializer,
     AppointmentStatsSerializer,
     AppointmentCreateSerializer,
     AppointmentDetailSerializer,
@@ -29,14 +26,13 @@ from .serializers import (
 from main.viewsets import BaseModelViewSet, BaseViewSet
 from staff.serializers import StaffCalendarSerializer
 from staff.models import Staff, StaffOffDay
-from payment.serializers import PaymentSerializer, PaymentDetailSerializer
+from payment.serializers import PaymentDetailSerializer
 from service.serializers import BusinessBookingServiceCategorySerializer
 from staff.serializers import BusinessBookingStaffSerializer
 from .services import BusinessBookingService
 from business.serializers import BusinessSerializer, BusinessInfoSerializer
 from appointment.services import BusinessStaffService
-from appointment.models import AppointmentStatusType
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from appointment.services import TicketReportService, SalaryReportService
 from appointment.serializers import (
     BusinessTicketReportSerializer, 
@@ -46,10 +42,17 @@ from appointment.serializers import (
     SalaryReportByDateSerializer
 )
 from appointment.services import AppointmentNotificationService
+from appointment.services import CalendarStaffService
+from appointment.enums import StaffFilterType
+
+
+class CharCSVFilter(BaseCSVFilter, CharFilter):
+    pass
+
 class AppointmentFilter(filters.FilterSet):
     business_id = filters.UUIDFilter(field_name='business_id')
     appointment_date = filters.DateFilter(field_name='appointment_date')
-    status = filters.CharFilter(field_name='status')
+    status = CharCSVFilter(field_name='status', lookup_expr='in')
     booked_by = filters.NumberFilter(field_name='booked_by')
     booking_source = filters.CharFilter(field_name='booking_source')
     staff = filters.NumberFilter(field_name='appointment_services__staff_id')
@@ -164,29 +167,25 @@ class AppointmentViewSet(BaseModelViewSet):
         try:
             with transaction.atomic():
                 appointment_services = request.data['appointment_services']
-                appointment = Appointment.objects.create(
+                appointment = {
+                    'business_id': request.data['business_id'],
+                    'client_id': request.data['client'],
+                    'appointment_date': request.data['appointment_date'],
+                    'notes': request.data['notes'],
+                    'internal_notes': request.data['internal_notes'],
+                    'booking_source': request.data['booking_source'],
+                    'start_at': request.data['start_at'],
+                    'end_at': request.data['end_at'],
+                    'metadata': request.data['metadata'],
+                }
+                appointment_service = BusinessBookingService(
                     business_id=request.data['business_id'],
-                    client_id=request.data['client'],
-                    appointment_date=request.data['appointment_date'],
-                    notes=request.data['notes'],
-                    internal_notes=request.data['internal_notes'],
-                    booking_source=request.data['booking_source'],
-                    start_at=request.data['start_at'],
-                    end_at=request.data['end_at'],
-                    metadata=request.data['metadata'],
-                    
+                    interval_minutes=request.data.get('interval_minutes', 0)
                 )
-                for appointment_service in appointment_services:
-                    AppointmentService.objects.create(
-                        id=appointment_service['id'],
-                        appointment=appointment,
-                        service_id=appointment_service['service'],
-                        staff_id=appointment_service['staff'],
-                        is_staff_request=appointment_service['is_staff_request'],
-                        start_at=appointment_service['start_at'],
-                        end_at=appointment_service['end_at'],
-                        custom_price=appointment_service['custom_price'] or appointment_service['service'].price,
-                    )
+                appointment = appointment_service.create_appointment_services(
+                    appointment=appointment,
+                    appointment_services=appointment_services
+                )
                 
                 return self.response_success(AppointmentDetailSerializer(appointment).data)
         except Exception as e:
@@ -210,6 +209,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 appointment.start_at = request.data.get('start_at', appointment.start_at)
                 appointment.end_at = request.data.get('end_at', appointment.end_at)
                 appointment.metadata = request.data.get('metadata', appointment.metadata)
+                appointment.checked_in_at = request.data.get('checked_in_at', appointment.checked_in_at)
                 appointment.save()
                 
                 # update appointment services
@@ -264,6 +264,7 @@ class AppointmentViewSet(BaseModelViewSet):
             business_id = request.query_params.get('business_id')
             appointment_date = request.query_params.get('appointment_date')
             auth_user = request.user
+            staff_filter_type = request.query_params.get('staff_filter_type', StaffFilterType.WORKING_HOURS.value)
             
             if not business_id or not appointment_date:
                 return self.response_error(
@@ -273,52 +274,33 @@ class AppointmentViewSet(BaseModelViewSet):
                 
             weekday = datetime.strptime(appointment_date, '%Y-%m-%d').weekday()
             
-            # Get staff with role and who are working on the appointment date
-            if auth_user.role.name in ['Manager', 'Owner']:
-                business_staffs = Staff.objects.filter(
-                    business_id=business_id,
-                    is_active=True,
-                    is_online_booking_allowed=True,
-                    working_hours__is_working=True,
-                    working_hours__day_of_week=weekday,
-                    role__name__in=['Technician', 'Stylist'],
-                )
-            else:
-                business_staffs = Staff.objects.filter(
-                    id=auth_user.id,
-                )
-            
-            
-            # Get staff who have an off day on the appointment date
-            staff_off_days = StaffOffDay.objects.filter(
-                staff__id__in=business_staffs.values_list('id', flat=True),
-                start_date__lte=appointment_date,
-                end_date__gte=appointment_date,
+            calendar_staff_service = CalendarStaffService(
+                business_id=business_id,
+                auth_user=auth_user,
+                weekday=weekday,
+                appointment_date=appointment_date,
             )
-            
-            # Get staff who are available for the appointment date
-            if staff_off_days.exists():
-                staff_on_leave_ids = staff_off_days.values_list('staff__id', flat=True)
-                staff_off_day_appointments = AppointmentService.objects.filter(
-                    staff_id__in=staff_on_leave_ids,
-                    appointment__appointment_date=appointment_date,
-                )
-                staff_on_leave_with_appointments = staff_off_day_appointments.values_list('staff__id', flat=True)
-                
-                staff_on_leave_without_appointments = staff_on_leave_ids.exclude(staff__id__in=list(staff_on_leave_with_appointments))
-                
-                available_staffs = business_staffs.exclude(id__in=staff_on_leave_without_appointments)
-            else:
-                available_staffs = business_staffs
-                
+           
+            match staff_filter_type:
+                case StaffFilterType.WORKING_HOURS.value:
+                    calendar_staffs = calendar_staff_service.get_calendar_staffs()
+                case StaffFilterType.ALL.value:
+                    calendar_staffs = calendar_staff_service.get_all_technicians()
+                case _:
+                    return self.response_error(
+                        {'error': 'Invalid staff filter type'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
             serializer = StaffCalendarSerializer(
-                available_staffs, 
+                calendar_staffs, 
                 many=True, 
                 context={
                     'appointment_date': appointment_date, 
                     'weekday': weekday,
                 }
             )
+            
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error(str(e))
@@ -682,7 +664,11 @@ class BusinessBookingViewSet(BaseModelViewSet):
                 status_code=status.HTTP_400_BAD_REQUEST
             )
             
-        categories_services = ServiceCategory.objects.filter(business_id=business_id)
+        categories_services = ServiceCategory.objects.filter(
+            business_id=business_id, 
+            is_active=True, 
+            is_online_booking=True
+        )
         serializer = BusinessBookingServiceCategorySerializer(categories_services, many=True)
         return self.response_success(serializer.data)
     
@@ -716,11 +702,17 @@ class BusinessBookingViewSet(BaseModelViewSet):
             date = request.query_params.get('date')
             staff_id = request.query_params.get('staff_id')
             interval_minutes = request.query_params.get('interval_minutes',15)
+            client_id = request.query_params.get('client_id')
             
             booking_service = BusinessBookingService(
                 business_id=business_id,
                 interval_minutes=int(interval_minutes)
             )
+            
+            if client_id:
+                minimum_booking_duration = booking_service.get_client_minimum_booking_duration(client_id, duration)
+                duration = minimum_booking_duration
+            
             
             if staff_id:
                 available_time_slots_for_staff = booking_service.get_staff_time_slots(
@@ -774,12 +766,9 @@ class BusinessBookingViewSet(BaseModelViewSet):
     def client(self, request):
         """Create a client for a specific business"""
         try:
-            print("request.data", request.data)
             serializer = BookingClientCreateSerializer(data=request.data)
-            print("serializer", serializer)
             serializer.is_valid(raise_exception=True)
             client = serializer.update_or_create(serializer.validated_data)
-            print("client", client)
             
             return self.response_success(client, message="Client created successfully")
         except Exception as e:
@@ -789,13 +778,10 @@ class BusinessBookingViewSet(BaseModelViewSet):
     @action(detail=False, methods=['post'], url_path='appointment')
     def create_appointment(self, request):
         """Make an appointment"""
-        print("create appointment request.data", request.data)
         try:
             
             appointment_data = request.data
             appointment_services = appointment_data.pop('appointment_services', [])
-            print("appointment_data", appointment_data)
-            print("appointment_services", appointment_services)
             
             appointment_service = BusinessBookingService(
                 business_id=appointment_data.get('business_id'),
@@ -1007,15 +993,19 @@ class TicketReportViewSet(BaseModelViewSet):
             staff_id = request.query_params.get('staff_id')
             
             user = self.request.user
-            if not IsBusinessManager().has_permission(self.request, self):
+            if not IsBusinessManagerOrReceptionist().has_permission(self.request, self):
                 staff_id = user.id
             
             ticket_report = TicketReportService(self.request.user.business_id)
-            ticket_report_data = ticket_report.get_ticket_report_summary(from_date, to_date, staff_id)
+            if staff_id:
+                ticket_report_data = ticket_report.get_staff_ticket_report_summary(from_date, to_date, staff_id)
+            else:
+                ticket_report_data = ticket_report.get_ticket_report_summary(from_date, to_date)
             
             serializer = BusinessTicketReportSerializer(ticket_report_data)
             return self.response_success(serializer.data)
         except Exception as e:
+            print("error getting ticket report", e)
             return self.response_error(str(e))
         
     @action(detail=False, methods=['get'], url_path='by-dates', permission_classes=[IsAuthenticated])
@@ -1094,7 +1084,6 @@ class SalaryReportViewSet(BaseModelViewSet):
             salary_report_data = salary_report.get_salary_report_summary(
                 from_date, to_date, staff_id
             )
-            print("salary_report_data", salary_report_data)
             
             serializer = SalaryReportSerializer(salary_report_data)
             return self.response_success(serializer.data)

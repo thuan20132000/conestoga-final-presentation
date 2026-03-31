@@ -49,8 +49,9 @@ class TimeEntryService:
 
 
 class StaffCredentialService:
-    DEFAULT_PASSWORD_LENGTH = 10
-    PASSWORD_CHARS = string.ascii_letters + string.digits
+    DEFAULT_PASSWORD_LENGTH = 8
+    PASSWORD_CHARS = string.ascii_lowercase
+    PASSWORD_DIGITS = string.digits
 
     @staticmethod
     def _normalize_phone(phone: str) -> str:
@@ -76,7 +77,10 @@ class StaffCredentialService:
         length = length or StaffCredentialService.DEFAULT_PASSWORD_LENGTH
         if length < 8:
             length = 8
-        return "".join(secrets.choice(StaffCredentialService.PASSWORD_CHARS) for _ in range(length))
+        chars_part = 'asdf'
+        digits_part = ''.join(secrets.choice(StaffCredentialService.PASSWORD_DIGITS) for _ in range(4))
+        password = f"{chars_part}{digits_part}"
+        return password
 
     @staticmethod
     def _send_credentials_sms(staff: Staff, username: str, password: str) -> None:

@@ -100,7 +100,6 @@ from payment.stripe_service import StripeService
 # Webhook APIView
 class StripeWebhookAPIView(BaseAPIView):
     def post(self, request):
-        logger.info("Stripe webhook received:: %s", request.body)
         
         try:
             stripe_service = StripeService()
@@ -114,7 +113,23 @@ class StripeWebhookAPIView(BaseAPIView):
             )
 
         
-        # Handle gift card webhook
-        from gift.services import GiftCardOnlinePaymentService
-        GiftCardOnlinePaymentService(stripe_service).handle_stripe_event(event)
+        event_type = event.get("type", "")
+        session_mode = event.get("data", {}).get("object", {}).get("mode")
+
+        if event_type == "checkout.session.completed" and session_mode == "payment":
+            from gift.services import GiftCardOnlinePaymentService
+            GiftCardOnlinePaymentService(stripe_service).handle_stripe_event(event)
+        elif event_type == "checkout.session.completed" and session_mode == "subscription":
+            from subscription.services import SubscriptionService
+            SubscriptionService().handle_webhook_event(event)
+        elif event_type in (
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+            "invoice.payment_succeeded",
+            "invoice.payment_failed",
+            "invoice.paid",
+        ):
+            from subscription.services import SubscriptionService
+            SubscriptionService().handle_webhook_event(event)
+
         return self.response_success({"status": "success"})

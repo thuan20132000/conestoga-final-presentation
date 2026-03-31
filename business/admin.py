@@ -1,5 +1,8 @@
+from django import forms
 from django.contrib import admin
+from django.forms.models import BaseInlineFormSet
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 from .models import (
     BusinessType, 
     Business, 
@@ -42,6 +45,57 @@ class BusinessStaffInline(admin.TabularInline):
     ordering = ['username', 'role', 'is_active', 'hire_date', 'last_login', 'business']
 
 
+class BusinessOwnerInlineForm(forms.ModelForm):
+    password = forms.CharField(
+        widget=forms.PasswordInput(render_value=False),
+        required=False,
+        help_text=_('Leave blank to set an unusable password.'),
+    )
+
+    class Meta:
+        model = Staff
+        fields = ['username', 'password', 'first_name', 'last_name', 'email', 'phone', 'is_active']
+
+    def save(self, commit=True):
+        staff = super().save(commit=False)
+        raw_password = self.cleaned_data.get('password')
+        if raw_password:
+            staff.set_password(raw_password)
+        elif not self.instance.pk:
+            staff.set_unusable_password()
+        if commit:
+            staff.save()
+        return staff
+
+
+class BusinessOwnerFormset(BaseInlineFormSet):
+    role_name = 'Owner'
+
+
+class BusinessOwnerInline(admin.TabularInline):
+    model = Staff
+    form = BusinessOwnerInlineForm
+    formset = BusinessOwnerFormset
+    verbose_name = _('Owner')
+    verbose_name_plural = _('Owners')
+    extra = 1
+    fields = ['username', 'password', 'first_name', 'last_name', 'email', 'phone', 'is_active']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(role__name='Owner')
+
+
+class BusinessManagerInline(admin.TabularInline):
+    model = Staff
+    verbose_name = _('Manager')
+    verbose_name_plural = _('Managers')
+    extra = 0
+    fields = ['first_name','phone', 'is_active', 'username']
+    readonly_fields = ['first_name', 'phone', 'is_active', 'username']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(role__name='Manager')
+
 
 @admin.register(Business)
 class BusinessAdmin(admin.ModelAdmin):
@@ -49,19 +103,30 @@ class BusinessAdmin(admin.ModelAdmin):
     list_filter = ['business_type']
     search_fields = ['name', 'description', 'address', 'city', 'phone_number', 'email']
     ordering = ['name']
-    # inlines = [OperatingHoursInline, BusinessStaffInline]
-    
+    inlines = [BusinessOwnerInline, BusinessManagerInline]
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        business = form.instance
+        for formset in formsets:
+            if not hasattr(formset, 'role_name'):
+                continue
+            role, _ = BusinessRoles.objects.get_or_create(business=business, name=formset.role_name)
+            for staff in formset.new_objects:
+                staff.role = role
+                staff.save()
+
     fieldsets = (
-        ('Basic Information', {
+        (_('Basic Information'), {
             'fields': ('name', 'business_type', 'description', 'cost_per_minute', 'twilio_phone_number', 'google_review_url')
         }),
-        ('Contact Information', {
+        (_('Contact Information'), {
             'fields': ('phone_number', 'email', 'website')
         }),
-        ('Address', {
+        (_('Address'), {
             'fields': ('address', 'city', 'state_province', 'postal_code', 'country')
         }),
-        ('Soft delete', {
+        (_('Soft delete'), {
             'fields': ('is_deleted', 'deleted_at')
         }),
     )
@@ -84,27 +149,28 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
     ordering = ['business__name']
     
     fieldsets = (
-        ('Booking Settings', {
+        (_('Booking Settings'), {
             'fields': (
                 'advance_booking_days', 'min_advance_booking_hours', 'max_advance_booking_days',
                 'time_slot_interval', 'buffer_time_minutes', 'timezone'
             )
         }),
-        ('Notification Settings', {
+        (_('Notification Settings'), {
             'fields': (
                 'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
-                'send_confirmation_sms'
+                'send_confirmation_sms', 'send_confirmation_email',
+                'send_cancellation_sms', 'send_cancellation_email',
             )
         }),
-        ('Payment Settings', {
+        (_('Payment Settings'), {
             'fields': (
                 'currency', 'tax_rate', 'require_payment_advance'
             )
         }),
-        ('General Settings', {
+        (_('General Settings'), {
             'fields': (
-                'allow_online_booking', 'require_client_phone', 'require_client_email',
-                'auto_confirm_appointments'
+                'preferred_language', 'allow_online_booking', 'require_client_phone', 'require_client_email',
+                'auto_confirm_appointments', 'allow_online_gift_cards', 'gift_card_processing_fee_enabled', 'tax_with_cash_enabled'
             )
         }),
     )
@@ -117,13 +183,13 @@ class BusinessOnlineBookingAdmin(admin.ModelAdmin):
     ordering = ['business__name', 'name']
     
     fieldsets = (
-        ('Basic Information', {
+        (_('Basic Information'), {
             'fields': ('name', 'slug', 'logo', 'description', 'policy')
         }),
-        ('Booking Settings', {
+        (_('Booking Settings'), {
             'fields': ('interval_minutes', 'buffer_time_minutes')
         }),
-        ('Status and Visibility', {
+        (_('Status and Visibility'), {
             'fields': ('is_active', 'shareable_link')
         }),
     )

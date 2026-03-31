@@ -2,6 +2,7 @@ from django.db import models
 import uuid
 from main.models import SoftDeleteModel
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 class BusinessType(SoftDeleteModel):
     """Different types of businesses that can use the system."""
@@ -11,6 +12,8 @@ class BusinessType(SoftDeleteModel):
     
     class Meta:
         ordering = ['name']
+        verbose_name = _('Business type')
+        verbose_name_plural = _('Business types')
     
     def __str__(self):
         return self.name
@@ -19,10 +22,10 @@ class BusinessType(SoftDeleteModel):
 class Business(SoftDeleteModel):
     """Represents a salon or company using the AI receptionist."""
     BUSINESS_STATUS_CHOICES = [
-        ('active', 'Active'),
-        ('inactive', 'Inactive'),
-        ('suspended', 'Suspended'),
-        ('pending', 'Pending Approval'),
+        ('active', _('Active')),
+        ('inactive', _('Inactive')),
+        ('suspended', _('Suspended')),
+        ('pending', _('Pending Approval')),
     ]
     
     CURRENCY_CHOICES = [
@@ -55,7 +58,8 @@ class Business(SoftDeleteModel):
     
     class Meta:
         ordering = ['name']
-        verbose_name_plural = 'Businesses'
+        verbose_name = _('Business')
+        verbose_name_plural = _('Businesses')
     
     def __str__(self):
         return self.name
@@ -65,13 +69,13 @@ class Business(SoftDeleteModel):
 class OperatingHours(SoftDeleteModel):
     """Operating hours for each day of the week"""
     DAY_CHOICES = [
-        (0, 'Monday'),
-        (1, 'Tuesday'),
-        (2, 'Wednesday'),
-        (3, 'Thursday'),
-        (4, 'Friday'),
-        (5, 'Saturday'),
-        (6, 'Sunday'),
+        (0, _('Monday')),
+        (1, _('Tuesday')),
+        (2, _('Wednesday')),
+        (3, _('Thursday')),
+        (4, _('Friday')),
+        (5, _('Saturday')),
+        (6, _('Sunday')),
     ]
     
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='operating_hours')
@@ -79,18 +83,20 @@ class OperatingHours(SoftDeleteModel):
     is_open = models.BooleanField(default=True)
     open_time = models.TimeField(blank=True, null=True)
     close_time = models.TimeField(blank=True, null=True)
-    is_break_time = models.BooleanField(default=False, help_text="Has break time during the day")
+    is_break_time = models.BooleanField(default=False, help_text=_("Has break time during the day"))
     break_start_time = models.TimeField(blank=True, null=True)
     break_end_time = models.TimeField(blank=True, null=True)
     
     class Meta:
         unique_together = ['business', 'day_of_week']
         ordering = ['day_of_week']
+        verbose_name = _('Operating hours')
+        verbose_name_plural = _('Operating hours')
     
     def __str__(self):
         day_name = dict(self.DAY_CHOICES)[self.day_of_week]
         if not self.is_open:
-            return f"{day_name}: Closed"
+            return f"{day_name}: {str(_('Closed'))}"
         return f"{day_name}: {self.open_time} - {self.close_time}"
 
 
@@ -101,6 +107,16 @@ class BusinessSettings(SoftDeleteModel):
         ('America/Los_Angeles', 'America/Los_Angeles'),
         ('America/Chicago', 'America/Chicago'),
         ('America/Phoenix', 'America/Phoenix'),
+        ('America/Denver', 'America/Denver'),
+        ('America/Kansas_City', 'America/Kansas_City'),
+        ('America/Minneapolis', 'America/Minneapolis'),
+        ('America/Houston', 'America/Houston'),
+        ('America/Dallas', 'America/Dallas'),
+        ('Asia/Ho_Chi_Minh', 'Asia/Ho_Chi_Minh'),
+    ]
+    LANGUAGE_CHOICES = [
+        ("en", _("English")),
+        ("vi", _("Vietnamese")),
     ]
         
     """Additional settings and preferences for the business"""
@@ -110,45 +126,72 @@ class BusinessSettings(SoftDeleteModel):
     timezone = models.CharField(max_length=100, choices=TIMEZONE_CHOICES, default="America/Toronto")
     
     # Booking settings
-    advance_booking_days = models.PositiveIntegerField(default=30, help_text="How many days in advance can clients book")
-    min_advance_booking_hours = models.PositiveIntegerField(default=2, help_text="Minimum hours in advance for booking")
-    max_advance_booking_days = models.PositiveIntegerField(default=90, help_text="Maximum days in advance for booking")
+    advance_booking_days = models.PositiveIntegerField(default=30, help_text=_("How many days in advance can clients book"))
+    min_advance_booking_hours = models.PositiveIntegerField(default=2, help_text=_("Minimum hours in advance for booking"))
+    max_advance_booking_days = models.PositiveIntegerField(default=90, help_text=_("Maximum days in advance for booking"))
     
     # Time slot settings
-    time_slot_interval = models.PositiveIntegerField(default=15, help_text="Time slot interval in minutes")
-    buffer_time_minutes = models.PositiveIntegerField(default=0, help_text="Buffer time between appointments")
+    time_slot_interval = models.PositiveIntegerField(default=15, help_text=_("Time slot interval in minutes"))
+    buffer_time_minutes = models.PositiveIntegerField(default=0, help_text=_("Buffer time between appointments"))
     
     # Notification settings
     send_reminder_emails = models.BooleanField(default=True)
     send_reminder_sms = models.BooleanField(default=False)
-    reminder_hours_before = models.PositiveIntegerField(default=24, help_text="Hours before appointment to send reminder")
+    reminder_hours_before = models.PositiveIntegerField(default=24, help_text=_("Hours before appointment to send reminder"))
     send_confirmation_sms = models.BooleanField(default=False)
+    send_confirmation_email = models.BooleanField(default=False)
     send_cancellation_sms = models.BooleanField(default=False)
+    send_cancellation_email = models.BooleanField(default=False)
     
     # Payment settings
     currency = models.CharField(max_length=3, default="CAD")
-    tax_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0.13, help_text="Tax rate as decimal (0.13 = 13%)")
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0.13, help_text=_("Tax rate as decimal (0.13 = 13%)"))
     require_payment_advance = models.BooleanField(default=False)
     
     # General settings
+    preferred_language = models.CharField(
+        max_length=5,
+        choices=LANGUAGE_CHOICES,
+        default="en",
+        help_text=_("Preferred language used when request does not provide a supported Accept-Language header"),
+    )
     allow_online_booking = models.BooleanField(default=True)
     require_client_phone = models.BooleanField(default=True)
     require_client_email = models.BooleanField(default=False)
     auto_confirm_appointments = models.BooleanField(default=False)
     
+    # Gift card settings
+    allow_online_gift_cards = models.BooleanField(default=False)
+    
+    gift_card_processing_fee_enabled = models.BooleanField(default=True)
+    
+    tax_with_cash_enabled = models.BooleanField(default=True)
+
+    # Turn management settings
+    half_turn_threshold = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=25.00,
+        help_text=_("Service price threshold: above this = full turn, at or below = half turn"),
+    )
+
     def __str__(self):
-        return f"Settings for {self.business.name}"
+        return f"{str(_('Settings for'))} {self.business.name}"
+
+    class Meta:
+        verbose_name = _("Business settings")
+        verbose_name_plural = _("Business settings")
 
 class BusinessRoles(SoftDeleteModel):
     """Roles for the business"""
     ROLE_CHOICES = [
-        ('Owner', 'Owner'),
-        ('Manager', 'Manager'),
-        ('Stylist', 'Stylist'),
-        ('Technician', 'Technician'),
-        ('Assistant', 'Assistant'),
-        ('Receptionist', 'Receptionist'),
-        ('Other', 'Other'),
+        ('Owner', _('Owner')),
+        ('Manager', _('Manager')),
+        ('Stylist', _('Stylist')),
+        ('Technician', _('Technician')),
+        ('Assistant', _('Assistant')),
+        ('Receptionist', _('Receptionist')),
+        ('Other', _('Other')),
     ]
     business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='roles')
     name = models.CharField(max_length=100, choices=ROLE_CHOICES)
@@ -156,61 +199,64 @@ class BusinessRoles(SoftDeleteModel):
     
     class Meta:
         ordering = ['name']
+        verbose_name = _('Business role')
+        verbose_name_plural = _('Business roles')
     
     def __str__(self):
         return f"{self.business.name} - {self.name}"
     
-
+    def is_managers(self):
+        return self.name in ['Manager', 'Owner', 'Receptionist']
 class BusinessOnlineBooking(SoftDeleteModel):
     """Online booking configuration for the business"""
     business = models.OneToOneField(
         Business, 
         on_delete=models.CASCADE, 
         related_name='online_booking',
-        help_text="The business this online booking page belongs to"
+        help_text=_("The business this online booking page belongs to")
     )
-    name = models.CharField(max_length=255, help_text="Name of the online booking page")
+    name = models.CharField(max_length=255, help_text=_("Name of the online booking page"))
     slug = models.SlugField(
         max_length=255, 
         unique=True, 
         blank=True, 
         null=True,
-        help_text="URL-friendly identifier for the booking page"
+        help_text=_("URL-friendly identifier for the booking page")
     )
     logo = models.ImageField(upload_to='business_logos/', blank=True, null=True)
-    description = models.TextField(blank=True, null=True, help_text="Description shown on the booking page")
-    policy = models.TextField(blank=True, null=True, help_text="Booking policy/terms shown to clients")
+    description = models.TextField(blank=True, null=True, help_text=_("Description shown on the booking page"))
+    policy = models.TextField(blank=True, null=True, help_text=_("Booking policy/terms shown to clients"))
     
     # Booking settings
     interval_minutes = models.PositiveIntegerField(
         default=15, 
-        help_text="Time slot interval in minutes"
+        help_text=_("Time slot interval in minutes")
     )
     buffer_time_minutes = models.PositiveIntegerField(
         default=0, 
-        help_text="Buffer time between appointments in minutes"
+        help_text=_("Buffer time between appointments in minutes")
     )
     
     # Status and visibility
     is_active = models.BooleanField(
         default=True, 
-        help_text="Whether the online booking page is active and accessible"
+        help_text=_("Whether the online booking page is active and accessible")
     )
     
     # Shareable link
     shareable_link = models.URLField(
         blank=True, 
         null=True,
-        help_text="Shareable URL for the online booking page"
+        help_text=_("Shareable URL for the online booking page")
     )
     
     class Meta:
         ordering = ['business__name', 'name']
-        verbose_name = 'Online Booking'
-        verbose_name_plural = 'Online Bookings'
+        verbose_name = _('Online Booking')
+        verbose_name_plural = _('Online Bookings')
     
     def __str__(self):
-        return f"{self.business.name} - {self.name or 'Online Booking'}"
+        return f"{self.business.name} - {self.name or str(_('Online Booking'))}"
     
     def save(self, *args, **kwargs):
         """Save the online booking configuration"""
@@ -236,9 +282,9 @@ class BusinessOnlineBooking(SoftDeleteModel):
 
 class BusinessBanner(SoftDeleteModel):
     BANNER_TYPE_CHOICES = [
-        ('promotion', 'Promotion'),
-        ('info', 'Information'),
-        ('alert', 'Alert'),
+        ('promotion', _('Promotion')),
+        ('info', _('Information')),
+        ('alert', _('Alert')),
     ]
     business = models.ForeignKey('business.Business', on_delete=models.CASCADE, related_name='banners')
     type = models.CharField(max_length=20, choices=BANNER_TYPE_CHOICES, default='info')
@@ -256,7 +302,7 @@ class BusinessBanner(SoftDeleteModel):
         max_length=20,
         blank=True,
         null=True,
-        help_text="HEX or Tailwind class"
+        help_text=_("HEX or Tailwind class")
     )
 
     text_color = models.CharField(
@@ -274,6 +320,8 @@ class BusinessBanner(SoftDeleteModel):
 
     class Meta:
         ordering = ["-created_at"]
+        verbose_name = _("Business banner")
+        verbose_name_plural = _("Business banners")
         indexes = [
             models.Index(fields=["business", "is_active"]),
         ]

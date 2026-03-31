@@ -98,3 +98,4 @@ uvicorn==0.35.0
 webpush==1.0.6
 websockets==15.0.1
 yarl==1.20.1
+google-auth==2.49.1

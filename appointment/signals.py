@@ -27,7 +27,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
     try:
         if instance.is_active == False:
             return
-        
+
         appointment_data = AppointmentSerializer(instance).data
         client_name = appointment_data.get('client_name', 'A client')
         client_phone = appointment_data.get('client_phone', None)
@@ -38,6 +38,7 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
         business_twilio_phone_number = appointment_data.get(
             'business_twilio_phone_number', None)
 
+        client_email = appointment_data.get('client_email', None)
         appointment_id = appointment_data.get('id', None)
         business_id = appointment_data.get('business', None)
 
@@ -46,19 +47,23 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
             business_id=business_id
         )
         send_confirmation_sms = business_settings.send_confirmation_sms if business_settings else False
-        reminder_hours_before = business_settings.reminder_hours_before if business_settings else 2
+        send_confirmation_email = business_settings.send_confirmation_email if business_settings else False
+        send_reminder_email = business_settings.send_reminder_emails if business_settings else False
+        send_reminder_sms = business_settings.send_reminder_sms if business_settings else False
         send_cancellation_sms = business_settings.send_cancellation_sms if business_settings else False
+        send_cancellation_email = business_settings.send_cancellation_email if business_settings else False
+
         business_timezone = business_settings.timezone
 
         timezone.activate(business_timezone)
 
+        reminder_hours_before = business_settings.reminder_hours_before if business_settings else 2
         start_at = appointment_data.get('start_at')
         start_at_obj = datetime.fromisoformat(start_at)
         start_at_str = start_at_obj.strftime("%I:%M %p on %B %d, %Y")
         payment_status = appointment_data.get('payment_status', None)
 
         metadata = instance.metadata
-        schedule_name = f"reminder-sms-{business_id}-{appointment_id}"
         schedule_time = start_at_obj - timedelta(
             hours=reminder_hours_before,
             minutes=0,
@@ -68,47 +73,63 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
         appointment_notification_service = AppointmentNotificationService(
             instance)
 
-        if not client_phone:
+        if not client_phone and not client_email:
             return
 
         with transaction.atomic():
             if created:
-                # send confirmation sms
-                if metadata and metadata.get('is_send_confirmation_sms', False) == True:
+                # check if confirmation sms and email is enabled
+                is_send_confirmation_sms = send_confirmation_sms and metadata.get(
+                    'is_send_confirmation_sms', False)
+                is_send_confirmation_email = send_confirmation_email and metadata.get(
+                    'is_send_confirmation_email', True)
 
-                    if send_confirmation_sms == True:
-                        # New appointment created
-                        appointment_notification_service.send_client_confirmation_notification(
-                            client_name=client_name,
-                            client_phone=client_phone,
-                            business_phone=business_phone,
-                            business_name=business_name,
-                            appointment_id=appointment_id,
-                            start_at=start_at_str,
-                            metadata=metadata,
-                            business_twilio_phone_number=business_twilio_phone_number,
-                        )
+                appointment_notification_service.send_client_confirmation_notification(
+                    client_name=client_name,
+                    client_phone=client_phone,
+                    business_phone=business_phone,
+                    business_name=business_name,
+                    appointment_id=appointment_id,
+                    start_at=start_at_str,
+                    metadata=metadata,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                    client_email=client_email,
+                    by_sms=is_send_confirmation_sms,
+                    by_email=is_send_confirmation_email,
+                )
 
-                if metadata and metadata.get('is_send_reminder_sms', False) == True:
-                    # New appointment created
-                    if business_settings.send_reminder_sms == True and schedule_time > timezone.now():
-                        appointment_notification_service.send_client_reminder_notification(
-                            client_name=client_name,
-                            client_phone=client_phone,
-                            business_phone=business_phone,
-                            business_name=business_name,
-                            appointment_id=appointment_id,
-                            business_id=business_id,
-                            start_at=start_at_str,
-                            metadata=metadata,
-                            schedule_name=schedule_name,
-                            schedule_time=schedule_time,
-                            business_twilio_phone_number=business_twilio_phone_number,
-                        )
+                # check if reminder email and sms is enabled
+                is_send_reminder_email = send_reminder_email and metadata.get(
+                    'is_send_reminder_email', True)
+                is_send_reminder_sms = send_reminder_sms and metadata.get(
+                    'is_send_reminder_sms', False)
+              
+                if schedule_time > timezone.now():
+                    appointment_notification_service.send_client_reminder_notification(
+                        client_name=client_name,
+                        client_phone=client_phone,
+                        business_phone=business_phone,
+                        business_name=business_name,
+                        appointment_id=appointment_id,
+                        business_id=business_id,
+                        start_at=start_at_str,
+                        metadata=metadata,
+                        schedule_time=schedule_time,
+                        business_twilio_phone_number=business_twilio_phone_number,
+                        business_timezone=business_timezone,
+                        client_email=client_email,
+                        by_sms=is_send_reminder_sms,
+                        by_email=is_send_reminder_email,
+                    )
+                
             else:
-
                 # Appointment rescheduled
-                if metadata and metadata.get('is_send_sms_rescheduled_confirmation', False) == True:
+                is_send_sms_rescheduled_confirmation = metadata.get(
+                    'is_send_sms_rescheduled_confirmation', False)
+                is_send_email_rescheduled_confirmation = metadata.get(
+                    'is_send_email_rescheduled_confirmation', False)
+                
+                if is_send_sms_rescheduled_confirmation or is_send_email_rescheduled_confirmation:
                     appointment_notification_service.send_client_rescheduled_notification(
                         client_name=client_name,
                         client_phone=client_phone,
@@ -119,33 +140,42 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         start_at_str=start_at_str,
                         metadata=metadata,
                         business_twilio_phone_number=business_twilio_phone_number,
+                        client_email=client_email,
+                        by_sms=is_send_sms_rescheduled_confirmation,
+                        by_email=is_send_email_rescheduled_confirmation,
                     )
-                    # send push notification to business managers
-                    appointment_notification_service.send_manager_rescheduled_appointment_notification(
+
+                if appointment_status == AppointmentStatusType.CANCELLED.value:
+                    is_send_sms_cancellation_confirmation = send_cancellation_sms and metadata.get(
+                        'is_send_sms_cancellation_confirmation', False)
+                    is_send_email_cancellation_confirmation = send_cancellation_email and metadata.get(
+                        'is_send_email_cancellation_confirmation', False)
+
+                    appointment_notification_service.send_client_cancellation_notification(
+                        client_name=client_name,
+                        client_phone=client_phone,
+                        business_phone=business_phone,
+                        business_name=business_name,
+                        appointment_id=appointment_id,
+                        business_id=business_id,
+                        start_at_str=start_at_str,
+                        metadata=metadata,
+                        business_twilio_phone_number=business_twilio_phone_number,
+                        client_email=client_email,
+                        by_sms=is_send_sms_cancellation_confirmation,
+                        by_email=is_send_email_cancellation_confirmation,
+                    )
+
+                    appointment_notification_service.send_manager_cancellation_appointment_notification(
                         business_name=business_name,
                         business_id=business_id,
                         client_name=client_name,
                         start_time_str=start_at_str,
                     )
                     
-                # Appointment cancelled
-                if metadata and metadata.get('is_send_sms_cancellation_confirmation', False) == True:
-                    if send_cancellation_sms == True:
-                        appointment_notification_service.send_client_cancellation_notification(
-                            client_name=client_name,
-                            client_phone=client_phone,
-                            business_phone=business_phone,
-                            business_name=business_name,
-                            appointment_id=appointment_id,
-                            business_id=business_id,
-                            start_at_str=start_at_str,
-                            metadata=metadata,
-                            schedule_name=schedule_name,
-                            business_twilio_phone_number=business_twilio_phone_number,
-                        )
-                
-                if appointment_status == AppointmentStatusType.CANCELLED.value:
-                    appointment_notification_service.send_manager_cancellation_appointment_notification(
+                # send push notification to business managers when appointment is rescheduled
+                if metadata.get('is_rescheduled', False) == True:
+                    appointment_notification_service.send_manager_rescheduled_appointment_notification(
                         business_name=business_name,
                         business_id=business_id,
                         client_name=client_name,
@@ -164,9 +194,8 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
 def handle_appointment_service_added(sender, instance, created, **kwargs):
     """Handle notifications for appointment service changes"""
 
-      
     metadata = instance.metadata
-    
+
     # POS payment notifications
     if metadata and metadata.get('is_pos_payment', False) == True:
         return
@@ -190,7 +219,6 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
     staff_obj = Staff.objects.get(id=staff_id)
 
     appointment_notification_service = AppointmentNotificationService(instance)
-
 
     if created:
 

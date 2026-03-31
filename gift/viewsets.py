@@ -20,7 +20,7 @@ from .serializers import (
 from .services import GiftCardService
 from main.viewsets import BaseModelViewSet, BaseAPIView
 from rest_framework.permissions import IsAuthenticated
-from staff.permissions import IsBusinessManager
+from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 
 from .services import GiftCardOnlinePaymentService
 from payment.stripe_service import StripeService
@@ -39,7 +39,7 @@ class GiftCardViewSet(BaseModelViewSet):
     search_fields = ['card_code', 'recipient_name', 'recipient_email', 'recipient_phone']
     ordering_fields = ['created_at', 'issued_at', 'expires_at', 'current_balance', 'initial_amount']
     ordering = ['-created_at']
-    permission_classes = [IsAuthenticated, IsBusinessManager]
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     
     def get_serializer_class(self):
         """Return appropriate serializer class"""

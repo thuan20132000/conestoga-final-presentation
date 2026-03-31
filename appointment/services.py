@@ -1,19 +1,21 @@
 from appointment.models import AppointmentService, Appointment, AppointmentStatusType
 from datetime import datetime
 from payment.models import PaymentMethodType
-from staff.models import StaffService, StaffWorkingHours
+from staff.models import StaffService, StaffWorkingHours, StaffWorkingHoursOverride, StaffOffDay, Staff
 from datetime import timedelta
 from django.utils import timezone
-from staff.models import Staff, StaffOffDay
 from django.db import transaction
 from notifications.models import Notification
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, EmailService, SMSService
 from business.models import BusinessSettings
 import logging
 from main.utils import get_business_managers_group_name
 from main.common_settings import ONLINE_BOOKING_URL
-from django.db.models import Sum, Count, Value, DateField, F
+from django.db.models import QuerySet, Sum, Count, Value, DateField, F, Q
 from client.models import Client
+from payment.models import Payment, PaymentStatusType
+from dateutil import parser
+from main.utils import get_reminder_schedule_name
 
 logger = logging.getLogger(__name__)
 class BusinessBookingService:
@@ -34,12 +36,26 @@ class BusinessBookingService:
             return True
         except Exception as e:
             raise Exception(f"Error checking staff services: {e}")
+    
+    def get_client_minimum_booking_duration(self, client_id, duration):
+        try:
+            client = Client.objects.get(id=client_id)
+            if client.minimum_booking_duration_minutes > int(duration):
+                return int(client.minimum_booking_duration_minutes)
+            return int(duration)
+        except Exception as e:
+            return int(duration)
 
     def _get_staff_working_hours(self, staff_id, appointment_date):
         try:
             # convert appointment_date 2025-11-21 to weekday
             weekday = datetime.strptime(
                 appointment_date, '%Y-%m-%d').weekday()
+
+            override = self._get_staff_working_hours_override(staff_id, appointment_date)
+
+            if override:
+                return override
 
             working_hours = StaffWorkingHours.objects.filter(
                 staff__id=staff_id,
@@ -55,6 +71,19 @@ class BusinessBookingService:
         except Exception as e:
             raise Exception(f"Error getting staff working hours: {e}")
 
+    def _get_staff_working_hours_override(self, staff_id, appointment_date):
+        try:
+            override = StaffWorkingHoursOverride.objects.filter(
+                staff__id=staff_id,
+                staff__business_id=self.business_id,
+                date=appointment_date,
+                staff__is_online_booking_allowed=True,
+                is_working=True,
+            ).first()
+            return override
+        except Exception as e:
+            raise Exception(f"Error getting staff working hours override: {e}")
+
     def _check_staff_off_days(self, staff_id, appointment_date):
         try:
             day_offs = StaffOffDay.objects.filter(
@@ -62,7 +91,7 @@ class BusinessBookingService:
                 start_date__lte=appointment_date,
                 end_date__gte=appointment_date
             )
-            if day_offs.count() > 0:
+            if day_offs.exists():
                 return True
             return False
         except Exception as e:
@@ -85,7 +114,6 @@ class BusinessBookingService:
             start_time = (datetime.min + current_time).strftime('%H:%M')
             end_time = (datetime.min + service_end_time).strftime('%H:%M')
             
-            # convert start_time and end_time to timezone aware datetime and set date to 2025-11-24
             start_time = timezone.make_aware(datetime.strptime(start_time, '%H:%M'))
             start_time = start_time.replace(
                 year=appointment_date.year, 
@@ -237,22 +265,51 @@ class BusinessBookingService:
             return unique_time_slots
         except Exception as e:
             raise Exception(f"Error getting all available time slots: {e}")
-
+        
+    def _get_appointment_services_duration(self, appointment_services):
+        try:
+            total_duration = 0
+            for appointment_service in appointment_services:
+                total_duration += int(appointment_service['service_duration'])
+            return total_duration
+        except Exception as e:
+            return 0
+        
     def create_appointment_services(self, appointment, appointment_services):
         try:
+            
             with transaction.atomic():
-                created_appointment = Appointment.objects.create(**appointment)
                 
+                total_duration = self._get_appointment_services_duration(appointment_services)
+                
+                client_minimum_booking_duration = self.get_client_minimum_booking_duration(
+                    appointment['client_id'], 
+                    total_duration
+                )
+                if client_minimum_booking_duration > total_duration:
+                    appointment_services[0]['service_duration'] = client_minimum_booking_duration
+                    if isinstance(appointment_services[0]['start_at'], str):
+                        start_at_dt = parser.parse(appointment_services[0]['start_at'])
+                    else:
+                        start_at_dt = appointment_services[0]['start_at']
+                    end_at_dt = start_at_dt + timedelta(minutes=client_minimum_booking_duration)
+                    appointment_services[0]['end_at'] = end_at_dt
+                
+                created_appointment = Appointment.objects.create(
+                    **appointment,                    
+                )
+
                 for appointment_service in appointment_services:
                     AppointmentService.objects.create(
                         id=appointment_service['id'],
                         appointment=created_appointment,
-                        service_id=appointment_service['service'],
+                        service_id=appointment_service['service'] or None,
                         staff_id=appointment_service['staff'],
                         is_staff_request=appointment_service['is_staff_request'],
                         start_at=appointment_service['start_at'],
                         end_at=appointment_service['end_at'],
                         custom_price=appointment_service['custom_price'],
+                        custom_duration=appointment_service['service_duration'],
                     )
                     
                 return created_appointment
@@ -346,6 +403,26 @@ class AppointmentNotificationService:
         self.appointment = appointment
         self.dispatcher = NotificationDispatcher()
 
+    def _build_services_context(self):
+        """Build services list, total price, and total duration from appointment metadata."""
+        services = []
+        total_price = 0
+        total_duration = 0
+        metadata = self.appointment.metadata or {}
+        appointment_services = metadata.get('appointment_services', [])
+        for svc in appointment_services:
+            price = svc.get('custom_price') or svc.get('service_price') or svc.get('price') or 0
+            duration = svc.get('custom_duration') or svc.get('service_duration') or svc.get('duration_minutes') or 0
+            services.append({
+                'service_name': svc.get('service_name') or svc.get('name') or 'Service',
+                'staff_name': svc.get('staff_name') or '',
+                'price': price,
+                'duration': duration,
+            })
+            total_price += float(price)
+            total_duration += int(duration)
+        return services, total_price, total_duration
+
     def send_client_confirmation_notification(
         self,
         client_name,
@@ -356,25 +433,46 @@ class AppointmentNotificationService:
         start_at,
         metadata,
         business_twilio_phone_number,
+        client_email=None,
+        by_email=False,
+        by_sms=False,
     ):
         try:
             business_id = self.appointment.business.id
-            title = f"🔔 Appointment Confirmed - {business_name}"
             body_message = f"Your appointment #{appointment_id} has been confirmed at {start_at} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
-            
+
+    
+            if client_phone and by_sms:
+                SMSService().send_async(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                )
+
+            if client_email and by_email:
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
+                EmailService().send_async(
+                    subject=f"Appointment Confirmed - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_confirmation.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at,
+                        "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
+                    },
+                )
+
         except Exception as e:
-            logger.error(f"Error sending confirmation SMS: {e}")
-            raise Exception(f"Error sending confirmation SMS: {e}")
+            logger.error(f"Error sending confirmation notification: {e}")
+            raise Exception(f"Error sending confirmation notification: {e}")
 
     def send_client_reminder_notification(
         self,
@@ -385,29 +483,69 @@ class AppointmentNotificationService:
         appointment_id,
         start_at,
         metadata,
-        schedule_name,
         schedule_time,
         business_id,
         business_twilio_phone_number,
+        business_timezone: str,
+        client_email=None,
+        by_sms=False,
+        by_email=False,
     ):
         try:
+            print("sending reminder notification to:: ", client_email)
+            print("by_sms:: ", by_sms)
+            print("by_email:: ", by_email)
+            
             title = f"🔔 Appointment Reminder - {business_name}"
             body_message = f"Your appointment #{appointment_id} at {start_at} at {business_name} is coming up soon. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            
-            self.dispatcher.dispatch_scheduled(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                schedule_name=schedule_name,
-                schedule_time=schedule_time,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
+
+            if client_phone and by_sms:
+                reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='sms'
+                )
+                SMSService().send_scheduled(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    schedule_name=reminder_schedule_name,
+                    schedule_time=schedule_time,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                    schedule_expression_timezone=business_timezone,
+                )
+
+            if client_email and by_email:
+                reminder_schedule_name = get_reminder_schedule_name(
+                    business_id,
+                    appointment_id,
+                    channel='email'
+                )
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
+                EmailService().send_scheduled(
+                    subject=f"Appointment Reminder - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_reminder.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at,
+                        "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
+                    },
+                    schedule_name=reminder_schedule_name,
+                    schedule_time=schedule_time,
+                    schedule_expression_timezone=business_timezone,
+                )
+
         except Exception as e:
-            logger.error(f"Error sending reminder SMS: {e}")
-            raise Exception(f"Error sending reminder SMS: {e}")
+            logger.error(f"Error sending reminder notification: {e}")
+            raise Exception(f"Error sending reminder notification: {e}")
 
     def send_client_rescheduled_notification(
         self,
@@ -418,24 +556,52 @@ class AppointmentNotificationService:
         appointment_id,
         business_id,
         start_at_str,
-        metadata,   
+        metadata,
         business_twilio_phone_number,
+        client_email=None,
+        by_sms=False,
+        by_email=False,
     ):
         try:
             body_message = f"Your appointment #{appointment_id} has been rescheduled to {start_at_str} at {business_name}. If you need to cancel or reschedule your appointment, please contact us at {business_phone}."
-            title = f"🔔 Appointment Rescheduled - {business_name}"
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
+
+            if client_phone and by_sms:
+                SMSService().send_async(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                )
+                reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='sms'
+                )
+                SMSService().destroy_scheduled(schedule_name=reminder_schedule_name)
+
+            if client_email and by_email:
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
+                EmailService().send_async(
+                    subject=f"Appointment Rescheduled - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_rescheduled.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at_str,
+                        "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
+                    },
+                )
+
         except Exception as e:
-            logger.error(f"Error sending rescheduled SMS: {e}")
-            raise Exception(f"Error sending rescheduled SMS: {e}")
+            logger.error(f"Error sending rescheduled notification: {e}")
+            raise Exception(f"Error sending rescheduled notification: {e}")
     
     def send_client_cancellation_notification(
         self,
@@ -447,29 +613,60 @@ class AppointmentNotificationService:
         business_id,
         start_at_str,
         metadata,
-        schedule_name,
         business_twilio_phone_number,
+        client_email=None,
+        by_sms=False,
+        by_email=False,
     ):
         try:
-            print("send cancellation sms", client_name, client_phone, business_phone, business_name, appointment_id, business_id, start_at_str, metadata)
             body_message = f"Your appointment #{appointment_id} at {start_at_str} at {business_name} has been cancelled. Please contact us at {business_phone} if you have any questions."
-            title = f"Appointment Cancelled - {business_name}"
-            self.dispatcher.dispatchAsync(
-                title=title,
-                body=body_message,
-                data=metadata,
-                channel=Notification.Channel.SMS,
-                to=client_phone,
-                business_id=business_id,
-                business_twilio_phone_number=business_twilio_phone_number,
-            )
-            self.dispatcher.dispatch_destroy_scheduled(
-                channel=Notification.Channel.SMS,
-                schedule_name=schedule_name,
-            )
+
+            if client_phone and by_sms:
+                SMSService().send_async(
+                    to_phone=client_phone,
+                    body=body_message,
+                    business_id=business_id,
+                    business_twilio_phone_number=business_twilio_phone_number,
+                )
+            reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='sms'
+                )
+            if reminder_schedule_name:
+                SMSService().destroy_scheduled(schedule_name=reminder_schedule_name)
+
+            if client_email and by_email:
+                services, total_price, total_duration = self._build_services_context()
+                business = self.appointment.business
+                EmailService().send_async(
+                    subject=f"Appointment Cancelled - {business_name}",
+                    to_email=client_email,
+                    template="emails/appointment_cancelled.html",
+                    context={
+                        "client_name": client_name,
+                        "business_name": business_name,
+                        "appointment_id": appointment_id,
+                        "start_at": start_at_str,
+                        "business_phone": business_phone,
+                        "business_address": business.address if business else '',
+                        "services": services,
+                        "total_price": total_price,
+                        "total_duration": total_duration,
+                    },
+                )
+
+            reminder_schedule_name = get_reminder_schedule_name(
+                    business_id, 
+                    appointment_id, 
+                    channel='email'
+                )
+            if reminder_schedule_name:
+                EmailService().destroy_scheduled(schedule_name=reminder_schedule_name)
+                
         except Exception as e:
-            logger.error(f"Error sending cancellation SMS: {e}")
-            raise Exception(f"Error sending cancellation SMS: {e}")
+            logger.error(f"Error sending cancellation notification: {e}")
+            raise Exception(f"Error sending cancellation notification: {e}")
     
     # staff notifications
     def send_staff_appointment_confirmation_notification(
@@ -564,10 +761,10 @@ class AppointmentNotificationService:
             
             title = f"Leave a Review - {business.name}"
             schedule_name = f"leave-review-sms3-{business.id}-{appointment.id}"
-            schedule_time = datetime.now() + timedelta(seconds=10)
-            print("sending review request sms", appointment.client.phone, business.id, metadata)
-            print("schedule time", schedule_time)
-            
+            schedule_time = timezone.now() + timedelta(seconds=10)
+            bs = BusinessSettings.objects.filter(business_id=business.id).first()
+            review_tz = bs.timezone if bs else None
+
             NotificationDispatcher().dispatch_scheduled(
                 title=title,
                 body=body_message,
@@ -578,6 +775,7 @@ class AppointmentNotificationService:
                 business_twilio_phone_number=business.twilio_phone_number,
                 schedule_name=schedule_name,
                 schedule_time=schedule_time,
+                schedule_expression_timezone=review_tz,
             )
         except Exception as e:
             raise Exception(f"Error sending review request Push: {e}")
@@ -627,7 +825,7 @@ class TicketReportService():
     def __init__(self, business_id):
         self.business_id = business_id
     
-    def get_ticket_report_summary(self, from_date, to_date, staff_id):
+    def get_ticket_report_summary(self, from_date, to_date, staff_id=None):
         try:
             queryset = AppointmentService.objects.filter(
                 appointment__business_id=self.business_id,
@@ -652,6 +850,74 @@ class TicketReportService():
                 to_date=Value(to_date, output_field=DateField()),
             )
             
+            # order by total_service_sales descending
+            staff_sales = staff_sales.order_by('-total_service_sales')
+            
+            # payment ticket report
+            payment_queryset = Payment.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date__gte=from_date,
+                appointment__appointment_date__lte=to_date,
+                status=PaymentStatusType.COMPLETED.value,
+            )
+            
+            payment_statistics = payment_queryset.aggregate(
+                total_sales=Sum('amount'),
+                cash_method_sales=Sum('amount', filter=Q(payment_method__name='Cash')),
+                card_method_sales=Sum('amount', filter=Q(payment_method__name='Credit Card')),
+                debit_card_method_sales=Sum('amount', filter=Q(payment_method__name='Debit Card')),
+                bank_transfer_method_sales=Sum('amount', filter=Q(payment_method__name='Bank Transfer')),
+                cheque_method_sales=Sum('amount', filter=Q(payment_method__name='Cheque')),
+                gift_card_method_sales=Sum('amount', filter=Q(payment_method__name='Gift Card')),
+                online_method_sales=Sum('amount', filter=Q(payment_method__name='Online')),
+                other_method_sales=Sum('amount', filter=Q(payment_method__name='Other')),
+            )
+            
+            summary = queryset.aggregate(
+                total_sales=Sum('custom_price'),
+                total_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+            )
+            summary['from_date'] = from_date
+            summary['to_date'] = to_date
+            summary['total_staffs'] = staff_sales.count()
+            summary['payment_stats'] = payment_statistics
+            
+            return {
+                'summary': summary,
+                'data': staff_sales,
+            }
+        except Exception as e:
+            raise Exception(f"Error getting ticket report: {e}")
+        
+    def get_staff_ticket_report_summary(self, from_date, to_date, staff_id):
+        try:
+            queryset = AppointmentService.objects.filter(
+                appointment__business_id=self.business_id,
+                appointment__appointment_date__gte=from_date,
+                appointment__appointment_date__lte=to_date,
+                appointment__status=AppointmentStatusType.CHECKED_OUT.value,
+                is_active=True,
+                is_deleted=False,
+            )
+            
+            if staff_id:
+                queryset = queryset.filter(staff_id=staff_id)
+                
+            staff_sales = queryset.values('staff').annotate(
+                staff_first_name=F('staff__first_name'),
+                staff_last_name=F('staff__last_name'),
+                commission_rate=F('staff__commission_rate'),
+                total_service_sales=Sum('custom_price'),
+                total_service_tips=Sum('tip_amount'),
+                total_services=Count('id'),
+                from_date=Value(from_date, output_field=DateField()),
+                to_date=Value(to_date, output_field=DateField()),
+            )
+            
+            # order by total_service_sales descending
+            staff_sales = staff_sales.order_by('-total_service_sales')
+            
             summary = queryset.aggregate(
                 total_sales=Sum('custom_price'),
                 total_tips=Sum('tip_amount'),
@@ -661,13 +927,12 @@ class TicketReportService():
             summary['to_date'] = to_date
             summary['total_staffs'] = staff_sales.count()
             
-            
             return {
                 'summary': summary,
                 'data': staff_sales,
             }
         except Exception as e:
-            raise Exception(f"Error getting ticket report: {e}")
+            raise Exception(f"Error getting staff ticket report summary: {e}")
         
     def get_ticket_report_by_dates(self, from_date, to_date, staff_id):
         try:
@@ -807,13 +1072,18 @@ class SalaryReportService:
                 from_date, to_date, staff_id
             )
             
-            print("ticket_data summary", ticket_data['summary'])
             summary = ticket_data['summary']
             enriched_data = ticket_data['data']
             
             # Enrich data with commission calculations
             enriched_data, total_commission = self._enrich_data_with_commission(enriched_data)
             summary['total_commission'] = total_commission
+            
+            # Calculate total revenue
+            total_sales = summary['total_sales'] or 0
+            total_revenue = float(total_sales) - float(total_commission)
+            summary['total_revenue'] = total_revenue
+            
             return {
                 'summary': summary,
                 'data': enriched_data,
@@ -842,7 +1112,7 @@ class SalaryReportService:
             # Enrich data with commission calculations
             enriched_data = []
             total_commission = 0
-            # print("ticket_data", ticket_data)
+            commission_rate = 0
             for item in ticket_data['data']:
                 sales = item['total_service_sales'] or 0
                 commission_rate = item['commission_rate'] or 0
@@ -865,7 +1135,6 @@ class SalaryReportService:
             # Build summary with commission
             summary = ticket_data['summary'].copy()
             summary['total_commission'] = total_commission
-            summary['commission_rate'] = commission_rate
             
             return {
                 'summary': summary,
@@ -944,3 +1213,132 @@ class SalaryReportService:
             }
         except Exception as e:
             raise Exception(f"Error getting salary report by date: {e}")
+        
+
+class CalendarStaffService:
+    def __init__(self, business_id, auth_user, weekday, appointment_date):
+        self.business_id = business_id
+        self.auth_user = auth_user
+        self.weekday = weekday
+        self.appointment_date = appointment_date
+    
+    def _get_business_staffs(self) -> QuerySet[Staff]:
+        try:
+            if self.auth_user.role.name in ['Manager', 'Owner', 'Receptionist']:
+                
+                override_staffs = self._get_business_staffs_overrides()
+                
+                business_staffs = Staff.objects.filter(
+                    business_id=self.business_id,
+                    is_active=True,
+                    is_online_booking_allowed=True,
+                    working_hours__is_working=True,
+                    working_hours__day_of_week=self.weekday,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+                
+                if override_staffs.exists():
+                    # add staff working hours overrides to business staffs
+                    business_staffs = (business_staffs | override_staffs).distinct()
+            else:
+                business_staffs = Staff.objects.filter(
+                    id=self.auth_user.id,
+                )
+            
+            return business_staffs
+        
+        except Exception as e:
+            raise Exception(f"Error getting business staffs: {e}")
+    
+    def _get_business_staffs_overrides(self) -> QuerySet[Staff]:
+        try:
+            override_staffs = StaffWorkingHoursOverride.objects.filter(
+                staff__business_id=self.business_id,
+                date=self.appointment_date,
+                is_working=True,
+            )
+            staffs = override_staffs.values_list('staff__id', flat=True)
+            
+            override_staffs = Staff.objects.filter(
+                id__in=staffs,
+                is_active=True,
+                is_online_booking_allowed=True,
+                role__name__in=['Technician', 'Stylist'],
+            ).all()
+            
+            return override_staffs
+        except Exception as e:
+            raise Exception(f"Error getting business staffs overrides: {e}")
+        
+    def _get_staff_off_days(self, business_staffs) -> QuerySet[StaffOffDay]:
+        try:
+            staff_off_days = StaffOffDay.objects.filter(
+                staff__id__in=business_staffs.values_list('id', flat=True),
+                start_date__lte=self.appointment_date,
+                end_date__gte=self.appointment_date,
+            )
+            return staff_off_days
+        except Exception as e:
+            raise Exception(f"Error getting staff off days: {e}")
+        
+    def _handle_staff_on_leave(
+        self,
+        staff_off_days: QuerySet[StaffOffDay],
+        business_staffs: QuerySet[Staff],
+    ) -> QuerySet[Staff]:
+        try:
+            staff_on_leave_ids = set(
+                staff_off_days.values_list('staff__id', flat=True)
+            )
+            staff_off_day_appointments = AppointmentService.objects.filter(
+                staff_id__in=staff_on_leave_ids,
+                appointment__appointment_date=self.appointment_date,
+            )
+            staff_on_leave_with_appointments = set(
+                staff_off_day_appointments.values_list('staff_id', flat=True)
+            )
+            staff_on_leave_without_appointments = (
+                staff_on_leave_ids - staff_on_leave_with_appointments
+            )
+            available_staffs = business_staffs.exclude(
+                id__in=staff_on_leave_without_appointments
+            )
+            return available_staffs
+
+        except Exception as e:
+            raise Exception(f"Error getting staff on leave with appointments: {e}")
+    
+    def get_calendar_staffs(self) -> QuerySet[Staff]:
+        try:
+            # Get staff with role and who are working on the appointment date
+            business_staffs = self._get_business_staffs()
+            
+            # Get staff who have an off day on the appointment date
+            staff_off_days = self._get_staff_off_days(business_staffs)
+            
+            # Get staff who are available for the appointment date
+            if staff_off_days.exists():
+                return self._handle_staff_on_leave(staff_off_days, business_staffs)
+            else:
+                return business_staffs
+        
+        except Exception as e:
+            raise Exception(f"Error getting calendar staffs: {e}")
+
+    def get_all_technicians(self) -> QuerySet[Staff]:
+        try:
+            if self.auth_user.role.name in ['Manager', 'Owner', 'Receptionist']:
+                technicians = Staff.objects.filter(
+                    business_id=self.business_id,
+                    is_active=True,
+                    is_online_booking_allowed=True,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+                return technicians
+            else:
+                return Staff.objects.filter(
+                    id=self.auth_user.id,
+                    role__name__in=['Technician', 'Stylist'],
+                )
+        except Exception as e:
+            raise Exception(f"Error getting all technicians: {e}")

@@ -39,6 +39,7 @@ class GiftCardService:
         message: Optional[str] = None,
         notes: Optional[str] = None,
         payment_id: Optional[int] = None,
+        is_online_purchase: Optional[bool] = False,
     ) -> GiftCard:
         """Create a new gift card"""
         with transaction.atomic():
@@ -55,6 +56,7 @@ class GiftCardService:
                 message=message,
                 notes=notes,
                 payment_id=payment_id,
+                is_online_purchase=is_online_purchase,
             )
             
             # Create purchase transaction
@@ -93,8 +95,6 @@ class GiftCardService:
                     raise ValueError("Gift card has been fully redeemed")
                 else:
                     raise ValueError("Gift card is not active")
-            print("amount:: ", Decimal(amount))
-            print("gift_card.current_balance:: ", gift_card.current_balance)
             amount = money_quantize(amount)
             current_balance = money_quantize(gift_card.current_balance)
             if amount > current_balance:
@@ -110,7 +110,6 @@ class GiftCardService:
                 gift_card.status = GiftCardStatusType.REDEEMED
                 gift_card.redeemed_at = timezone.now()
                 
-            print("gift_card.current_balance:: ", gift_card.__dict__)
             
             gift_card.save()
             
@@ -565,6 +564,7 @@ class GiftCardOnlinePaymentService:
             message=metadata.get("message"),
             notes=metadata.get("notes"),
             payment_id=payment.id,
+            is_online_purchase=True,
         )
         
         if metadata.get("recipient_email"):

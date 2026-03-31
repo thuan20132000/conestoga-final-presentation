@@ -40,9 +40,24 @@ class IsBusinessManager(permissions.BasePermission):
     def has_permission(self, request, view):
         user = request.user
         business_id = request.query_params.get('business_id')
-        
         role = user.role.name if user.role else None
         if role not in ['Manager', 'Owner']:
+            return False
+        
+        if not business_id:
+            return False
+        
+        return str(user.business_id) == str(business_id)
+
+class IsBusinessManagerOrReceptionist(permissions.BasePermission):
+    """
+    Permission to check if the user is a Manager or Owner or Receptionist of the business.
+    """
+    def has_permission(self, request, view):
+        user = request.user
+        business_id = request.query_params.get('business_id')
+        role = user.role.name if user.role else None
+        if role not in ['Manager', 'Owner', 'Receptionist']:
             return False
         
         if not business_id:

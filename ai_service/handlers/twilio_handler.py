@@ -43,6 +43,9 @@ class TwilioHandler:
         self._mark_counter = 0
         self._pending_marks: dict[str, tuple[str, int, bytes]] = {}
 
+        # Track which item_ids we've already saved to avoid duplicates
+        self._saved_item_ids: set[str] = set()
+
         self._realtime_task: asyncio.Task | None = None
         self._twilio_recv_task: asyncio.Task | None = None
         self._buffer_flush_task: asyncio.Task | None = None
@@ -68,6 +71,9 @@ class TwilioHandler:
                     "input_audio_format": "g711_ulaw",
                     "output_audio_format": "g711_ulaw",
                     "voice": ai_config.voice_provider or "alloy",
+                    "input_audio_transcription": {
+                        "model": "gpt-4o-mini-transcribe",
+                    },
                     "turn_detection": {
                         "type": "semantic_vad",
                         "interrupt_response": True,
@@ -187,8 +193,11 @@ class TwilioHandler:
                 elif event_type == "audio_end":
                     pass
 
+                elif event_type == "history_updated":
+                    await self._handle_history_updated(event)
+
                 elif event_type == "history_added":
-                    await self._handle_history_event(event)
+                    pass  # handled via history_updated which has transcripts
 
                 elif event_type == "agent_end":
                     logger.info("Agent ended session")
@@ -251,39 +260,43 @@ class TwilioHandler:
         self._pending_marks.clear()
         logger.debug("Cleared Twilio audio buffer (interruption)")
 
-    async def _handle_history_event(self, event) -> None:
-        """Track conversation transcript and save to database."""
-        item = event.item
+    async def _handle_history_updated(self, event) -> None:
+        """Process full history to capture transcripts that weren't ready on history_added."""
         timestamp = datetime.now().isoformat()
 
-        if not hasattr(item, "role") or not hasattr(item, "content"):
-            return
+        for item in event.history:
+            item_id = getattr(item, "item_id", None)
+            if not item_id or item_id in self._saved_item_ids:
+                continue
 
-        role = item.role
-        content_parts = item.content if isinstance(item.content, list) else [item.content]
+            if not hasattr(item, "role") or not hasattr(item, "content"):
+                continue
 
-        for part in content_parts:
-            text = None
-            if hasattr(part, "transcript") and part.transcript:
-                text = part.transcript
-            elif hasattr(part, "text") and part.text:
-                text = part.text
+            role = item.role
+            content_parts = item.content if isinstance(item.content, list) else [item.content]
 
-            if text:
-                speaker = "caller" if role == "user" else "assistant"
-                self._conversation_transcript.append(
-                    {
-                        "speaker": speaker,
-                        "content": text,
-                        "timestamp": timestamp,
-                    }
-                )
-                logger.debug(f"Transcript [{speaker}]: {text[:80]}...")
+            for part in content_parts:
+                text = None
+                if hasattr(part, "transcript") and part.transcript:
+                    text = part.transcript
+                elif hasattr(part, "text") and part.text:
+                    text = part.text
 
-                # Save to database
-                db_role = "user" if role == "user" else "assistant"
-                await CallSessionService.save_message(
-                    call_sid=self._call_sid,
-                    role=db_role,
-                    content=text,
-                )
+                if text:
+                    self._saved_item_ids.add(item_id)
+                    speaker = "caller" if role == "user" else "assistant"
+                    self._conversation_transcript.append(
+                        {
+                            "speaker": speaker,
+                            "content": text,
+                            "timestamp": timestamp,
+                        }
+                    )
+                    logger.debug(f"Transcript [{speaker}]: {text[:80]}...")
+
+                    db_role = "user" if role == "user" else "assistant"
+                    await CallSessionService.save_message(
+                        call_sid=self._call_sid,
+                        role=db_role,
+                        content=text,
+                    )

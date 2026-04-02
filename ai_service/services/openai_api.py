@@ -28,101 +28,12 @@ class OpenAIAPI:
 
         return response.choices[0].message.content
 
-    async def sanitize_booking_services_data(self, raw_data: str) -> str:
+    async def sanitize_booking_services_data(self, raw_data: str, business_services_data: str) -> str:
         """Clean data."""
         print("Sanitizing data...")
         print("Raw data:: ", raw_data)
         # raw_data = "{'service_type': 'Pedicure', 'date': 'tomorrow', 'time': '1 PM'}"
 
-        business_services_data = [
-            {
-                "id": 10,
-                "name": "Shellac Manicure",
-                "description": "",
-                "price": "40.00",
-                "duration": 35,
-                "created_at": "2025-06-03T01:27:08.814693Z",
-                "updated_at": "2025-06-03T01:27:08.814705Z",
-                "salon": 1,
-                "category": 4
-            },
-            {
-                "id": 63,
-                "name": "Volume Full Set / Full Wispy Volume",
-                "description": "",
-                "price": "60.00",
-                "duration": 60,
-                "created_at": "2025-07-10T03:39:04.703056Z",
-                "updated_at": "2025-07-10T03:39:04.703071Z",
-                "salon": 1,
-                "category": 4
-            },
-            {
-                "id": 57,
-                "name": "Fullset",
-                "description": "",
-                "price": "57.00",
-                "duration": 60,
-                "created_at": "2025-06-26T05:01:05.264745Z",
-                "updated_at": "2025-06-26T05:01:05.264761Z",
-                "salon": 1,
-                "category": 5
-            },
-            {
-                "id": 65,
-                "name": "Pedicure With Shellac",
-                "description": "",
-                "price": "50.00",
-                "duration": 50,
-                "created_at": "2025-07-15T04:39:24.598273Z",
-                "updated_at": "2025-07-15T04:39:24.598287Z",
-                "salon": 1,
-                "category": 4
-            },
-            {
-                "id": 66,
-                "name": "Take off Shellac",
-                "description": "",
-                "price": "10.00",
-                "duration": 10,
-                "created_at": "2025-07-15T04:39:42.919079Z",
-                "updated_at": "2025-07-15T04:39:42.919093Z",
-                "salon": 1,
-                "category": 4
-            },
-            {
-                "id": 9,
-                "name": "Manicure 2",
-                "description": "",
-                "price": "37.00",
-                "duration": 30,
-                "created_at": "2025-06-03T01:26:44.778188Z",
-                "updated_at": "2025-07-16T20:33:32.403595Z",
-                "salon": 1,
-                "category": 4
-            },
-            {
-                "id": 64,
-                "name": "Pedicure",
-                "description": "",
-                "price": "50.00",
-                "duration": 50,
-                "created_at": "2025-07-15T04:39:12.838167Z",
-                "updated_at": "2025-07-15T04:39:12.838181Z",
-                "salon": 1,
-                "category": 4
-            },
-            {
-                "id": 67,
-                "name": "Take off Shellac with service",
-                "description": "",
-                "price": "10.00",
-                "duration": 15,
-                "created_at": "2025-07-15T04:39:58.409178Z",
-                "updated_at": "2025-08-22T04:05:34.657732Z",
-                "salon": 1,
-                "category": 4
-            },]
 
         openai_api = OpenAIAPI()
         prompt = f"""

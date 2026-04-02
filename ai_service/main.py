@@ -13,9 +13,6 @@ from main.common_settings import CORS_ALLOWED_ORIGINS
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
-    print(f"🚀 Starting AI Receptionist on {settings.host}:{settings.port}")
-    print(f"📞 Twilio WebSocket URL: {settings.public_ws_url}")
-    
     # Initialize services
     app.state.audio_service = AudioService()
     
@@ -29,7 +26,6 @@ async def lifespan(app: FastAPI):
     
     yield
     # Shutdown
-    print("👋 Shutting down AI Receptionist")
 
 
 # Create FastAPI app

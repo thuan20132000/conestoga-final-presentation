@@ -18,9 +18,11 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "main.middleware.language.PreferredLanguageFallbackMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -105,6 +107,13 @@ AUTH_USER_MODEL = "staff.Staff"
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
+LANGUAGES = [
+    ("en", "English"),
+    ("vi", "Vietnamese"),
+]
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
 
 TIME_ZONE = "America/Toronto"
 
@@ -253,6 +262,8 @@ CORS_ALLOW_HEADERS = [
     "X-API-KEY",
     "X-SIGNATURE",
     "X-TIMESTAMP",
+    "X-Business-Id",
+    "X-Client-Id",
 ]
 # Notification provider settings (placeholders)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="no-reply@bookngon.com")

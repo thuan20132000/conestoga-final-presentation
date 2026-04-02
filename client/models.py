@@ -1,12 +1,18 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils.translation import gettext_lazy as _
 from business.models import Business
 from simple_history.models import HistoricalRecords
 from main.models import SoftDeleteModel
 
 
 class Client(SoftDeleteModel):
+    LANGUAGE_CHOICES = [
+        ("en", _("English")),
+        ("vi", _("Vietnamese")),
+    ]
+
     """Client information for appointments and services"""
 
     first_name = models.CharField(max_length=100, help_text="Client's first name")
@@ -61,6 +67,12 @@ class Client(SoftDeleteModel):
         ],
         default="email",
         help_text="Preferred method of contact",
+    )
+    preferred_language = models.CharField(
+        max_length=5,
+        choices=LANGUAGE_CHOICES,
+        default="en",
+        help_text=_("Preferred language for client-facing messages"),
     )
     notes = models.TextField(
         blank=True, null=True, help_text="Special notes about the client"

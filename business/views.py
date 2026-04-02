@@ -34,6 +34,7 @@ from payment.services import PaymentService
 from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
 from .services import BusinessRegisterService
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.utils.translation import gettext as _
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -332,12 +333,13 @@ class BusinessRegisterView(BaseAPIView):
 
     def post(self, request):
         try:
-            print("Request data:: ", request.data)
+            print("Register Request data:: ", request.data)
             serializer = BusinessRegisterSerializer(data=request.data)
             if serializer.is_valid():
                 business_data = serializer.validated_data['business']
                 owner_data = serializer.validated_data['owner']
-                business_service = BusinessRegisterService(business_data, owner_data)
+                business_type_name = serializer.validated_data['business']['business_type']
+                business_service = BusinessRegisterService(business_data, owner_data, business_type_name)
                 owner = business_service.initialize()
                 
                 user_serializer = UserProfileSerializer(owner)
@@ -345,7 +347,7 @@ class BusinessRegisterView(BaseAPIView):
                 
                 return Response({
                     'success': True,
-                    'message': 'Registration successful',
+                    'message': _('Registration successful'),
                     'results': {
                         'user': user_serializer.data,
                         'tokens': {
@@ -357,7 +359,7 @@ class BusinessRegisterView(BaseAPIView):
 
             return Response({
                 'success': False,
-                'message': 'Registration failed',
+                'message': _('Registration failed'),
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
             
@@ -365,6 +367,6 @@ class BusinessRegisterView(BaseAPIView):
             
             return Response({
                 'success': False,
-                'message': 'Error during registration',
+                'message': _('Error during registration'),
                 'error': str(exc)
             }, status=status.HTTP_400_BAD_REQUEST)

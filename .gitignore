@@ -93,4 +93,4 @@ fastapi/tools/__pycache__/
 certs/
 
 # CSV files
-*.csv
+# *.csv

@@ -2,6 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.forms.models import BaseInlineFormSet
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 from .models import (
     BusinessType, 
     Business, 
@@ -48,7 +49,7 @@ class BusinessOwnerInlineForm(forms.ModelForm):
     password = forms.CharField(
         widget=forms.PasswordInput(render_value=False),
         required=False,
-        help_text='Leave blank to set an unusable password.',
+        help_text=_('Leave blank to set an unusable password.'),
     )
 
     class Meta:
@@ -75,8 +76,8 @@ class BusinessOwnerInline(admin.TabularInline):
     model = Staff
     form = BusinessOwnerInlineForm
     formset = BusinessOwnerFormset
-    verbose_name = 'Owner'
-    verbose_name_plural = 'Owners'
+    verbose_name = _('Owner')
+    verbose_name_plural = _('Owners')
     extra = 1
     fields = ['username', 'password', 'first_name', 'last_name', 'email', 'phone', 'is_active']
 
@@ -86,8 +87,8 @@ class BusinessOwnerInline(admin.TabularInline):
 
 class BusinessManagerInline(admin.TabularInline):
     model = Staff
-    verbose_name = 'Manager'
-    verbose_name_plural = 'Managers'
+    verbose_name = _('Manager')
+    verbose_name_plural = _('Managers')
     extra = 0
     fields = ['first_name','phone', 'is_active', 'username']
     readonly_fields = ['first_name', 'phone', 'is_active', 'username']
@@ -116,16 +117,16 @@ class BusinessAdmin(admin.ModelAdmin):
                 staff.save()
 
     fieldsets = (
-        ('Basic Information', {
+        (_('Basic Information'), {
             'fields': ('name', 'business_type', 'description', 'cost_per_minute', 'twilio_phone_number', 'google_review_url')
         }),
-        ('Contact Information', {
+        (_('Contact Information'), {
             'fields': ('phone_number', 'email', 'website')
         }),
-        ('Address', {
+        (_('Address'), {
             'fields': ('address', 'city', 'state_province', 'postal_code', 'country')
         }),
-        ('Soft delete', {
+        (_('Soft delete'), {
             'fields': ('is_deleted', 'deleted_at')
         }),
     )
@@ -148,27 +149,27 @@ class BusinessSettingsAdmin(admin.ModelAdmin):
     ordering = ['business__name']
     
     fieldsets = (
-        ('Booking Settings', {
+        (_('Booking Settings'), {
             'fields': (
                 'advance_booking_days', 'min_advance_booking_hours', 'max_advance_booking_days',
                 'time_slot_interval', 'buffer_time_minutes', 'timezone'
             )
         }),
-        ('Notification Settings', {
+        (_('Notification Settings'), {
             'fields': (
                 'send_reminder_emails', 'send_reminder_sms', 'reminder_hours_before',
                 'send_confirmation_sms', 'send_confirmation_email',
                 'send_cancellation_sms', 'send_cancellation_email',
             )
         }),
-        ('Payment Settings', {
+        (_('Payment Settings'), {
             'fields': (
                 'currency', 'tax_rate', 'require_payment_advance'
             )
         }),
-        ('General Settings', {
+        (_('General Settings'), {
             'fields': (
-                'allow_online_booking', 'require_client_phone', 'require_client_email',
+                'preferred_language', 'allow_online_booking', 'require_client_phone', 'require_client_email',
                 'auto_confirm_appointments', 'allow_online_gift_cards', 'gift_card_processing_fee_enabled', 'tax_with_cash_enabled'
             )
         }),
@@ -182,13 +183,13 @@ class BusinessOnlineBookingAdmin(admin.ModelAdmin):
     ordering = ['business__name', 'name']
     
     fieldsets = (
-        ('Basic Information', {
+        (_('Basic Information'), {
             'fields': ('name', 'slug', 'logo', 'description', 'policy')
         }),
-        ('Booking Settings', {
+        (_('Booking Settings'), {
             'fields': ('interval_minutes', 'buffer_time_minutes')
         }),
-        ('Status and Visibility', {
+        (_('Status and Visibility'), {
             'fields': ('is_active', 'shareable_link')
         }),
     )

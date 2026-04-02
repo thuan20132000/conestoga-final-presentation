@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import SubscriptionPlan, BusinessSubscription, BillingCycle
+from django.utils.translation import gettext_lazy as _
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
@@ -59,7 +60,7 @@ class BusinessSubscriptionCreateSerializer(serializers.Serializer):
 
     def validate_plan_id(self, value):
         if not SubscriptionPlan.objects.filter(id=value, is_active=True).exists():
-            raise serializers.ValidationError("Subscription plan not found or inactive.")
+            raise serializers.ValidationError(_("Subscription plan not found or inactive."))
         return value
 
 
@@ -73,5 +74,5 @@ class ChangePlanSerializer(serializers.Serializer):
 
     def validate_new_plan_id(self, value):
         if not SubscriptionPlan.objects.filter(id=value, is_active=True).exists():
-            raise serializers.ValidationError("Subscription plan not found or inactive.")
+            raise serializers.ValidationError(_("Subscription plan not found or inactive."))
         return value

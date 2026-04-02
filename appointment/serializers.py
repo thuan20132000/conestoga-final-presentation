@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 from .models import Appointment, AppointmentService
 from business.models import Business
 from service.models import Service
@@ -57,10 +58,20 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'cancelled_at',
             'is_active',
             'payment_status',
+            'send_review_request',
+            'checked_in_at'
+        ]
+        read_only_fields = [
+            'id', 
+            'created_at', 
+            'updated_at',
+            'checked_in_at',
+            'confirmed_at', 
+            'completed_at', 
+            'cancelled_at', 
+            'is_active', 
             'send_review_request'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at',
-                            'confirmed_at', 'completed_at', 'cancelled_at', 'is_active', 'send_review_request']
 
     def validate(self, data):
         """Validate appointment data"""
@@ -72,7 +83,7 @@ class AppointmentUpdateSerializer(AppointmentSerializer):
     class Meta:
         model = Appointment
         fields = [
-            'business', 'client', 'appointment_date', 'status', 'notes', 'internal_notes', 'booked_by', 'booking_source', 'is_active', 'metadata'
+            'business', 'client', 'appointment_date', 'status', 'notes', 'internal_notes', 'booked_by', 'booking_source', 'is_active', 'metadata', 'checked_in_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at',
                             'confirmed_at', 'completed_at', 'cancelled_at']
@@ -200,7 +211,7 @@ class AppointmentAvailabilitySerializer(serializers.Serializer):
     def validate_appointment_date(self, value):
         """Validate appointment date"""
         if value < timezone.now().date():
-            raise serializers.ValidationError("Date cannot be in the past")
+            raise serializers.ValidationError(_("Date cannot be in the past"))
         return value
 
     def validate(self, data):
@@ -217,7 +228,7 @@ class AppointmentAvailabilitySerializer(serializers.Serializer):
 
         if not operating_hours or not operating_hours.is_open:
             raise serializers.ValidationError(
-                "Business is closed on this date")
+                _("Business is closed on this date"))
 
         return data
 

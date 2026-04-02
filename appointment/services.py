@@ -303,7 +303,7 @@ class BusinessBookingService:
                     AppointmentService.objects.create(
                         id=appointment_service['id'],
                         appointment=created_appointment,
-                        service_id=appointment_service['service'],
+                        service_id=appointment_service['service'] or None,
                         staff_id=appointment_service['staff'],
                         is_staff_request=appointment_service['is_staff_request'],
                         start_at=appointment_service['start_at'],

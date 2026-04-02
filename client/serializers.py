@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Client, ClientOTP
+from django.utils.translation import gettext_lazy as _
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -34,6 +35,7 @@ class ClientSerializer(serializers.ModelSerializer):
             "emergency_contact_phone",
             "emergency_contact_relation",
             "preferred_contact_method",
+            "preferred_language",
             "notes",
             "medical_notes",
             "primary_business",
@@ -55,7 +57,7 @@ class ClientSerializer(serializers.ModelSerializer):
                 queryset = queryset.exclude(pk=self.instance.pk)
             if queryset.exists():
                 raise serializers.ValidationError(
-                    "A client with this email already exists."
+                    _("A client with this email already exists.")
                 )
         return value
 
@@ -67,7 +69,7 @@ class ClientSerializer(serializers.ModelSerializer):
                 queryset = queryset.exclude(pk=self.instance.pk)
             if queryset.exists():
                 raise serializers.ValidationError(
-                    "A client with this phone number already exists."
+                    _("A client with this phone number already exists.")
                 )
         return value
 
@@ -155,6 +157,7 @@ class BookingClientSerializer(serializers.ModelSerializer):
             "last_name",
             "email",
             "phone",
+            "preferred_language",
             "primary_business_id",
             "bonus_time_minutes",
             "minimum_booking_duration_minutes",
@@ -229,7 +232,7 @@ class ClientRegisterSerializer(serializers.Serializer):
         email = attrs.get("email", "").strip()
         phone = attrs.get("phone", "").strip()
         if not email and not phone:
-            raise serializers.ValidationError("Either email or phone is required.")
+            raise serializers.ValidationError(_("Either email or phone is required."))
         return attrs
 
 
@@ -294,6 +297,7 @@ class ClientProfileSerializer(serializers.ModelSerializer):
             "postal_code",
             "country",
             "preferred_contact_method",
+            "preferred_language",
             "primary_business",
             "primary_business_name",
             "is_vip",

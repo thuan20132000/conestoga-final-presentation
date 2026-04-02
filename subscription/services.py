@@ -195,9 +195,18 @@ class SubscriptionService:
         sub_status = SubscriptionStatus.ACTIVE
         try:
             stripe_sub = self.stripe.retrieve_subscription(stripe_subscription_id)
-            current_period_start = _ts_to_datetime(stripe_sub.get('current_period_start'))
-            current_period_end = _ts_to_datetime(stripe_sub.get('current_period_end'))
-            trial_end = _ts_to_datetime(stripe_sub.get('trial_end'))
+            # Stripe returns a "items": {"data": [ ... ]} array—even for single subscriptions.
+            # Use those period timestamps if present on the first item, else fallback to plain keys.
+            items_data = stripe_sub.get("items", {}).get("data", [])
+            if items_data and isinstance(items_data[0], dict):
+                item = items_data[0]
+                current_period_start = _ts_to_datetime(item.get('current_period_start'))
+                current_period_end = _ts_to_datetime(item.get('current_period_end'))
+                trial_end = _ts_to_datetime(item.get('trial_end')) or _ts_to_datetime(stripe_sub.get('trial_end'))
+            else:
+                current_period_start = _ts_to_datetime(stripe_sub.get('current_period_start'))
+                current_period_end = _ts_to_datetime(stripe_sub.get('current_period_end'))
+                trial_end = _ts_to_datetime(stripe_sub.get('trial_end'))
             sub_status = stripe_sub.status
         except Exception as e:
             logger.warning("Could not retrieve Stripe subscription %s: %s", stripe_subscription_id, e)

@@ -1,6 +1,7 @@
 # main/middleware/signature.py
 from django.http import JsonResponse
 from rest_framework.exceptions import AuthenticationFailed
+from django.utils.translation import gettext as _
 
 # Import your existing verifier (adjust path if needed)
 
@@ -19,7 +20,7 @@ def verify_signature(request):
     if not (public_key and signature and timestamp):
         raise AuthenticationFailed({
             'status': False,
-            'message': 'Missing required headers',
+            'message': _('Missing required headers'),
             'code': 401
         })
     
@@ -28,7 +29,7 @@ def verify_signature(request):
     if int(timestamp) > int(time.time() + SIGNATURE_EXPIRY_TIME):
         raise AuthenticationFailed({
             'status': False,
-            'message': 'Signature expired',
+            'message': _('Signature expired'),
             'code': 401
         })
     
@@ -43,7 +44,7 @@ def verify_signature(request):
     if not hmac.compare_digest(signature, expected_signature): 
         raise AuthenticationFailed({
             'status': False,
-            'message': 'Invalid signature',
+            'message': _('Invalid signature'),
             'code': 401
         })
 

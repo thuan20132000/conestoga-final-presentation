@@ -13,8 +13,8 @@ class AIConfigurationSerializer(serializers.ModelSerializer):
         model = AIConfiguration
         fields = [
             'id', 'business', 'business_name', 'ai_name', 'greeting_message',
-            'language', 'voice_provider', 'stt_provider', 'model_name',
-            'temperature', 'max_tokens', 'webhook_url', 'created_at', 'updated_at', 'status',
+            'language', 'voice', 'model_name',
+            'temperature', 'created_at', 'updated_at', 'status',
             'prompt'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

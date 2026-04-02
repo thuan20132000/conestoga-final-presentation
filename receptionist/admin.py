@@ -15,9 +15,9 @@ from .models import (
 
 @admin.register(AIConfiguration)
 class AIConfigurationAdmin(admin.ModelAdmin):
-    list_display = ("business", "ai_name", "language", "voice_provider", "stt_provider", "model_name", "updated_at")
+    list_display = ("business", "ai_name", "language", "voice", "model_name", "updated_at")
     search_fields = ("business__name", "ai_name", "model_name")
-    list_filter = ("language", "voice_provider", "stt_provider")
+    list_filter = ("language", "voice")
 
 
 @admin.register(CallSession)

@@ -104,10 +104,10 @@ async def handle_incoming_call(request: Request):
     call_sid = data.get("CallSid")
     print("Call SID:: ", call_sid)
     
-    business_ai_config = await AIConfiguration.objects.aget(
+    business_ai_config = await AIConfiguration.objects.filter(
         business__twilio_phone_number=call_to, 
         status=AIConfigurationStatus.ACTIVE.value
-    )
+    ).afirst()
     
     logger.info(f"Business AI config:: {business_ai_config.__dict__}")
     
@@ -125,7 +125,8 @@ async def handle_incoming_call(request: Request):
     response = VoiceResponse()
     response.say(
         business_ai_config.greeting_message,
-        voice="Google.en-US-Chirp3-HD-Aoede"
+        voice="Google.en-US-Chirp3-HD-Aoede",
+        language=business_ai_config.language
     )
     # response.pause(length=1)
     host = request.url.hostname

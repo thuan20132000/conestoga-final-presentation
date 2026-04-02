@@ -70,7 +70,7 @@ class TwilioHandler:
                     "model_name": ai_config.model_name or "gpt-realtime-mini",
                     "input_audio_format": "g711_ulaw",
                     "output_audio_format": "g711_ulaw",
-                    "voice": ai_config.voice_provider or "alloy",
+                    "voice": ai_config.voice or "alloy",
                     "input_audio_transcription": {
                         "model": "gpt-4o-mini-transcribe",
                     },

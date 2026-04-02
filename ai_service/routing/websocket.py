@@ -10,7 +10,7 @@ from ai_service.services.business_booking_service import BusinessBookingService
 from ai_service.services.call_session_service import CallSessionService
 from ai_service.services.openai_api import OpenAIAPI
 from ai_service.tools.context import CallContext
-
+from client.models import Client
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
@@ -24,15 +24,17 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
     # Fetch per-business AI configuration
     ai_config = await CallSessionService.get_ai_configuration(call_to)
 
+    # business client information
+    business_client = await CallSessionService.get_business_client(call_sid)
     # Build per-call context
     call_context = CallContext(
         business_id=ai_config.business_id,
         call_sid=call_sid,
-        caller_number="",
+        caller_number=business_client.phone or "",
         booking_service=BusinessBookingService(ai_config.business_id),
         openai_api=OpenAIAPI(),
     )
-
+    
     # Create agent with business-specific instructions
     agent = create_receptionist_agent(instructions=ai_config.prompt)
 

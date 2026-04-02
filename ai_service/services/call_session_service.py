@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
-
+from client.models import Client
 from ai_service.services.openai_api import OpenAIAPI
 from receptionist.models import (
     AIConfiguration,
@@ -27,10 +27,26 @@ class CallSessionService:
     @staticmethod
     async def get_ai_configuration(call_to: str) -> AIConfiguration:
         """Fetch AIConfiguration for a business by its Twilio phone number."""
-        return await AIConfiguration.objects.aget(
+        return await AIConfiguration.objects.filter(
             business__twilio_phone_number=call_to,
             status=AIConfigurationStatus.ACTIVE.value,
-        )
+        ).afirst()
+
+    @staticmethod
+    async def get_business_client(call_sid: str) -> Client:
+        """Fetch the business client for a call session."""
+        call_session = await CallSession.objects.aget(call_sid=call_sid)
+        caller = call_session.caller_number
+     
+        # (e.g., "+12894428808" -> "2894428808")
+        caller = caller[-10:]
+        
+        return await Client.objects.filter(   
+            primary_business_id=call_session.business_id,
+            phone=caller,
+            is_active=True,
+            is_deleted=False,
+        ).afirst()
 
     async def finalize_call(
         self,

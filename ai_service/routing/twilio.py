@@ -92,24 +92,16 @@ async def twilio_test_endpoint():
 @router.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
-    print("Incoming call received")
-    print("Request:: ", request)
     call_data = await request.form()
-    print("Call data:: ", call_data)
     data = dict(call_data)
     call_from = data.get("From")
-    print("Call from:: ", call_from)
     call_to = data.get("To")
-    print("Call to:: ", call_to)
     call_sid = data.get("CallSid")
-    print("Call SID:: ", call_sid)
     
     business_ai_config = await AIConfiguration.objects.filter(
         business__twilio_phone_number=call_to, 
         status=AIConfigurationStatus.ACTIVE.value
     ).afirst()
-    
-    logger.info(f"Business AI config:: {business_ai_config.__dict__}")
     
     call_session = await CallSession.objects.acreate(
         call_sid=call_sid,
@@ -120,8 +112,6 @@ async def handle_incoming_call(request: Request):
         business_id=business_ai_config.business_id
     )
     
-    print("Call session created:: ", call_session)
-
     response = VoiceResponse()
     response.say(
         business_ai_config.greeting_message,
@@ -137,5 +127,4 @@ async def handle_incoming_call(request: Request):
     
     response.append(connect)
     
-    print("Response:: ", response)
     return HTMLResponse(content=str(response), media_type="application/xml")

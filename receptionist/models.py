@@ -2,10 +2,11 @@ from django.db import models
 from django.utils import timezone
 from .enums import AIConfigurationStatus
 from simple_history.models import HistoricalRecords
-from ai_service.services.openai_api import OpenAIAPI
 from decimal import Decimal
 
 class AIConfiguration(models.Model):
+    """Stores AI behavior and integration settings for the OpenAI Agents SDK."""
+
     STATUS_CHOICES = [
         (AIConfigurationStatus.ACTIVE.value, "Active"),
         (AIConfigurationStatus.INACTIVE.value, "Inactive"),
@@ -14,7 +15,7 @@ class AIConfiguration(models.Model):
         (AIConfigurationStatus.DELETED.value, "Deleted"),
         (AIConfigurationStatus.ARCHIVED.value, "Archived"),
     ]
-    
+
     LANGUAGE_CHOICES = [
         ("en-US", "English (US)"),
         ("en-GB", "English (GB)"),
@@ -22,22 +23,45 @@ class AIConfiguration(models.Model):
         ("fr-FR", "French (FR)"),
         ("de-DE", "German (DE)"),
         ("it-IT", "Italian (IT)"),
+        ("vi-VN", "Vietnamese (VN)"),
     ]
-    """Stores AI behavior and integration settings."""
+
+    MODEL_CHOICES = [
+        ("gpt-realtime-mini", "GPT Realtime Mini"),
+        ("gpt-realtime", "GPT Realtime"),
+        ("gpt-realtime-1.5", "GPT Realtime 1.5"),
+        ("gpt-4o-realtime-preview", "GPT 4o Realtime Preview"),
+    ]
+
+    VOICE_CHOICES = [
+        ("alloy", "Alloy"),
+        ("ash", "Ash"),
+        ("ballad", "Ballad"),
+        ("coral", "Coral"),
+        ("echo", "Echo"),
+        ("sage", "Sage"),
+        ("shimmer", "Shimmer"),
+        ("verse", "Verse"),
+    ]
+
     business = models.ForeignKey("business.Business", on_delete=models.CASCADE, related_name="ai_configs")
     ai_name = models.CharField(max_length=100, default="Receptionist AI")
     greeting_message = models.TextField(default="Hello! How can I help you today?")
-    prompt = models.TextField(default="You are a professional AI receptionist for a Salon. Your role is to assist clients with appointments, provide business information, and answer questions about our services. Always be helpful, professional, and friendly. Use the available tools to provide accurate information from our knowledge base. If you need to book appointments, get customer information or access specific business data, use the appropriate tools.")
+    prompt = models.TextField(
+        default=(
+            "You are a professional AI receptionist. Your role is to assist clients "
+            "with appointments, provide business information, and answer questions "
+            "about our services. Always be helpful, professional, and friendly. "
+            "Route the caller to the appropriate specialist agent based on their needs."
+        )
+    )
     language = models.CharField(max_length=10, default="en-US", choices=LANGUAGE_CHOICES)
-    voice_provider = models.CharField(max_length=100, default="ElevenLabs")
-    stt_provider = models.CharField(max_length=100, default="Whisper")
-    model_name = models.CharField(max_length=100, default="gpt-5")
+    voice = models.CharField(max_length=50, default="alloy", choices=VOICE_CHOICES)
+    model_name = models.CharField(max_length=100, default="gpt-realtime-mini", choices=MODEL_CHOICES)
     temperature = models.FloatField(default=0.7)
-    max_tokens = models.IntegerField(default=500)
-    webhook_url = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=AIConfigurationStatus.ACTIVE.value)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=AIConfigurationStatus.ACTIVE.value)
     
     history = HistoricalRecords()
     

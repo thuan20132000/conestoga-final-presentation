@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
-from .enums import AIConfigurationStatus
 from simple_history.models import HistoricalRecords
-from decimal import Decimal
+
+from .enums import AIConfigurationStatus
+
 
 class AIConfiguration(models.Model):
     """Stores AI behavior and integration settings for the OpenAI Agents SDK."""
@@ -44,7 +47,9 @@ class AIConfiguration(models.Model):
         ("verse", "Verse"),
     ]
 
-    business = models.ForeignKey("business.Business", on_delete=models.CASCADE, related_name="ai_configs")
+    business = models.ForeignKey(
+        "business.Business", on_delete=models.CASCADE, related_name="ai_configs"
+    )
     ai_name = models.CharField(max_length=100, default="Receptionist AI")
     greeting_message = models.TextField(default="Hello! How can I help you today?")
     prompt = models.TextField(
@@ -55,16 +60,24 @@ class AIConfiguration(models.Model):
             "Route the caller to the appropriate specialist agent based on their needs."
         )
     )
-    language = models.CharField(max_length=10, default="en-US", choices=LANGUAGE_CHOICES)
+    language = models.CharField(
+        max_length=10, default="en-US", choices=LANGUAGE_CHOICES
+    )
     voice = models.CharField(max_length=50, default="alloy", choices=VOICE_CHOICES)
-    model_name = models.CharField(max_length=100, default="gpt-realtime-mini", choices=MODEL_CHOICES)
+    model_name = models.CharField(
+        max_length=100, default="gpt-realtime-mini", choices=MODEL_CHOICES
+    )
     temperature = models.FloatField(default=0.7)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=AIConfigurationStatus.ACTIVE.value)
-    
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=AIConfigurationStatus.ACTIVE.value,
+    )
+
     history = HistoricalRecords()
-    
+
     class Meta:
         verbose_name = "AI Configuration"
         verbose_name_plural = "AI Configurations"
@@ -75,6 +88,7 @@ class AIConfiguration(models.Model):
 
 class CallSession(models.Model):
     """Tracks each phone call handled by the receptionist."""
+
     CALL_DIRECTION_CHOICES = [
         ("inbound", "Inbound"),
         ("outbound", "Outbound"),
@@ -84,113 +98,160 @@ class CallSession(models.Model):
         ("completed", "Completed"),
         ("failed", "Failed"),
     ]
-    
+
     OUTCOME_CHOICES = [
         ("successful", "Successful"),
         ("unsuccessful", "Unsuccessful"),
         ("unknown", "Unknown"),
     ]
-    
+
     SENTIMENT_CHOICES = [
         ("positive", "Positive"),
         ("negative", "Negative"),
         ("neutral", "Neutral"),
     ]
 
+    CATEGORY_CHOICES = [
+        ("make_appointment", "Make Appointment"),
+        ("cancel_appointment", "Cancel Appointment"),
+        ("reschedule_appointment", "Reschedule Appointment"),
+        ("ask_question", "Ask Question"),
+        ("unknown", "Unknown"),
+    ]
+
     business = models.ForeignKey(
-        "business.Business", 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
-        related_name="calls"
+        "business.Business",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="calls",
     )
-    direction = models.CharField(max_length=20, choices=CALL_DIRECTION_CHOICES, default="inbound")
+    direction = models.CharField(
+        max_length=20, choices=CALL_DIRECTION_CHOICES, default="inbound"
+    )
     caller_number = models.CharField(max_length=50)
     receiver_number = models.CharField(max_length=50, blank=True, null=True)
     call_sid = models.CharField(max_length=100, unique=True)
     started_at = models.DateTimeField(default=timezone.now)
     ended_at = models.DateTimeField(blank=True, null=True)
     duration_seconds = models.IntegerField(default=0)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="in_progress")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="in_progress"
+    )
     transcript_summary = models.TextField(blank=True, null=True)
     conversation_transcript = models.JSONField(blank=True, null=True)
-    outcome = models.CharField(max_length=20, choices=OUTCOME_CHOICES, default="unknown")
-    sentiment = models.CharField(max_length=20, choices=SENTIMENT_CHOICES, default="neutral")
+    outcome = models.CharField(
+        max_length=20, choices=OUTCOME_CHOICES, default="unknown"
+    )
+    sentiment = models.CharField(
+        max_length=20, choices=SENTIMENT_CHOICES, default="neutral"
+    )
+    category = models.CharField(
+        max_length=30, choices=CATEGORY_CHOICES, default="unknown", blank=True
+    )
     input_tokens = models.IntegerField(default=0)
     output_tokens = models.IntegerField(default=0)
     cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     history = HistoricalRecords()
+
     def __str__(self):
         return f"Call {self.call_sid} - {self.caller_number}"
-    
+
     class Meta:
         verbose_name = "Call Session"
         verbose_name_plural = "Call Sessions"
-        ordering = ['-started_at']
-    
+        ordering = ["-started_at"]
+
     def calculate_cost(self):
         """Calculate the cost of the call."""
-        total_seconds = (self.ended_at - self.started_at).total_seconds() if self.ended_at and self.started_at else 0
-        minutes = Decimal(total_seconds)/60 if total_seconds else 0
+        total_seconds = (
+            (self.ended_at - self.started_at).total_seconds()
+            if self.ended_at and self.started_at
+            else 0
+        )
+        minutes = Decimal(total_seconds) / 60 if total_seconds else 0
         cost = minutes * Decimal(self.business.cost_per_minute)
         self.cost = cost
         return cost
-    
+
     def save(self, *args, **kwargs):
         """Save the call session."""
         self.calculate_cost()
         super().save(*args, **kwargs)
 
+
 class ConversationMessage(models.Model):
     """Stores each message exchanged during the call."""
+
     ROLE_CHOICES = [
         ("user", "User"),
         ("assistant", "Assistant"),
         ("system", "System"),
     ]
 
-    call = models.ForeignKey(CallSession, on_delete=models.CASCADE, related_name="messages")
+    call = models.ForeignKey(
+        CallSession, on_delete=models.CASCADE, related_name="messages"
+    )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     confidence_score = models.FloatField(blank=True, null=True)
 
     history = HistoricalRecords()
+
     def __str__(self):
         return f"{self.role}: {self.content[:50]}"
 
 
 class Intent(models.Model):
     """Represents detected intent from user speech (e.g., booking, cancel, inquiry)."""
-    call = models.ForeignKey(CallSession, on_delete=models.CASCADE, related_name="intents")
+
+    call = models.ForeignKey(
+        CallSession, on_delete=models.CASCADE, related_name="intents"
+    )
     name = models.CharField(max_length=100)
     confidence = models.FloatField(default=0.0)
     extracted_data = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     history = HistoricalRecords()
+
     def __str__(self):
         return f"{self.name} ({self.confidence:.2f})"
 
 
 class AudioRecording(models.Model):
     """Stores reference to call audio files."""
-    call = models.ForeignKey(CallSession, on_delete=models.CASCADE, related_name="recordings")
+
+    call = models.ForeignKey(
+        CallSession, on_delete=models.CASCADE, related_name="recordings"
+    )
     audio_url = models.URLField()
     duration_seconds = models.IntegerField(blank=True, null=True)
     transcription_text = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     history = HistoricalRecords()
+
     def __str__(self):
         return f"Recording for {self.call.call_sid}"
 
 
 class SystemLog(models.Model):
     """Tracks system and AI events for debugging or analytics."""
-    call = models.ForeignKey(CallSession, on_delete=models.CASCADE, related_name="logs", null=True, blank=True)
-    level = models.CharField(max_length=20, choices=[("info", "Info"), ("warning", "Warning"), ("error", "Error")])
+
+    call = models.ForeignKey(
+        CallSession,
+        on_delete=models.CASCADE,
+        related_name="logs",
+        null=True,
+        blank=True,
+    )
+    level = models.CharField(
+        max_length=20,
+        choices=[("info", "Info"), ("warning", "Warning"), ("error", "Error")],
+    )
     message = models.TextField()
     metadata = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

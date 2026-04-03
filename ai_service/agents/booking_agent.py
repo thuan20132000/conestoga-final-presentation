@@ -1,26 +1,19 @@
-"""Booking agent for appointment management."""
+"""Booking agent for appointment inquiries (read-only, no direct booking)."""
 
 from agents.realtime import RealtimeAgent
 
 from ai_service.tools.booking_tools import BOOKING_TOOLS
 from ai_service.tools.context import CallContext
-from ai_service.tools.faq_tools import get_service_information
-
 
 booking_agent = RealtimeAgent[CallContext](
     name="Booking Agent",
     instructions=(
         "You are a booking specialist for a salon business. "
-        "Help callers check availability, book new appointments, "
-        "look up existing appointments, and cancel appointments.\n\n"
-        "IMPORTANT BOOKING WORKFLOW:\n"
-        "1. First, call get_service_information to get the list of real services with their IDs.\n"
-        "2. Match the caller's request to the correct service IDs from the list. NEVER guess or make up service IDs.\n"
-        "3. Call check_availability with the service type to find available time slots.\n"
-        "4. Confirm all details with the caller (date, time, service, name, phone number) before booking.\n"
-        "5. Use the exact service_ids and available_time_slot from the previous tool results when calling book_appointment.\n\n"
-        "If the caller asks general questions about the business, hand off to the FAQ agent. "
-        "If you need customer information, hand off to the Customer agent."
+        "You role is to help callers book appointments. "
+        "If the caller wants to book an appointment, collect the booking details from the caller, then check the availability using the check_availability tool."
+        "If the availability is not suitable, provide alternative time slots to the caller. "
+        "If the availability is suitable,  asking for the caller's name and phone number to book the appointment. After getting the customer information, say politely to the caller that the appointment is confirmed and we will send the confirmation to the caller in a few minutes."
+        "At the end of the conversation, say politely, naturally, to the caller that you are happy to help and goodbye to the caller."
     ),
-    tools=[get_service_information, *BOOKING_TOOLS],
+    tools=BOOKING_TOOLS,
 )

@@ -5,6 +5,7 @@ from agents.realtime import RealtimeAgent, realtime_handoff
 from ai_service.agents.booking_agent import booking_agent
 from ai_service.agents.customer_agent import customer_agent
 from ai_service.agents.faq_agent import faq_agent
+from ai_service.agents.reschedule_agent import reschedule_agent
 from ai_service.tools.context import CallContext
 
 
@@ -13,8 +14,9 @@ def create_receptionist_agent(instructions: str) -> RealtimeAgent[CallContext]:
 
     The receptionist greets the caller, determines intent, and hands off to:
     - FAQ Agent: business hours, location, services info
-    - Booking Agent: check availability, book/cancel/look up appointments
+    - Booking Agent: check availability, look up appointments, collect booking details
     - Customer Agent: customer lookup, registration
+    - Reschedule Agent: appointment rescheduling
 
     Sub-agents can also hand off to each other as needed.
 
@@ -31,6 +33,10 @@ def create_receptionist_agent(instructions: str) -> RealtimeAgent[CallContext]:
             customer_agent,
             tool_description_override="Transfer to the Customer Agent for customer lookup or registration.",
         ),
+        realtime_handoff(
+            reschedule_agent,
+            tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
+        ),
     ]
 
     booking_agent.handoffs = [
@@ -42,13 +48,28 @@ def create_receptionist_agent(instructions: str) -> RealtimeAgent[CallContext]:
             customer_agent,
             tool_description_override="Transfer to the Customer Agent for customer lookup or registration.",
         ),
+        realtime_handoff(
+            reschedule_agent,
+            tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
+        ),
     ]
 
     customer_agent.handoffs = [
         realtime_handoff(
             booking_agent,
-            tool_description_override="Transfer back to the Booking Agent to continue with the appointment.",
+            tool_description_override="Transfer back to the Booking Agent to continue with appointment inquiries.",
         ),
+        realtime_handoff(
+            faq_agent,
+            tool_description_override="Transfer to the FAQ Agent for business or service questions.",
+        ),
+        realtime_handoff(
+            reschedule_agent,
+            tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
+        ),
+    ]
+    
+    reschedule_agent.handoffs = [
         realtime_handoff(
             faq_agent,
             tool_description_override="Transfer to the FAQ Agent for business or service questions.",
@@ -61,15 +82,19 @@ def create_receptionist_agent(instructions: str) -> RealtimeAgent[CallContext]:
         handoffs=[
             realtime_handoff(
                 faq_agent,
-                tool_description_override="Transfer to the FAQ Agent for business information, hours, location, or service details.",
+                tool_description_override="Transfer to the FAQ Agent for business hours, location, or service details.",
             ),
             realtime_handoff(
                 booking_agent,
-                tool_description_override="Transfer to the Booking Agent for booking, canceling, or looking up appointments.",
+                tool_description_override="Transfer to the Booking Agent for collecting booking details.",
             ),
             realtime_handoff(
                 customer_agent,
-                tool_description_override="Transfer to the Customer Agent for customer lookup or registration.",
+                tool_description_override="Transfer to the Customer Agent for customer registration.",
+            ),
+            realtime_handoff(
+                reschedule_agent,
+                tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
             ),
         ],
     )

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from ai_service.services.business_booking_service import BusinessBookingService
-from ai_service.services.openai_api import OpenAIAPI
+from ai_service.services.openai_service import OpenAIService
 
 
 @dataclass
@@ -13,4 +13,4 @@ class CallContext:
     call_sid: str
     caller_number: str
     booking_service: BusinessBookingService
-    openai_api: OpenAIAPI
+    openai_service: OpenAIService

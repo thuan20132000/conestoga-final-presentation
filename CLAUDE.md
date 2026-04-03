@@ -58,7 +58,7 @@ Handles real-time voice AI. Entry point: `ai_service/main.py` → `ai_service/ro
 
 **Internal structure:**
 - `routing/` — HTTP and WebSocket route handlers (booking, twilio, websocket, health)
-- `services/` — `openai_api.py` (LLM calls), `audio_service.py` (STT/TTS), `booking_api.py` (calls back into Django)
+- `services/` — `openai_service.py` (LLM calls), `audio_service.py` (STT/TTS), `booking_api.py` (calls back into Django)
 - `tools/` — LangChain/OpenAI function-calling tool definitions for the receptionist agent
 - `config.py` — Pydantic `Settings` loaded from `.env`
 

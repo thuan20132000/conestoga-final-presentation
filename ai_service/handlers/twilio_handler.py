@@ -112,7 +112,7 @@ class TwilioHandler:
         # Finalize call session in database
         if self._call_sid:
             try:
-                service = CallSessionService(self._call_context.openai_api)
+                service = CallSessionService(self._call_context.openai_service)
                 await service.finalize_call(
                     call_sid=self._call_sid,
                     conversation_transcript=self._conversation_transcript,

@@ -39,25 +39,29 @@ class BusinessInitializerService:
 
     def _create_business_settings(self):
         """Create default business settings"""
-        BusinessSettings.objects.create(
-            business=self.business,
-            advance_booking_days=30,
-            min_advance_booking_hours=2,
-            max_advance_booking_days=90,
-            time_slot_interval=15,
-            buffer_time_minutes=0,
-            send_reminder_emails=True,
-            send_reminder_sms=False,
-            reminder_hours_before=2,
-            send_confirmation_sms=False,
-            currency="CAD",
-            tax_rate=0.13,
-            require_payment_advance=False,
-            allow_online_booking=True,
-            require_client_phone=True,
-            require_client_email=False,
-            auto_confirm_appointments=False,
-        )
+        settings_data = {
+            'business': self.business,
+            'advance_booking_days': self.settings_data.get('advance_booking_days', 30),
+            'min_advance_booking_hours': self.settings_data.get('min_advance_booking_hours', 2),
+            'max_advance_booking_days': self.settings_data.get('max_advance_booking_days', 90),
+            'time_slot_interval': self.settings_data.get('time_slot_interval', 15),
+            'buffer_time_minutes': self.settings_data.get('buffer_time_minutes', 0),
+            'send_reminder_emails': self.settings_data.get('send_reminder_emails', True),
+            'send_reminder_sms': False,
+            'reminder_hours_before': self.settings_data.get('reminder_hours_before', 2),
+            'send_confirmation_sms': False,
+            'currency': self.settings_data.get('currency', "CAD"),
+            'tax_rate': self.settings_data.get('tax_rate', 0.13),
+            'require_payment_advance': False,
+            'allow_online_booking': True,
+            'require_client_phone': True,
+            'require_client_email': False,
+            'auto_confirm_appointments': False,
+            'timezone': self.settings_data.get('timezone', "America/Toronto"),
+        }
+        settings = BusinessSettings.objects.create(**settings_data)
+        return settings
+        
 
     def _create_business_roles(self):
         """Create default business roles"""
@@ -357,10 +361,11 @@ class BusinessRegisterService(BusinessInitializerService):
     category_csv_path = "dummy/service_categories_by_salon_2026-01-26.csv"
     
     
-    def __init__(self, business: dict, owner: dict, business_type_name: str):
+    def __init__(self, business: dict, owner: dict, business_type_name: str, settings: dict):
         super().__init__(business)
         self.business_data = business
         self.owner_data = owner
+        self.settings_data = settings
         business_type_name = str(business_type_name).title()
         if business_type_name == 'Hair Salon':
             print("Creating hair salon services and categories")

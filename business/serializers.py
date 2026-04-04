@@ -305,7 +305,30 @@ class OwnerRegisterSerializer(serializers.Serializer):
     last_name = serializers.CharField(required=True)
     phone = serializers.CharField(required=True)
     email = serializers.EmailField(required=False)
-    
+
+
+class BusinessSettingsRegisterSerializer(serializers.Serializer):
+    """Serializer for business settings"""
+    timezone = serializers.ChoiceField(
+        choices=BusinessSettings.TIMEZONE_CHOICES, 
+        default="America/Toronto"
+    )
+    advance_booking_days = serializers.IntegerField(required=False, default=30)
+    min_advance_booking_hours = serializers.IntegerField(required=False, default=2)
+    max_advance_booking_days = serializers.IntegerField(required=False, default=90)
+    time_slot_interval = serializers.IntegerField(required=False, default=15)
+    buffer_time_minutes = serializers.IntegerField(required=False, default=0)
+    currency = serializers.ChoiceField(
+        choices=Business.CURRENCY_CHOICES, 
+        default="CAD"
+    )
+
+
+    class Meta:
+        fields = ['timezone', 'advance_booking_days', 'min_advance_booking_hours', 'max_advance_booking_days', 'time_slot_interval', 'buffer_time_minutes']
+        
+        
+
 class BusinessRegisterSerializer(serializers.Serializer):
     """
     Serializer orchestrating business + owner registration in one request.
@@ -313,7 +336,9 @@ class BusinessRegisterSerializer(serializers.Serializer):
 
     business = BusinessSerializer()
     owner = OwnerRegisterSerializer()
+    settings = BusinessSettingsRegisterSerializer()
+    
     
     class Meta:
-        fields = ['business', 'owner']
-        read_only_fields = ['business', 'owner']
+        fields = ['business', 'owner', 'settings']
+        read_only_fields = ['business', 'owner', 'settings']

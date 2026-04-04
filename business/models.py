@@ -36,6 +36,15 @@ class Business(SoftDeleteModel):
         ('JPY', 'JPY'),
         ('AUD', 'AUD'),
         ('NZD', 'NZD'),
+        ('VND', 'VND'),
+        ('THB', 'THB'),
+        ('MYR', 'MYR'),
+        ('PHP', 'PHP'),
+        ('IDR', 'IDR'),
+        ('INR', 'INR'),
+        ('PKR', 'PKR'),
+        ('BDT', 'BDT'),
+        ('KES', 'KES'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
@@ -112,7 +121,15 @@ class BusinessSettings(SoftDeleteModel):
         ('America/Minneapolis', 'America/Minneapolis'),
         ('America/Houston', 'America/Houston'),
         ('America/Dallas', 'America/Dallas'),
-        ('Asia/Ho_Chi_Minh', 'Asia/Ho_Chi_Minh'),
+        ('Asia/Saigon', 'Asia/Saigon'),
+        ('Asia/Tokyo', 'Asia/Tokyo'),
+        ('Asia/Seoul', 'Asia/Seoul'),
+        ('Asia/Shanghai', 'Asia/Shanghai'),
+        ('Asia/Hong_Kong', 'Asia/Hong_Kong'),
+        ('Asia/Singapore', 'Asia/Singapore'),
+        ('Asia/Bangkok', 'Asia/Bangkok'),
+        ('Asia/Jakarta', 'Asia/Jakarta'),
+        ('Asia/Manila', 'Asia/Manila'),
     ]
     LANGUAGE_CHOICES = [
         ("en", _("English")),

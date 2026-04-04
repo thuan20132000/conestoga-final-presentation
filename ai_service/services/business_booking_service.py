@@ -281,8 +281,7 @@ class BusinessBookingService:
             formatted_slots = []
             for slot in time_slots:
                 formatted_slots.append({
-                    'employee_id': slot['staff_id'],
-                    'employee_name': self._get_staff_name(slot['staff_id']),
+                    'staff_id': slot['staff_id'],
                     'start_at': slot['start_time'].isoformat(),
                     'end_at': slot['end_time'].isoformat(),
                     'start_time': slot['start_time'].strftime('%H:%M'),
@@ -477,7 +476,9 @@ class BusinessBookingService:
         # Build query
         query = Appointment.objects.filter(
             client__phone=phone_number_digits,
-            business_id=self.business_id
+            business_id=self.business_id,
+            is_active=True,
+            is_deleted=False,
         ).select_related('client').prefetch_related(
             'appointment_services__service',
             'appointment_services__staff'

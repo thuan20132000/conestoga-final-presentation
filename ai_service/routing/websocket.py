@@ -24,16 +24,18 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
     # Fetch per-business AI configuration
     ai_config = await CallSessionService.get_ai_configuration(call_to)
     logger.info(f"AI configuration: {ai_config}")
+
+    call_session = await CallSessionService.get_call_session(call_sid)
+    logger.info(f"Call session: {call_session}")
     
-    # business client information
-    business_client = await CallSessionService.get_business_client(call_sid)
-    logger.info(f"Business client: {business_client}")
+    caller_number = call_session.caller_number[-10:]
+    
     
     # Build per-call context
     call_context = CallContext(
         business_id=ai_config.business_id,
         call_sid=call_sid,
-        caller_number=business_client.phone or "",
+        caller_number=caller_number,
         booking_service=BusinessBookingService(ai_config.business_id),
         openai_service=OpenAIService(),
     )
@@ -41,7 +43,10 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
     logger.info(f"Call context: {call_context}")
     
     # Create agent with business-specific instructions
-    agent = create_receptionist_agent(instructions=ai_config.prompt)
+    agent = create_receptionist_agent(
+        instructions=ai_config.prompt, 
+        caller_number=caller_number, 
+    )
     
     logger.info(f"Agent: {agent}")
 

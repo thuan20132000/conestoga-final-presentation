@@ -44,13 +44,12 @@ class OpenAIService:
             Return a JSON object containing:
             - outcome: "successful" | "unsuccessful" | "unknown"
             - sentiment: "positive" | "negative" | "neutral"
-            - summary: brief summary of the conversation
             - category: determine the caller's primary intent:
               - "make_appointment" if the caller wants to book a new appointment
               - "cancel_appointment" if the caller wants to cancel an existing appointment
               - "reschedule_appointment" if the caller wants to reschedule an existing appointment
               - "ask_question" if the caller is asking general questions (hours, services, pricing, etc.)
-
+            - summary: brief summary of the conversation. If category is make_appointment and client requested specific staff, add the staff name to the summary otherwise leave it as anyone.
             Return only valid JSON.
 
             Example:

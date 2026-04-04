@@ -8,7 +8,9 @@ from django.utils import timezone
 
 from ai_service.services.openai_service import OpenAIService
 from client.models import Client
-from notifications.services import PushService
+from notifications.models import Notification
+from main.utils import get_business_managers_group_name
+from notifications.services import NotificationDispatcher
 from receptionist.models import (AIConfiguration, AIConfigurationStatus,
                                  CallSession, ConversationMessage, SystemLog)
 
@@ -20,6 +22,11 @@ class CallSessionService:
 
     def __init__(self, openai_service: Optional[OpenAIService] = None):
         self._openai_service = openai_service or OpenAIService()
+        
+    @staticmethod
+    async def get_call_session(call_sid: str) -> CallSession:
+        """Fetch the call session for a call sid."""
+        return await CallSession.objects.aget(call_sid=call_sid)
 
     @staticmethod
     async def get_ai_configuration(call_to: str) -> AIConfiguration:
@@ -127,29 +134,20 @@ class CallSessionService:
             title = category_labels.get(category, "Call Completed")
             body = f"Caller {caller}: {summary}"
 
-            from staff.models import Staff
-
-            managers = await sync_to_async(list)(
-                Staff.objects.filter(
-                    business=call_session.business,
-                    role__name__in=["Owner", "Manager"],
-                    is_active=True,
-                )
+            NotificationDispatcher().dispatchAsync(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                group_name=get_business_managers_group_name(call_session.business_id),
+                to=None,
+                data={
+                    "call_sid": call_sid,
+                    "caller": caller,
+                    "summary": summary,
+                    "category": category,
+                    "business_id": call_session.business_id,
+                },
             )
-
-            push_service = PushService()
-            for manager in managers:
-                await sync_to_async(push_service.send_user)(
-                    user=manager,
-                    title=title,
-                    body=body,
-                    data={
-                        "type": "call_categorized",
-                        "call_sid": call_sid,
-                        "category": category,
-                        "caller_number": caller,
-                    },
-                )
         except Exception as e:
             logger.error(f"Failed to notify manager for call {call_sid}: {e}")
 

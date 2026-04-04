@@ -20,7 +20,7 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
             'fields': ('price_monthly', 'price_quarterly', 'price_yearly'),
         }),
         ('Features', {
-            'fields': ('max_staff', 'max_appointments_per_month', 'has_ai_receptionist', 'has_online_booking', 'has_analytics'),
+            'fields': ('max_staff', 'max_appointments_per_month', 'has_ai_receptionist', 'has_online_booking', 'has_analytics',),
         }),
         ('Stripe IDs (managed by sync command)', {
             'fields': ('stripe_product_id', 'stripe_price_id_monthly', 'stripe_price_id_quarterly', 'stripe_price_id_yearly'),
@@ -41,6 +41,6 @@ class BusinessSubscriptionAdmin(admin.ModelAdmin):
     readonly_fields = [
         'stripe_subscription_id', 'stripe_customer_id',
         'current_period_start', 'current_period_end',
-        'trial_end', 'cancelled_at', 'created_at', 'updated_at',
+        'cancelled_at', 'created_at', 'updated_at',
     ]
     raw_id_fields = ['business', 'plan']

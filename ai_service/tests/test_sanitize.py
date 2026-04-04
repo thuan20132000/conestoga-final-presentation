@@ -1,19 +1,33 @@
-import pytest
 import json
-from ai_service.services.openai_api import OpenAIAPI
+
+import pytest
+
+from ai_service.services.openai_service import OpenAIService
 
 
 @pytest.mark.asyncio
-async def test_sanitize_booking_services_data(monkeypatch):
-    """Test that sanitize_booking_services_data parses service data correctly."""
+async def test_analyze_conversation(monkeypatch):
+    """Test that analyze_conversation returns outcome, sentiment, summary, and category."""
+
     async def mock_generate_response(self, messages):
-        return '{"service_ids": [5], "date": "2025-10-01", "duration": 40}'
+        return json.dumps(
+            {
+                "outcome": "successful",
+                "sentiment": "positive",
+                "summary": "Caller requested a pedicure appointment.",
+                "category": "make_appointment",
+            }
+        )
 
-    monkeypatch.setattr(OpenAIAPI, "generate_response", mock_generate_response)
+    monkeypatch.setattr(OpenAIService, "generate_response", mock_generate_response)
 
-    api = OpenAIAPI()
-    raw_data = "{'service_type': 'Pedicure', 'date': 'tomorrow', 'time': '1 PM'}"
-    business_services = [{"id": 5, "name": "Pedicure", "duration": 40}]
+    api = OpenAIService()
+    conversation = [
+        {"role": "user", "content": "I'd like to book a pedicure for tomorrow."},
+        {"role": "assistant", "content": "Sure! Let me check availability."},
+    ]
 
-    result = await api.sanitize_booking_services_data(raw_data, business_services)
+    result = await api.analyze_conversation(conversation)
     assert isinstance(result, dict)
+    assert result["outcome"] == "successful"
+    assert result["category"] == "make_appointment"

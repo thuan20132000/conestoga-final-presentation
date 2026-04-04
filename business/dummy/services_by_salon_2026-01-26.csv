@@ -1,0 +1,56 @@
+No.,Salon,Service Name,Service Price,Service Duration,Service Category,Color Code
+1,PediNNail By Nyny&Jona,Acrylic Fill,50.00,50,Nail Extensions,#ffbf69
+2,PediNNail By Nyny&Jona,Acrylic Full Set,57.00,60,Nail Extensions,#ffbf69
+3,PediNNail By Nyny&Jona,Acrylic Full Set On Toe,55.00,55,Nail Extensions,#ffbf69
+4,PediNNail By Nyny&Jona,Acrylic Overlay,52.00,45,Nail Extensions,#ffbf69
+5,PediNNail By Nyny&Jona,Acrylic Remove Without Service,15.00,20,Nail Extensions,#ffbf69
+6,PediNNail By Nyny&Jona,Acrylic Remove With Service,10.00,20,Nail Extensions,#ffbf69
+7,PediNNail By Nyny&Jona,Bio Gel Fill,53.00,50,Nail Extensions,#ffbf69
+8,PediNNail By Nyny&Jona,Bio Gel Full Set,63.00,60,Nail Extensions,#ffbf69
+9,PediNNail By Nyny&Jona,Bio Gel Overlay,57.00,50,Nail Extensions,#ffbf69
+10,PediNNail By Nyny&Jona,Block 1 Hour,0.00,60,Block Time,#5f4a6e
+11,PediNNail By Nyny&Jona,Block 2 Hours,0.00,120,Block Time,#5f4a6e
+12,PediNNail By Nyny&Jona,Block 3 Hours,0.00,180,Block Time,#5f4a6e
+13,PediNNail By Nyny&Jona,Block All Day,0.00,600,Block Time,#5f4a6e
+14,PediNNail By Nyny&Jona,Chin,8.00,5,Waxing,#ff00ffb8
+15,PediNNail By Nyny&Jona,Chrome Nail,10.00,10,Extra,#ffbf69
+16,PediNNail By Nyny&Jona,Design Nail Star,5.00,10,Extra,#ffbf69
+17,PediNNail By Nyny&Jona,Dip Powder With Extension Length,55.00,60,Nail Extensions,#ffbf69
+18,PediNNail By Nyny&Jona,Dip Powder Without Extension Lenght,45.00,50,Nail Extensions,#ffbf69
+19,PediNNail By Nyny&Jona,Extra Long Nail,15.00,15,Extra,#ffbf69
+20,PediNNail By Nyny&Jona,Eye Brow,12.00,10,Waxing,#ff00ffb8
+21,PediNNail By Nyny&Jona,Eye Brow Tinting,20.00,20,Eyebrow Tinting,#ff00ffb8
+22,PediNNail By Nyny&Jona,Eye Brow Waxing and Tinting,30.00,30,Eyebrow Tinting,#ff00ffb8
+23,PediNNail By Nyny&Jona,Finger Nails Cut,10.00,10,Pedicure & Manicure,#6cd5cb
+24,PediNNail By Nyny&Jona,Fix,0.00,15,Nail Extensions,#ffbf69
+25,PediNNail By Nyny&Jona,French Tip,10.00,10,Extra,#ffbf69
+26,PediNNail By Nyny&Jona,Full Arm,50.00,40,Waxing,#ff00ffb8
+27,PediNNail By Nyny&Jona,Full Face,35.00,30,Waxing,#ff00ffb8
+28,PediNNail By Nyny&Jona,Full Leg,50.00,50,Waxing,#ff00ffb8
+29,PediNNail By Nyny&Jona,GEL-X,60.00,60,Nail Extensions,#ffbf69
+30,PediNNail By Nyny&Jona,Half Arm,30.00,25,Waxing,#ff00ffb8
+31,PediNNail By Nyny&Jona,Half Leg,30.00,30,Waxing,#ff00ffb8
+32,PediNNail By Nyny&Jona,Kid Manicure,18.00,20,Kid Service,#6cd5cb
+33,PediNNail By Nyny&Jona,Kid Manicure With Shellac,26.00,30,Kid Service,#6cd5cb
+34,PediNNail By Nyny&Jona,Kid Pedicure,30.00,30,Kid Service,#6cd5cb
+35,PediNNail By Nyny&Jona,Kid Pedicure With Shellac,40.00,35,Kid Service,#6cd5cb
+36,PediNNail By Nyny&Jona,Kid Regular Polish (Toes or Fingers),10.00,10,Kid Service,#6cd5cb
+37,PediNNail By Nyny&Jona,Kid Shellac Polish (Toes Or Fingers),17.00,15,Kid Service,#6cd5cb
+38,PediNNail By Nyny&Jona,Long Nail,10.00,15,Extra,#ffbf69
+39,PediNNail By Nyny&Jona,Manicure,27.00,25,Pedicure & Manicure,#6cd5cb
+40,PediNNail By Nyny&Jona,Manicure With Shellac,37.00,35,Pedicure & Manicure,#6cd5cb
+41,PediNNail By Nyny&Jona,Medium Nail,5.00,10,Extra,#ffbf69
+42,PediNNail By Nyny&Jona,Ombre Color,10.00,10,Extra,#ffbf69
+43,PediNNail By Nyny&Jona,Ombre White,15.00,10,Extra,#ffbf69
+44,PediNNail By Nyny&Jona,Pedicure,40.00,40,Pedicure & Manicure,#6cd5cb
+45,PediNNail By Nyny&Jona,Pedicure With Shellac,52.00,45,Pedicure & Manicure,#6cd5cb
+46,PediNNail By Nyny&Jona,Regular Polish On Finger,15.00,15,Pedicure & Manicure,#6cd5cb
+47,PediNNail By Nyny&Jona,Regular Polish On Toe,18.00,15,Pedicure & Manicure,#6cd5cb
+48,PediNNail By Nyny&Jona,Shellac Polish On Finger Nails,25.00,20,Pedicure & Manicure,#6cd5cb
+49,PediNNail By Nyny&Jona,Shellac Polish On Toe Nails,30.00,25,Pedicure & Manicure,#6cd5cb
+50,PediNNail By Nyny&Jona,Side,15.00,10,Waxing,#ff00ffb8
+51,PediNNail By Nyny&Jona,Take Off Shellac Without Service,10.00,10,Pedicure & Manicure,#6cd5cb
+52,PediNNail By Nyny&Jona,Take Off Shellac With Service,5.00,10,Pedicure & Manicure,#6cd5cb
+53,PediNNail By Nyny&Jona,Toe Nail Cut,12.00,10,Pedicure & Manicure,#6cd5cb
+54,PediNNail By Nyny&Jona,Under Arm,18.00,15,Waxing,#ff00ffb8
+55,PediNNail By Nyny&Jona,Upper Lip,6.00,5,Waxing,#ff00ffb8

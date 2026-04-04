@@ -4,7 +4,7 @@ from decimal import Decimal
 import json
 import os
 from pathlib import Path
-from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking
+from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking, BusinessType
 from service.models import ServiceCategory, Service
 from staff.models import Staff
 from payment.models import PaymentMethod
@@ -18,10 +18,10 @@ from subscription.models import BusinessSubscription, SubscriptionStatus, Subscr
 
 class BusinessInitializerService:
     """Base class for business initializer services"""
-    def __init__(self, business, service_csv_path, category_csv_path):
+    service_csv_path = "dummy/services_by_salon_2026-01-26.csv"
+    category_csv_path = "dummy/service_categories_by_salon_2026-01-26.csv"
+    def __init__(self, business):
         self.business = business
-        self.service_csv_path = service_csv_path
-        self.category_csv_path = category_csv_path
         self.category_mapping = {}
 
     def initialize(self):
@@ -357,11 +357,17 @@ class BusinessRegisterService(BusinessInitializerService):
     category_csv_path = "dummy/service_categories_by_salon_2026-01-26.csv"
     
     
-    def __init__(self, business: dict, owner: dict):
-        super().__init__(business, self.service_csv_path, self.category_csv_path)
+    def __init__(self, business: dict, owner: dict, business_type_name: str):
+        super().__init__(business)
         self.business_data = business
         self.owner_data = owner
-
+        business_type_name = str(business_type_name).title()
+        if business_type_name == 'Hair Salon':
+            print("Creating hair salon services and categories")
+            self.service_csv_path = "dummy/hair_salon_service2026.csv"
+            self.category_csv_path = "dummy/hair_salon_category2026.csv"
+        
+       
     def initialize(self):
         with transaction.atomic():
             self.business = self._create_business()

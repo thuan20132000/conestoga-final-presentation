@@ -66,7 +66,16 @@ run-dev: ## Run dev environment server
 
 run-prod: ## Run prod environment server
 	uvicorn main.asgi:application --host 0.0.0.0 --port 8000 --reload --env-file .env.prod
-	
+
+run-staging: ## Run staging environment server
+	@echo "Starting staging server..."
+	@echo "Staging server running on http://localhost:8000"
+	@echo "Use Ctrl+C to stop the server"
+	cp .env.staging .env
+	uvicorn main.asgi:application --host 0.0.0.0 --port 8000 --reload
+	@echo "Staging server running on http://localhost:8000"
+	@echo "Use Ctrl+C to stop the server"
+
 sample-data: ## Create sample data
 	@echo "Starting development server..."
 	@echo "Django API: http://localhost:8000"

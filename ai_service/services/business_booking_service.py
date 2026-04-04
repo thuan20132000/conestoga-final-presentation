@@ -15,7 +15,9 @@ from appointment.serializers import AppointmentDetailSerializer
 from business.serializers import BusinessSerializer
 from service.serializers import ServiceSerializer
 from client.serializers import ClientSerializer
+from staff.serializers import StaffSerializer
 from logging import getLogger
+import re
 logger = getLogger(__name__)
 
 
@@ -133,10 +135,11 @@ class BusinessBookingService:
         self,
         date: str,
         time: str = "any",
-        service_type: str = None
+        service_type: str = None,
+        staff_id: int = None,
     ) -> Dict[str, Any]:
         """
-        Check availability for booking.
+        Check availability.
 
         Looks up services by name via ORM, sums their durations,
         then queries available time slots.
@@ -149,7 +152,7 @@ class BusinessBookingService:
         Returns:
             Dictionary containing available time slots
         """
-        logger.info(f"Checking availability: date={date}, time={time}, service_type={service_type}")
+        logger.info(f"Checking availability: date={date}, time={time}, service_type={service_type}, staff_id={staff_id}")
 
         service_ids, total_duration = await self._resolve_services(service_type)
 
@@ -160,7 +163,7 @@ class BusinessBookingService:
             booking_date=date,
             service_duration=total_duration,
             service_ids=service_ids,
-            preferred_time=time,
+            staff_id=staff_id,
         )
 
         logger.info(f"Found {availability_data.get('total_slots', 0)} available slots")
@@ -228,7 +231,7 @@ class BusinessBookingService:
         booking_date: str,
         service_duration: int,
         service_ids: List[int],
-        preferred_time: str = "any"
+        staff_id: int = None
     ) -> Dict[str, Any]:
         """
         Check availability using AppointmentBusinessBookingService.
@@ -237,8 +240,7 @@ class BusinessBookingService:
             booking_date: Date string in YYYY-MM-DD format
             service_duration: Total duration in minutes
             service_ids: List of service IDs requested
-            preferred_time: Preferred time slot
-            
+            staff_id: Staff ID to check availability for
         Returns:
             Dictionary with available slots
         """
@@ -256,20 +258,30 @@ class BusinessBookingService:
                 interval_minutes=interval_minutes
             )
             
+            logger.info(f"Checking availability for staff: {staff_id}")
             # Get available time slots
-            time_slots = appointment_service.get_all_available_time_slots(
-                business_id=self.business_id,
-                service_ids=service_ids,
-                appointment_date=booking_date,
-                service_duration=service_duration
-            )
+            if staff_id:
+                logger.info(f"Checking availability for staff: {staff_id}")
+                time_slots = appointment_service.get_staff_time_slots(
+                    staff_id=staff_id,
+                    service_ids=service_ids,
+                    appointment_date=booking_date,
+                    service_duration=service_duration,
+                )
+            else:
+                logger.info(f"Checking availability for all staff")
+                time_slots = appointment_service.get_all_available_time_slots(
+                    business_id=self.business_id,
+                    service_ids=service_ids,
+                    appointment_date=booking_date,
+                    service_duration=service_duration
+                )
             
             # Transform output format to match expected structure
             formatted_slots = []
             for slot in time_slots:
                 formatted_slots.append({
-                    'employee_id': slot['staff_id'],
-                    'employee_name': self._get_staff_name(slot['staff_id']),
+                    'staff_id': slot['staff_id'],
                     'start_at': slot['start_time'].isoformat(),
                     'end_at': slot['end_time'].isoformat(),
                     'start_time': slot['start_time'].strftime('%H:%M'),
@@ -458,12 +470,15 @@ class BusinessBookingService:
         Returns:
             List of appointments
         """
-        logger.info(f"Looking up appointments: phone={phone_number}, date={date}")
+        phone_number_digits = re.sub(r'[^0-9]', '', phone_number)
+        logger.info(f"Looking up appointments: phone={phone_number_digits}, date={date}")
 
         # Build query
         query = Appointment.objects.filter(
-            client__phone=phone_number,
-            business_id=self.business_id
+            client__phone=phone_number_digits,
+            business_id=self.business_id,
+            is_active=True,
+            is_deleted=False,
         ).select_related('client').prefetch_related(
             'appointment_services__service',
             'appointment_services__staff'
@@ -617,6 +632,12 @@ class BusinessBookingService:
             List of matching services
         """
         return await self._search_services_sync(service_name)
+    
+    @sync_to_async
+    def get_staff_information(self, staff_name: str) -> Dict[str, Any]:
+        """Get information for a specific staff by staff name."""
+        staff = Staff.objects.filter(first_name__icontains=staff_name).first()
+        return self._serialize_staff(staff)
 
     # Serialization helper methods
     
@@ -643,4 +664,9 @@ class BusinessBookingService:
         serialize['business'] = str(serialize['business'])
         
         logger.info(f"Serialized appointment: {serialize}")
+        return serialize
+
+    def _serialize_staff(self, staff: Staff) -> Dict[str, Any]:
+        """Serialize Staff model to dictionary."""
+        serialize = StaffSerializer(staff).data if staff else None
         return serialize

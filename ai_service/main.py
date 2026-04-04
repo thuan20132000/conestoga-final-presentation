@@ -51,6 +51,14 @@ app.include_router(main_router)
 
 if __name__ == "__main__":
     import uvicorn
+    
+    print("Starting server...")
+    print("Server running on http://{}:{}".format(settings.host, settings.port))
+    print("Host: {}".format(settings.host))
+    print("Port: {}".format(settings.port))
+    print("Debug: {}".format(settings.debug))
+    print("Use Ctrl+C to stop the server")
+    
     uvicorn.run(
         app=app,
         host=settings.host,

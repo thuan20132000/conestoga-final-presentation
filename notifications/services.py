@@ -363,6 +363,8 @@ class NotificationDispatcher:
         if channel == Notification.Channel.SMS:
             return self.sms.send(to, body, business_id, business_twilio_phone_number)
         if channel == Notification.Channel.PUSH:
+            
+            # Save notification to database for push notifications
             if group_name:
                 NotificationService.save_notification(
                     title=title,

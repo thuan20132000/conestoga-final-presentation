@@ -702,6 +702,7 @@ class AppointmentNotificationService:
                 title=title,
                 body=body_message,
                 data=metadata,
+                business_id=business_id,
                 channel=Notification.Channel.PUSH,
                 group_name=get_business_managers_group_name(business_id),
                 to=None,

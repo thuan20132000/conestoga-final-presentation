@@ -9,7 +9,7 @@ from appointment.serializers import AppointmentServiceSerializer, AppointmentSer
 from business.models import BusinessSettings
 from .models import Appointment, AppointmentService, AppointmentStatusType
 from notifications.models import Notification
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, NotificationService
 from datetime import datetime, timedelta
 from appointment.services import AppointmentNotificationService
 import time
@@ -173,6 +173,15 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         start_time_str=start_at_str,
                     )
                     
+                    NotificationService.save_notification(
+                        title=f"🔔 Appointment Cancelled - {business_name}",
+                        body=f"{client_name} cancelled appointment at {start_at_str}",
+                        channel=Notification.Channel.PUSH,
+                        to="business_managers,staff",
+                        business_id=business_id,
+                        metadata=metadata,
+                    )
+                
                 # send push notification to business managers when appointment is rescheduled
                 if metadata.get('is_rescheduled', False) == True:
                     appointment_notification_service.send_manager_rescheduled_appointment_notification(
@@ -180,6 +189,15 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         business_id=business_id,
                         client_name=client_name,
                         start_time_str=start_at_str,
+                    )
+                    
+                    NotificationService.save_notification(
+                        title=f"🔔 Appointment Rescheduled - {business_name}",
+                        body=f"{client_name} rescheduled appointment at {start_at_str}",
+                        channel=Notification.Channel.PUSH,
+                        to="business_managers,staff",
+                        business_id=business_id,
+                        metadata=metadata,
                     )
 
     except Exception as e:
@@ -224,25 +242,29 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
 
         staff_name = f"❤️ {staff_name}" if is_staff_request else "Anyone"
 
+        title = f"🔔 Appointment - {business_name}"
+        body_message = f"{booking_source} {client_name} booked {service_name} appointment at {start_time_str} with {staff_name}"
+
         # Staff appointment confirmation notifications
         appointment_notification_service.send_staff_appointment_confirmation_notification(
+            title=title,
             staff=staff_obj,
-            staff_name=staff_name,
-            business_name=business_name,
-            client_name=client_name,
-            service_name=service_name,
-            start_time_str=start_time_str,
-            booking_source=booking_source,
+            body_message=body_message,
             metadata=metadata,
         )
         appointment_notification_service.send_manager_appointment_confirmation_notification(
-            staff=staff_obj,
-            staff_name=staff_name,
-            business_name=business_name,
+            title=title,
+            body_message=body_message,
+            metadata=metadata,
             business_id=business_id,
-            client_name=client_name,
-            service_name=service_name,
-            start_time_str=start_time_str,
-            booking_source=booking_source,
+        )
+        
+        
+        NotificationService.save_notification(
+            title=title,
+            body=body_message,
+            channel=Notification.Channel.PUSH,
+            to="business_managers,staff",
+            business_id=business_id,
             metadata=metadata,
         )

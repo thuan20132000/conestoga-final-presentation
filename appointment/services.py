@@ -672,18 +672,12 @@ class AppointmentNotificationService:
     def send_staff_appointment_confirmation_notification(
         self,
         staff,
-        staff_name,
-        business_name,
-        client_name,
-        service_name,
-        start_time_str,
-        booking_source,
+        title,
+        body_message,
         metadata,
     ):  
         try:
             
-            body_message = f"{client_name} has booked an appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
-            title = f"🔔 New Appointment - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
                 body=body_message,
@@ -698,19 +692,12 @@ class AppointmentNotificationService:
 
     def send_manager_appointment_confirmation_notification(
         self,
-        staff,
-        staff_name,
-        business_name,
-        client_name,
-        service_name,
-        start_time_str,
-        booking_source,
+        title,
+        body_message,
         metadata,
         business_id,
     ):
         try:
-            body_message = f"{client_name} has booked an appointment for {service_name} at {start_time_str} with {staff_name} {booking_source}"
-            title = f"🔔 New Appointment - {business_name}"
             self.dispatcher.dispatchAsync(
                 title=title,
                 body=body_message,

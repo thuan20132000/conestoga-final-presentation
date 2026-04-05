@@ -10,7 +10,7 @@ from ai_service.services.openai_service import OpenAIService
 from client.models import Client
 from notifications.models import Notification
 from main.utils import get_business_managers_group_name
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, NotificationService
 from receptionist.models import (AIConfiguration, AIConfigurationStatus,
                                  CallSession, ConversationMessage, SystemLog)
 
@@ -146,6 +146,20 @@ class CallSessionService:
                     "summary": summary,
                     "category": category,
                     "business_id": call_session.business_id,
+                },
+            )
+            
+            NotificationService.save_notification(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                business_id=call_session.business_id,
+                metadata={
+                    "call_sid": call_sid,
+                    "caller": caller,
+                    "summary": summary,
+                    "category": category,
                 },
             )
         except Exception as e:

@@ -5,7 +5,7 @@ from service.models import Service
 import logging
 from main.utils import get_business_managers_group_name
 from notifications.models import Notification
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, NotificationService
 from django.utils import timezone
 from business.models import BusinessSettings
 from staff.models import StaffOffDay
@@ -32,7 +32,13 @@ def handle_staff_post_save(sender, instance, created, **kwargs):
                 is_active=True
             )
 
-
+        NotificationService.save_notification(
+            title=f"🔔 Staff Added - {instance.business.name}",
+            body=f"{instance.first_name} {instance.last_name} added as a staff",
+            channel=Notification.Channel.PUSH,
+            to="business_managers",
+            business_id=instance.business.id,
+        )
 
 
 # signal to send push notification to managers when a staff is clocked in or clocked out
@@ -69,6 +75,14 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
                 group_name=get_business_managers_group_name(business_id),
             )
             
+            
+            NotificationService.save_notification(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                business_id=business_id,
+            )
         if instance.status == 'COMPLETED':
             title = f"🔔 Staff Clocked Out - {business_name}"
             clock_in_hours = timezone.localtime(instance.clock_in).strftime('%I:%M %p')
@@ -84,6 +98,14 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
                 channel=Notification.Channel.PUSH,
                 to=None,
                 group_name=get_business_managers_group_name(business_id),
+            )
+            
+            NotificationService.save_notification(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                business_id=business_id,
             )
     except Exception as e:
         print(f"Error sending time entry notification: {e}")
@@ -114,6 +136,14 @@ def handle_staff_off_day_post_save(sender, instance, created, **kwargs):
                 channel=Notification.Channel.PUSH,
                 to=None,
                 group_name=get_business_managers_group_name(business_id),
+            )
+            
+            NotificationService.save_notification(
+                title=title,
+                body=body,
+                channel=Notification.Channel.PUSH,
+                to=None,
+                business_id=business_id,
             )
             
     except Exception as e:

@@ -427,3 +427,29 @@ class NotificationDispatcher:
         if channel == Notification.Channel.SMS:
             return self.sms.destroy_scheduled(schedule_name)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
+
+class NotificationService:
+
+    @staticmethod
+    def save_notification(
+        title: str,
+        body: str,
+        channel: str = Notification.Channel.PUSH,
+        to: str | int | None = None,
+        business_id: int | None = None,
+        metadata: Optional[Dict] = None,
+    ) -> SendResult:
+        try:
+            logger.info(f"Saving notification: {title} - {body} - {channel} - {to} - {business_id} - {metadata}")
+            Notification.objects.create(
+                title=title,
+                body=body,
+                business_id=business_id,
+                to=to,
+                channel=channel,
+                data=metadata,
+            )
+            return SendResult(ok=True)
+        except Exception as e:
+            logger.error(f"Error saving notification: {e}")
+            return SendResult(ok=False, error=str(e))

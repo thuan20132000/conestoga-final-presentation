@@ -63,6 +63,7 @@ INSTALLED_APPS += [
     'gift',
     'subscription',
     'turn',
+    'activity_log',
 ]
 
 # JWT Configuration

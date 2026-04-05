@@ -236,9 +236,7 @@ class POSPaymentViewSet(BaseModelViewSet):
         """Partial update a payment"""
         try:
             appointment = self.get_object()
-            print("request.data:: ", request.data)
-            print("update appointment:: ", appointment)
-            
+          
             request_data = request.data.copy()
             appointment_data = request_data.get('appointment', None)
             appointment_services = request_data.get('appointment_services', None)

@@ -149,19 +149,6 @@ class CallSessionService:
                 },
             )
             
-            NotificationService.save_notification(
-                title=title,
-                body=body,
-                channel=Notification.Channel.PUSH,
-                to=None,
-                business_id=call_session.business_id,
-                metadata={
-                    "call_sid": call_sid,
-                    "caller": caller,
-                    "summary": summary,
-                    "category": category,
-                },
-            )
         except Exception as e:
             logger.error(f"Failed to notify manager for call {call_sid}: {e}")
 

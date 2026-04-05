@@ -76,13 +76,6 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
             )
             
             
-            NotificationService.save_notification(
-                title=title,
-                body=body,
-                channel=Notification.Channel.PUSH,
-                to=None,
-                business_id=business_id,
-            )
         if instance.status == 'COMPLETED':
             title = f"🔔 Staff Clocked Out - {business_name}"
             clock_in_hours = timezone.localtime(instance.clock_in).strftime('%I:%M %p')
@@ -100,13 +93,6 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
                 group_name=get_business_managers_group_name(business_id),
             )
             
-            NotificationService.save_notification(
-                title=title,
-                body=body,
-                channel=Notification.Channel.PUSH,
-                to=None,
-                business_id=business_id,
-            )
     except Exception as e:
         print(f"Error sending time entry notification: {e}")
         return
@@ -138,13 +124,7 @@ def handle_staff_off_day_post_save(sender, instance, created, **kwargs):
                 group_name=get_business_managers_group_name(business_id),
             )
             
-            NotificationService.save_notification(
-                title=title,
-                body=body,
-                channel=Notification.Channel.PUSH,
-                to=None,
-                business_id=business_id,
-            )
+            
             
     except Exception as e:
         print(f"Error sending staff off day notification: {e}")

@@ -173,14 +173,6 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         start_time_str=start_at_str,
                     )
                     
-                    NotificationService.save_notification(
-                        title=f"🔔 Appointment Cancelled - {business_name}",
-                        body=f"{client_name} cancelled appointment at {start_at_str}",
-                        channel=Notification.Channel.PUSH,
-                        to="business_managers,staff",
-                        business_id=business_id,
-                        metadata=metadata,
-                    )
                 
                 # send push notification to business managers when appointment is rescheduled
                 if metadata.get('is_rescheduled', False) == True:
@@ -191,14 +183,6 @@ def handle_appointment_notifications(sender, instance, created, **kwargs):
                         start_time_str=start_at_str,
                     )
                     
-                    NotificationService.save_notification(
-                        title=f"🔔 Appointment Rescheduled - {business_name}",
-                        body=f"{client_name} rescheduled appointment at {start_at_str}",
-                        channel=Notification.Channel.PUSH,
-                        to="business_managers,staff",
-                        business_id=business_id,
-                        metadata=metadata,
-                    )
 
     except Exception as e:
         # logger.error(f"Error handling appointment notifications: {e}")
@@ -257,14 +241,4 @@ def handle_appointment_service_added(sender, instance, created, **kwargs):
             body_message=body_message,
             metadata=metadata,
             business_id=business_id,
-        )
-        
-        
-        NotificationService.save_notification(
-            title=title,
-            body=body_message,
-            channel=Notification.Channel.PUSH,
-            to="business_managers,staff",
-            business_id=business_id,
-            metadata=metadata,
         )

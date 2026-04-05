@@ -147,13 +147,6 @@ class AppointmentViewSet(BaseModelViewSet):
                 instance.payments.all().update(status=PaymentStatusType.FAILED)
                 instance.save()
                 
-                NotificationService.save_notification(
-                    title=f"🔔 Appointment Deleted - {instance.business.name}",
-                    body=f"Appointment #{instance.id} on {instance.appointment_date} has been deleted",
-                    channel=Notification.Channel.PUSH,
-                    to="business_managers,staff",
-                    business_id=str(instance.business_id),
-                )
                 return self.response_success(AppointmentSerializer(instance).data)
         except Exception as e:
             return self.response_error(str(e))

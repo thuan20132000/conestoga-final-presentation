@@ -28,13 +28,15 @@ class NotificationViewSet(BaseModelViewSet):
     search_fields = ["to", "title", "body"]
     permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
     pagination_class = PageNumberPagination
-    page_size = 100
+    page_size = 50
     page_size_query_param = "page_size"
     max_page_size = 1000
+    
+    ordering = ["-created_at"]
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        self.paginator.page_size = request.query_params.get('page_size', 100)
+        self.paginator.page_size = request.query_params.get('page_size', 50)
         page = self.paginate_queryset(queryset)
         
         

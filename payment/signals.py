@@ -9,7 +9,7 @@ from appointment.models import Appointment
 from main.utils import get_business_managers_group_name
 from staff.models import Staff
 from notifications.models import Notification
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, NotificationService
 
 
 dispatcher = NotificationDispatcher()
@@ -36,7 +36,7 @@ def handle_payment_notifications(sender, instance, created, **kwargs):
                 staff_name = appointment_service.get('staff_name', '')
                 custom_price = appointment_service.get('custom_price', 0)
                 tip_amount = appointment_service.get('tip_amount', 0)
-                body += f"{staff_name} - ${custom_price} - Tip: ${tip_amount}\n"
+                body += f"{staff_name} - ${custom_price} - Tip: ${tip_amount};\n"
             
             body += f"Paid ({payment_method_name}): ${total_amount}"
             
@@ -62,6 +62,7 @@ def handle_payment_notifications(sender, instance, created, **kwargs):
                     to=staff,
                     business_id=business_id,
                 )
+                
             
        
     except Exception as e:

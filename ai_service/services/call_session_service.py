@@ -10,7 +10,7 @@ from ai_service.services.openai_service import OpenAIService
 from client.models import Client
 from notifications.models import Notification
 from main.utils import get_business_managers_group_name
-from notifications.services import NotificationDispatcher
+from notifications.services import NotificationDispatcher, NotificationService
 from receptionist.models import (AIConfiguration, AIConfigurationStatus,
                                  CallSession, ConversationMessage, SystemLog)
 
@@ -148,6 +148,7 @@ class CallSessionService:
                     "business_id": call_session.business_id,
                 },
             )
+            
         except Exception as e:
             logger.error(f"Failed to notify manager for call {call_sid}: {e}")
 

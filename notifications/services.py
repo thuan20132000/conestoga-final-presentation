@@ -23,6 +23,16 @@ from staff.models import Staff
 logger = logging.getLogger(__name__)
 
 
+def json_safe_metadata(metadata: Optional[Dict]) -> Optional[Dict]:
+    """
+    Recursively convert values to JSON-serializable types for JSONField.
+    Handles UUID, Decimal, datetime, etc. via round-trip with default=str.
+    """
+    if metadata is None:
+        return None
+    return json.loads(json.dumps(metadata, default=str))
+
+
 def _eventbridge_at_schedule(
     schedule_time: datetime.datetime, schedule_expression_timezone: Optional[str]
 ) -> Tuple[str, str]:
@@ -354,9 +364,20 @@ class NotificationDispatcher:
             return self.sms.send(to, body, business_id, business_twilio_phone_number)
         if channel == Notification.Channel.PUSH:
             if group_name:
+                NotificationService.save_notification(
+                    title=title,
+                    body=body,
+                    channel=Notification.Channel.PUSH,
+                    to="business_managers,staff",
+                    business_id=business_id,
+                    metadata=data,
+                )
                 return self.push.send_group(group_name, title, body, data)
+            
             if isinstance(to, Staff):
                 return self.push.send_user(to, title, body, data)
+            
+               
 
         if channel == Notification.Channel.EMAIL:
             return self.email.send(
@@ -427,3 +448,29 @@ class NotificationDispatcher:
         if channel == Notification.Channel.SMS:
             return self.sms.destroy_scheduled(schedule_name)
         return SendResult(ok=False, error=f"Unsupported channel: {channel}")
+
+class NotificationService:
+
+    @staticmethod
+    def save_notification(
+        title: str,
+        body: str,
+        channel: str = Notification.Channel.PUSH,
+        to: str | int | None = None,
+        business_id: str | None = None,
+        metadata: Optional[Dict] = None,
+    ) -> SendResult:
+        try:
+            to_str = str(to) if to is not None else ""
+            Notification.objects.create(
+                title=title,
+                body=body,
+                business_id=business_id,
+                to=to_str,
+                channel=channel,
+                data=json_safe_metadata(metadata),
+            )
+            return SendResult(ok=True)
+        except Exception as e:
+            logger.error(f"Error saving notification: {e}")
+            return SendResult(ok=False, error=str(e))

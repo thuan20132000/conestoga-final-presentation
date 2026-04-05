@@ -13,7 +13,8 @@ from service.models import ServiceCategory
 from .models import Appointment, AppointmentService
 from client.models import Client
 from client.serializers import BookingClientSerializer, BookingClientCreateSerializer
-
+from notifications.models import Notification
+from notifications.services import NotificationService
 from .serializers import (
     AppointmentSerializer,
     AppointmentStatsSerializer,
@@ -145,6 +146,7 @@ class AppointmentViewSet(BaseModelViewSet):
                 
                 instance.payments.all().update(status=PaymentStatusType.FAILED)
                 instance.save()
+                
                 return self.response_success(AppointmentSerializer(instance).data)
         except Exception as e:
             return self.response_error(str(e))

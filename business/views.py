@@ -333,13 +333,13 @@ class BusinessRegisterView(BaseAPIView):
 
     def post(self, request):
         try:
-            print("Register Request data:: ", request.data)
             serializer = BusinessRegisterSerializer(data=request.data)
             if serializer.is_valid():
                 business_data = serializer.validated_data['business']
                 owner_data = serializer.validated_data['owner']
                 business_type_name = serializer.validated_data['business']['business_type']
-                business_service = BusinessRegisterService(business_data, owner_data, business_type_name)
+                settings_data = serializer.validated_data['settings']
+                business_service = BusinessRegisterService(business_data, owner_data, business_type_name, settings_data)
                 owner = business_service.initialize()
                 
                 user_serializer = UserProfileSerializer(owner)

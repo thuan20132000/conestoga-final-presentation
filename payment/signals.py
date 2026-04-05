@@ -29,7 +29,7 @@ def handle_payment_notifications(sender, instance, created, **kwargs):
             # Send notifications for appointment services
             payment_method_name = payment_data.get('payment_method_name', None)
             total_amount = payment_data.get('amount', 0)
-            title = f"🧾 {payment_status.capitalize()} - {business_name}"
+            title = f"🧾 {payment_status.capitalize()}"
             body = ""
             
             for appointment_service in appointment_services:

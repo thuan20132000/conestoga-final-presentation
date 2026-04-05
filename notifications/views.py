@@ -17,9 +17,15 @@ dispatcher = NotificationDispatcher()
 
 
 class NotificationFilter(filters.FilterSet):
+    # This FilterSet allows you to query notifications using filters in the URL.
+    # For example: /api/notifications/?business_id=<id>&channel=sms&status=sent
+    business_id = filters.UUIDFilter(field_name="business_id", lookup_expr="exact", required=True)
+    channel = filters.CharFilter(field_name="channel", lookup_expr="exact")
+    status = filters.CharFilter(field_name="status", lookup_expr="exact")
+
     class Meta:
         model = Notification
-        fields = ["channel", "status", "business"]
+        fields = ["channel", "status", "business_id"]
 
 class NotificationViewSet(BaseModelViewSet):
     queryset = Notification.objects.all()
@@ -31,21 +37,59 @@ class NotificationViewSet(BaseModelViewSet):
     page_size = 50
     page_size_query_param = "page_size"
     max_page_size = 1000
-    
     ordering = ["-created_at"]
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
         self.paginator.page_size = request.query_params.get('page_size', 50)
+        page = self.paginate_queryset(self.filter_queryset(self.get_queryset()))
+        serializer = NotificationSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+
+class PushNotificationFilter(filters.FilterSet):
+    business_id = filters.UUIDFilter(field_name="business_id", lookup_expr="exact", required=True)
+    channel = filters.CharFilter(field_name="channel", lookup_expr="exact")
+
+    class Meta:
+        model = Notification
+        fields = ["channel", "business_id"]
+
+class PushNotificationViewSet(BaseModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
+    search_fields = ["to", "title", "body"]
+    page_size = 100
+    page_size_query_param = "page_size"
+    max_page_size = 1000
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = PushNotificationFilter
+
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.filter(channel=Notification.Channel.PUSH).order_by("-created_at")
+        print("get_queryset:: ", queryset)
+        return self.filter_queryset(queryset)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        self.paginator.page_size = request.query_params.get('page_size', 20)
         page = self.paginate_queryset(queryset)
-        
-        
+        total_push_notifications = queryset.count()
+        PER_PUSH_COST = 0.001 # 1 Push notification per notification
+        total_push_cost = total_push_notifications * PER_PUSH_COST
+        metadata = {
+            "total_notifications": total_push_notifications,
+            "total_cost": total_push_cost,
+            "per_notification_cost": PER_PUSH_COST,
+        }
         if page is not None:
             serializer = NotificationSerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
+            return self.get_paginated_response(serializer.data, metadata=metadata)
+        
         serializer = NotificationSerializer(queryset, many=True)
-        return self.response_success(serializer.data)
+        return self.response_success(serializer.data, metadata=metadata)
 
 class SMSNotificationFilter(filters.FilterSet):
     

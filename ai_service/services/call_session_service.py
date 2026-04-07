@@ -137,6 +137,7 @@ class CallSessionService:
             NotificationDispatcher().dispatchAsync(
                 title=title,
                 body=body,
+                business_id=call_session.business_id,
                 channel=Notification.Channel.PUSH,
                 group_name=get_business_managers_group_name(call_session.business_id),
                 to=None,

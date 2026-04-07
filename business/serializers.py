@@ -215,7 +215,8 @@ class ReceptionistStatisticsSerializer(serializers.Serializer):
             'call_sid', 
             'status', 
             'transcript_summary',
-            'conversation_transcript'
+            'conversation_transcript',
+            'category',
         )
 
 class BusinessDashboardSerializer(BusinessDetailSerializer):

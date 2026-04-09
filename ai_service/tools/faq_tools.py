@@ -6,6 +6,7 @@ from agents import function_tool
 from agents.run_context import RunContextWrapper
 
 from ai_service.tools.context import CallContext
+from ai_service.tools.booking_tools import look_up_appointment
 
 
 @function_tool
@@ -35,4 +36,5 @@ async def get_service_information(
 FAQ_TOOLS = [
     get_business_information,
     get_service_information,
+    look_up_appointment,
 ]

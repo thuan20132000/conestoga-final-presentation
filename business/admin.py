@@ -121,7 +121,7 @@ class BusinessAdmin(admin.ModelAdmin):
             'fields': ('name', 'business_type', 'description', 'cost_per_minute', 'twilio_phone_number', 'google_review_url')
         }),
         (_('Contact Information'), {
-            'fields': ('phone_number', 'email', 'website', 'forward_phone_number', 'enable_ai_assistant')
+            'fields': ('phone_number', 'email', 'website', 'enable_ai_assistant')
         }),
         (_('Address'), {
             'fields': ('address', 'city', 'state_province', 'postal_code', 'country')

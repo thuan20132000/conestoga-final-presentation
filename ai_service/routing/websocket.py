@@ -10,17 +10,20 @@ from ai_service.services.business_booking_service import BusinessBookingService
 from ai_service.services.call_session_service import CallSessionService
 from ai_service.services.openai_service import OpenAIService
 from ai_service.tools.context import CallContext
-from client.models import Client
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
 
 @router.websocket("/media-stream/{call_sid}/call_to/{call_to}")
-async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str):
+async def handle_media_stream(
+    websocket: WebSocket,
+    call_sid: str,
+    call_to: str,
+):
     """Handle WebSocket connections between Twilio and OpenAI Agents SDK."""
-    logger.info(f"New media stream connection: call_sid={call_sid}, call_to={call_to}")
-
+    logger.info(f"========= New media stream connection: call_sid={call_sid}, call_to={call_to}")
+    
     # Fetch per-business AI configuration
     ai_config = await CallSessionService.get_ai_configuration(call_to)
     logger.info(f"AI configuration: {ai_config}")
@@ -29,8 +32,6 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
     logger.info(f"Call session: {call_session}")
     
     caller_number = call_session.caller_number[-10:]
-    
-    
     # Build per-call context
     call_context = CallContext(
         business_id=ai_config.business_id,
@@ -38,6 +39,7 @@ async def handle_media_stream(websocket: WebSocket, call_sid: str, call_to: str)
         caller_number=caller_number,
         booking_service=BusinessBookingService(ai_config.business_id),
         openai_service=OpenAIService(),
+        forward_phone_number=ai_config.forward_phone_number,
     )
     
     logger.info(f"Call context: {call_context}")

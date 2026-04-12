@@ -14,3 +14,4 @@ class CallContext:
     caller_number: str
     booking_service: BusinessBookingService
     openai_service: OpenAIService
+    forward_phone_number: str | None = None

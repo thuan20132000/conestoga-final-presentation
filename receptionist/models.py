@@ -7,6 +7,7 @@ from simple_history.models import HistoricalRecords
 from .enums import AIConfigurationStatus
 
 
+
 class AIConfiguration(models.Model):
     """Stores AI behavior and integration settings for the OpenAI Agents SDK."""
 
@@ -75,6 +76,8 @@ class AIConfiguration(models.Model):
         choices=STATUS_CHOICES,
         default=AIConfigurationStatus.ACTIVE.value,
     )
+    
+    forward_phone_number = models.CharField(max_length=50, blank=True, null=True)
 
     history = HistoricalRecords()
 

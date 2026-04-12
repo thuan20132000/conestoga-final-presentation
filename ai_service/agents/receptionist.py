@@ -8,6 +8,7 @@ from ai_service.agents.faq_agent import faq_agent
 from ai_service.agents.reschedule_agent import create_reschedule_agent
 from ai_service.agents.cancel_agent import create_cancel_agent
 from ai_service.tools.context import CallContext
+from ai_service.tools.transfer_tools import TRANSFER_TOOLS
 
 
 def create_receptionist_agent(instructions: str, caller_number: str) -> RealtimeAgent[CallContext]:
@@ -53,6 +54,7 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
     return RealtimeAgent[CallContext](
         name="AI Receptionist",
         instructions=instructions,
+        tools=TRANSFER_TOOLS,
         handoffs=[
             realtime_handoff(
                 faq_agent,

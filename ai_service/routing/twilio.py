@@ -136,7 +136,6 @@ async def handle_incoming_call(request: Request):
 
         # AI assistant is enabled: connect to the WebSocket for the AI assistant.
         business_ai_config = await incoming_calling_service.get_active_ai_configuration(business)
-
         if business_ai_config:
             await incoming_calling_service.create_call_session(
                 call_sid=call_sid,
@@ -145,7 +144,6 @@ async def handle_incoming_call(request: Request):
                 status="in_progress",
                 business_id=business.id,
             )
-
             response = VoiceResponse()
             response.say(
                 business_ai_config.greeting_message,

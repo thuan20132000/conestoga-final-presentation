@@ -6,8 +6,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
 from datetime import timedelta
 from .models import (
-    BusinessType, Business, OperatingHours, BusinessSettings, BusinessOnlineBooking
+    BusinessType, Business, OperatingHours, BusinessSettings, BusinessOnlineBooking,
 )
+from receptionist.models import AIConfigurationStatus
 from .serializers import (
     BusinessTypeSerializer,
     BusinessListSerializer,
@@ -164,8 +165,14 @@ class BusinessViewSet(BaseModelViewSet):
             )
         else:
             business_calls = object.calls.all()
+        
+        active_ai_config = object.ai_configs.filter(status=AIConfigurationStatus.ACTIVE.value).first()
+        
         serializer = CallSessionSerializer(business_calls, many=True)
-        return self.response_success(serializer.data)
+        metadata = {
+            'ai_configuration': AIConfigurationSerializer(active_ai_config).data if active_ai_config else None
+        }
+        return self.response_success(serializer.data, metadata=metadata)
 
     @action(detail=True, methods=['get'], url_path='receptionist-statistics')
     def receptionist_statistics(self, request, pk=None):

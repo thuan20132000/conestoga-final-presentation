@@ -64,7 +64,7 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
             ),
             realtime_handoff(
                 booking_agent,
-                tool_description_override="Transfer to the Booking Agent for collecting booking details.",
+                tool_description_override="Transfer to the Booking Agent for appointment booking.",
             ),
         ],
     )

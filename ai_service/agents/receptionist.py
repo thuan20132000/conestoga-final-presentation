@@ -29,60 +29,17 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
     # Create reschedule agent with caller's phone number baked in
     reschedule_agent = create_reschedule_agent(caller_number)
 
+    # Create cancel agent with caller's phone number baked in
     cancel_agent = create_cancel_agent(caller_number)
+
+    # Create booking agent with caller's phone number baked in
     booking_agent = create_booking_agent(caller_number)
 
-    # Wire cross-agent handoffs so sub-agents can transfer between each other
-    faq_agent.handoffs = [
-        realtime_handoff(
-            booking_agent,
-            tool_description_override="Transfer to the Booking Agent for appointment management.",
-        ),
-        realtime_handoff(
-            customer_agent,
-            tool_description_override="Transfer to the Customer Agent for customer lookup or registration.",
-        ),
-        realtime_handoff(
-            reschedule_agent,
-            tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
-        ),
-        realtime_handoff(
-            cancel_agent,
-            tool_description_override="Transfer to the Cancel Agent for appointment cancellation.",
-        ),
-    ]
-
-    booking_agent.handoffs = [
-        realtime_handoff(
-            faq_agent,
-            tool_description_override="Transfer to the FAQ Agent for business or service questions.",
-        ),
-        realtime_handoff(
-            customer_agent,
-            tool_description_override="Transfer to the Customer Agent for customer lookup or registration.",
-        ),
-        realtime_handoff(
-            reschedule_agent,
-            tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
-        ),
-        realtime_handoff(
-            cancel_agent,
-            tool_description_override="Transfer to the Cancel Agent for appointment cancellation.",
-        ),
-    ]
 
     customer_agent.handoffs = [
         realtime_handoff(
             faq_agent,
             tool_description_override="Transfer to the FAQ Agent for business or service questions.",
-        ),
-        realtime_handoff(
-            reschedule_agent,
-            tool_description_override="Transfer to the Reschedule Agent for appointment rescheduling.",
-        ),
-        realtime_handoff(
-            cancel_agent,
-            tool_description_override="Transfer to the Cancel Agent for appointment cancellation.",
         ),
     ]
 
@@ -91,23 +48,15 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
             faq_agent,
             tool_description_override="Transfer to the FAQ Agent for business or service questions.",
         ),
-        realtime_handoff(
-            cancel_agent,
-            tool_description_override="Transfer to the Cancel Agent for appointment cancellation.",
-        ),
     ]
-
+    
     return RealtimeAgent[CallContext](
         name="AI Receptionist",
         instructions=instructions,
         handoffs=[
             realtime_handoff(
                 faq_agent,
-                tool_description_override="Transfer to the FAQ Agent for business hours, location, or service details.",
-            ),
-            realtime_handoff(
-                customer_agent,
-                tool_description_override="Transfer to the Customer Agent for customer registration.",
+                tool_description_override="Transfer to the FAQ Agent for business hours, location, or service details or appointment lookup.",
             ),
             realtime_handoff(
                 reschedule_agent,
@@ -115,11 +64,7 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
             ),
             realtime_handoff(
                 booking_agent,
-                tool_description_override="Transfer to the Booking Agent for collecting booking details.",
-            ),
-            realtime_handoff(
-                cancel_agent,
-                tool_description_override="Transfer to the Cancel Agent for appointment cancellation.",
+                tool_description_override="Transfer to the Booking Agent for appointment booking.",
             ),
         ],
     )

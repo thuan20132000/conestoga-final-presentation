@@ -4,9 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from twilio.twiml.voice_response import VoiceResponse, Connect, Stream
 from ai_service.config import settings
-from receptionist.models import AIConfiguration, CallSession, AIConfigurationStatus
-from asgiref.sync import sync_to_async
-from urllib.parse import urlencode
+from ai_service.services import incoming_calling_service
 
 import logging
 logger = logging.getLogger(__name__)
@@ -92,39 +90,97 @@ async def twilio_test_endpoint():
 @router.api_route("/incoming-call", methods=["GET", "POST"])
 async def handle_incoming_call(request: Request):
     """Handle incoming call and return TwiML response to connect to Media Stream."""
-    call_data = await request.form()
-    data = dict(call_data)
-    call_from = data.get("From")
-    call_to = data.get("To")
-    call_sid = data.get("CallSid")
     
-    business_ai_config = await AIConfiguration.objects.filter(
-        business__twilio_phone_number=call_to, 
-        status=AIConfigurationStatus.ACTIVE.value
-    ).afirst()
-    
-    call_session = await CallSession.objects.acreate(
-        call_sid=call_sid,
-        caller_number=call_from,
-        receiver_number=call_to,
-        direction="inbound",    
-        status="in_progress",
-        business_id=business_ai_config.business_id
-    )
-    
-    response = VoiceResponse()
-    response.say(
-        business_ai_config.greeting_message,
-        voice="Google.en-US-Chirp3-HD-Aoede",
-        language=business_ai_config.language
-    )
-    # response.pause(length=1)
-    host = request.url.hostname
+    try:
+        call_data = await request.form()
+        data = dict(call_data)
+        call_from = data.get("From")
+        call_to = data.get("To")
+        call_sid = data.get("CallSid")
+        
+        # Get the business for the incoming call
+        business = await incoming_calling_service.get_business_by_twilio_number(call_to)
+        if business is None:
+            logger.warning(f"No business found for incoming call to {call_to}")
+            response = VoiceResponse()
+            response.say("Sorry, this number is not in service.")
+            response.hangup()
+            return HTMLResponse(content=str(response), media_type="application/xml")
 
-    wss_url = f"wss://{host}/ai-service/ws/media-stream/{call_sid}/call_to/{call_to}"
-    connect = Connect()
-    connect.stream(url=wss_url)
-    
-    response.append(connect)
-    
-    return HTMLResponse(content=str(response), media_type="application/xml")
+        # AI assistant is disabled: forward to the business's real phone number if configured.
+        if not business.enable_ai_assistant:
+            await incoming_calling_service.create_call_session(
+                call_sid=call_sid,
+                caller_number=call_from,
+                receiver_number=call_to,
+                status="forwarded",
+                business_id=business.id,
+            )
+
+            response = VoiceResponse()
+            forward_to = incoming_calling_service.resolve_forward_number(business)
+            if forward_to:
+                logger.info(
+                    f"Forwarding call {call_sid} for business {business.name} to {forward_to}"
+                )
+                response.dial(forward_to, caller_id=call_from)
+            else:
+                logger.warning(
+                    f"Business {business.name} has AI assistant disabled and no valid forward number."
+                )
+                response.say("Sorry, this number is not in service.")
+                response.hangup()
+
+            return HTMLResponse(content=str(response), media_type="application/xml")
+
+
+        # AI assistant is enabled: connect to the WebSocket for the AI assistant.
+        business_ai_config = await incoming_calling_service.get_active_ai_configuration(business)
+        if business_ai_config:
+            await incoming_calling_service.create_call_session(
+                call_sid=call_sid,
+                caller_number=call_from,
+                receiver_number=call_to,
+                status="in_progress",
+                business_id=business.id,
+            )
+            response = VoiceResponse()
+            response.say(
+                business_ai_config.greeting_message,
+                voice="Google.en-US-Chirp3-HD-Aoede",
+                language=business_ai_config.language
+            )
+            host = request.url.hostname
+            wss_url = f"wss://{host}/ai-service/ws/media-stream/{call_sid}/call_to/{call_to}"
+            connect = Connect()
+            connect.stream(url=wss_url)
+            response.append(connect)
+            return HTMLResponse(content=str(response), media_type="application/xml")
+
+
+        # No AI configuration found: forward to the business's real phone number if configured.
+        await incoming_calling_service.create_call_session(
+            call_sid=call_sid,
+            caller_number=call_from,
+            receiver_number=call_to,
+            status="forwarded",
+            business_id=business.id,
+        )
+        response = VoiceResponse()
+        forward_to = incoming_calling_service.resolve_forward_number(business)
+        if forward_to:
+            logger.info(f"Forwarding call {call_sid} (no AI config) to {forward_to}")
+            response.dial(forward_to, caller_id=call_from)
+        else:
+            logger.warning(f"Business {business.name} has no valid forward number; hanging up.")
+            response.say("Sorry, this number is not in service.")
+            response.hangup()
+        
+        return HTMLResponse(content=str(response), media_type="application/xml")
+
+    except Exception as e:
+        logger.error(f"Error in handle_incoming_call: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": "Internal server error"}
+        )

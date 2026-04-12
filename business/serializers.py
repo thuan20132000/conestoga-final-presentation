@@ -63,7 +63,8 @@ class BusinessSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Business
-        fields = ['id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'description', 'logo', 'google_review_url', 'created_at', 'updated_at']
+        fields = [
+            'id', 'name', 'business_type', 'phone_number', 'email', 'website', 'address', 'city', 'state_province', 'postal_code', 'country', 'description', 'logo', 'google_review_url', 'created_at', 'updated_at', 'forward_phone_number', 'enable_ai_assistant', 'twilio_phone_number']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
@@ -102,6 +103,7 @@ class BusinessDetailSerializer(serializers.ModelSerializer):
             'email', 'website', 'address', 'city', 'state_province', 'postal_code',
             'country', 'description', 'logo', 'google_review_url', 'operating_hours',
             'settings', 'online_booking', 'subscription', 'created_at', 'updated_at',
+            'forward_phone_number', 'enable_ai_assistant',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 

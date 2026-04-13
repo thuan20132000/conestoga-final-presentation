@@ -30,9 +30,6 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
     # Create reschedule agent with caller's phone number baked in
     reschedule_agent = create_reschedule_agent(caller_number)
 
-    # Create cancel agent with caller's phone number baked in
-    cancel_agent = create_cancel_agent(caller_number)
-
     # Create booking agent with caller's phone number baked in
     booking_agent = create_booking_agent(caller_number)
 
@@ -66,7 +63,7 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
             ),
             realtime_handoff(
                 booking_agent,
-                tool_description_override="Transfer to the Booking Agent for appointment booking.",
+                tool_description_override="Transfer to the Booking Agent for appointment booking and service details.",
             ),
         ],
     )

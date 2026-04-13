@@ -16,20 +16,23 @@ async def check_availability(
     ctx: RunContextWrapper[CallContext],
     date: str,
     time: str,
-    service_type: str,
+    service_ids: list[int],
+    service_duration: int,
 ) -> str:
     """Check availability for a specific service on a given date and time.
 
     Args:
         date: Date to check availability for (e.g. 2025-01-15).
         time: Time to check availability for (e.g. 10:00 or any).
-        service_type: Type of service to check availability for.
+        service_ids: List of service IDs to check availability for.
+        service_duration: Duration of the service in minutes.
     """
-    logger.info(f"Checking availability: date={date}, time={time}, service_type={service_type}")
+    logger.info(f"========== Checking availability: date={date}, time={time}, service_ids={service_ids}, service_duration={service_duration} ==========")
     data = await ctx.context.booking_service.check_availability(
         date=date, 
         time=time, 
-        service_type=service_type, 
+        service_ids=service_ids, 
+        service_duration=service_duration, 
     )
     return json.dumps(data, default=str)
 
@@ -63,8 +66,24 @@ async def get_staff_information(
     data = await ctx.context.booking_service.get_staff_information(staff_name=staff_name)
     return json.dumps(data, default=str)
 
+
+@function_tool
+async def search_services_by_keywords(
+    ctx: RunContextWrapper[CallContext],
+    keywords: list[str],
+) -> str:
+    """Search for services by keywords.
+
+    Args:
+        keywords: Keywords to search for services by name or description (e.g. ["haircut", "hair styling", "hair coloring", "manicure", "pedicure", "facial", "massage", "etc"]).
+    """
+    logger.info(f"========== Searching services by keywords: {keywords} ==========")
+    data = await ctx.context.booking_service.search_services_by_keywords(keywords=keywords)
+    return json.dumps(data, default=str)
+
 BOOKING_TOOLS = [
     check_availability,
     look_up_appointment,
     get_staff_information,
+    search_services_by_keywords,
 ]

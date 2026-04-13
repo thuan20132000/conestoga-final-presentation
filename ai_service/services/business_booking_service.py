@@ -135,79 +135,78 @@ class BusinessBookingService:
         self,
         date: str,
         time: str = "any",
-        service_type: str = None,
+        service_ids: list[int] = None,
+        service_duration: int = None,
         staff_id: int = None,
     ) -> Dict[str, Any]:
-        """
-        Check availability.
+        logger.info(f"Checking availability: date={date}, time={time}, service_ids={service_ids}, service_duration={service_duration}, staff_id={staff_id}")
 
-        Looks up services by name via ORM, sums their durations,
-        then queries available time slots.
-
-        Args:
-            date: Date for the appointment (YYYY-MM-DD)
-            time: Preferred time (default: "any")
-            service_type: Service name or keyword to search for
-
-        Returns:
-            Dictionary containing available time slots
-        """
-        logger.info(f"Checking availability: date={date}, time={time}, service_type={service_type}, staff_id={staff_id}")
-
-        service_ids, total_duration = await self._resolve_services(service_type)
-
+    
         if not service_ids:
-            return {'available_slots': [], 'error': f'No services found matching: {service_type}'}
+            return {'available_slots': [], 'error': f'No services found matching: {service_ids}'}
+        
+        if not service_duration:
+            return {'available_slots': [], 'error': f'No service duration found'}
 
         availability_data = await self._check_availability_sync(
             booking_date=date,
-            service_duration=total_duration,
+            service_duration=service_duration,
             service_ids=service_ids,
             staff_id=staff_id,
         )
 
+        logger.info(f"Availability data: {availability_data}")
         logger.info(f"Found {availability_data.get('total_slots', 0)} available slots")
         return availability_data
+    
+    async def search_services_by_keywords(self, keywords: list[str]) -> list[Service]:
+        """
+        Search for services by keywords.
+        """
+        return await self._search_services_by_keywords_sync(keywords=keywords)
 
     @sync_to_async
-    def _resolve_services(self, service_type: str) -> tuple[List[int], int]:
+    def _search_services_by_keywords_sync(self, keywords: list[str]) -> list[Service]:
+        """
+        Search for services by keywords.
+        """
+        query = models.Q()
+        for keyword in keywords:
+            query |= models.Q(name__icontains=keyword) | models.Q(description__icontains=keyword)
+
+        services = Service.objects.filter(query)
+        logger.info(f"========== Resolved Search services by keywords: {keywords} -> {services} ==========")
+        return [self._serialize_service(service) for service in services]
+
+    @sync_to_async
+    def _resolve_services(self, service_keywords: list[str]) -> list[Service]:
         """
         Look up services by name/description and return their IDs and total duration.
 
         Args:
-            service_type: Service name or keyword to search for
+            service_keywords: Keywords to search for services by name or description (e.g. ["haircut", "hair styling", "hair coloring", "manicure", "pedicure", "facial", "massage", "etc"]).
 
         Returns:
-            Tuple of (service_ids, total_duration_minutes)
+            List of services
         """
-        if not service_type:
-            return [], 0
+        if not service_keywords:
+            return []
+        
+        # Build Q objects for each keyword
+        query = models.Q()
+        for keyword in service_keywords:
+            query |= models.Q(name__icontains=keyword) | models.Q(description__icontains=keyword)
 
         services = Service.objects.filter(
             business_id=self.business_id,
             is_active=True,
-        ).filter(
-            models.Q(name__icontains=service_type)
-            | models.Q(description__icontains=service_type)
-        )
-
-        # first service
-        service = services.first()
-        if service:
-            service_ids = [service.id]
-            total_duration = service.duration_minutes
-        else:
-            service_ids = []
-            total_duration = 0
-
-        # service_ids = list(services.values_list('id', flat=True))
-        # total_duration = sum(s.duration_minutes or 0 for s in services)
+            is_online_booking=True,
+        ).filter(query)
         
-        # # return the first service id
-        # service_ids = [service_ids[0]]
+        logger.info(f"========== Resolved services: {services} ==========")
 
-        logger.info(f"Resolved '{service_type}' -> ids={service_ids}, duration={total_duration}min")
-        return service_ids, total_duration
+
+        return list(services)
 
     def _get_staff_name(self, staff_id: int) -> str:
         """

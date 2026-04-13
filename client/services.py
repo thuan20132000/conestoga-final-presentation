@@ -277,6 +277,7 @@ class ClientAuthService:
                 google_id_token,
                 google_requests.Request(),
                 google_client_id,
+                clock_skew_in_seconds=10,
             )
         except ValueError:
             return False, "Invalid Google token."

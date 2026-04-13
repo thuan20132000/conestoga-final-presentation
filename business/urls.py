@@ -7,6 +7,8 @@ from .views import (
     BusinessSettingsViewSet,
     BusinessOnlineBookingViewSet,
     BusinessRegisterView,
+    BusinessGoogleRegisterView,
+    BusinessGoogleLoginView,
 )
 
 # Create a router and register our viewsets with it
@@ -21,4 +23,6 @@ router.register(r'business-online-booking', BusinessOnlineBookingViewSet, basena
 urlpatterns = [
     path('', include(router.urls)),
     path('business/auth/register/', BusinessRegisterView.as_view(), name='business-register'),
+    path('business/auth/google/register/', BusinessGoogleRegisterView.as_view(), name='business-google-register'),
+    path('business/auth/google/login/', BusinessGoogleLoginView.as_view(), name='business-google-login'),
 ]

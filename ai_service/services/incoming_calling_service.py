@@ -41,16 +41,3 @@ async def create_call_session(
         status=status,
         business_id=business_id,
     )
-
-
-
-def resolve_forward_number(business: Business) -> Optional[str]:
-    """Pick the best phone number to forward an incoming call to.
-
-    Returns None if there is no usable number (or the only candidate is the
-    business's own Twilio number, which would create a loop).
-    """
-    forward_to = business.forward_phone_number or business.phone_number
-    if forward_to and forward_to != business.twilio_phone_number:
-        return forward_to
-    return None

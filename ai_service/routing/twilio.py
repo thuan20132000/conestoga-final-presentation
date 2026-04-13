@@ -94,12 +94,23 @@ async def handle_incoming_call(request: Request):
     try:
         call_data = await request.form()
         data = dict(call_data)
+        
+        # Get the phone number of the caller.
         call_from = data.get("From")
+        
+        # Get the Twilio phone number of the business that the incoming call is to.
         call_to = data.get("To")
+        
+        # Get the call sid for the incoming call.
         call_sid = data.get("CallSid")
         
         # Get the business for the incoming call
         business = await incoming_calling_service.get_business_by_twilio_number(call_to)
+
+        # AI assistant is enabled: connect to the WebSocket for the AI assistant.
+        business_ai_config = await incoming_calling_service.get_active_ai_configuration(business)
+        logger.info(f"Business {business.name} has AI assistant enabled: {business.enable_ai_assistant}")
+
         if business is None:
             logger.warning(f"No business found for incoming call to {call_to}")
             response = VoiceResponse()
@@ -108,6 +119,7 @@ async def handle_incoming_call(request: Request):
             return HTMLResponse(content=str(response), media_type="application/xml")
 
         # AI assistant is disabled: forward to the business's real phone number if configured.
+        logger.info(f"Business {business.name} has AI assistant disabled: {business.enable_ai_assistant}")
         if not business.enable_ai_assistant:
             await incoming_calling_service.create_call_session(
                 call_sid=call_sid,
@@ -118,7 +130,7 @@ async def handle_incoming_call(request: Request):
             )
 
             response = VoiceResponse()
-            forward_to = incoming_calling_service.resolve_forward_number(business)
+            forward_to = business_ai_config.forward_phone_number or business.phone_number
             if forward_to:
                 logger.info(
                     f"Forwarding call {call_sid} for business {business.name} to {forward_to}"
@@ -134,8 +146,6 @@ async def handle_incoming_call(request: Request):
             return HTMLResponse(content=str(response), media_type="application/xml")
 
 
-        # AI assistant is enabled: connect to the WebSocket for the AI assistant.
-        business_ai_config = await incoming_calling_service.get_active_ai_configuration(business)
         if business_ai_config:
             await incoming_calling_service.create_call_session(
                 call_sid=call_sid,
@@ -167,15 +177,13 @@ async def handle_incoming_call(request: Request):
             business_id=business.id,
         )
         response = VoiceResponse()
-        forward_to = incoming_calling_service.resolve_forward_number(business)
-        if forward_to:
-            logger.info(f"Forwarding call {call_sid} (no AI config) to {forward_to}")
-            response.dial(forward_to, caller_id=call_from)
+        if business_ai_config.forward_phone_number:
+            logger.info(f"Forwarding call {call_sid} (no AI config) to {business_ai_config.forward_phone_number}")
+            response.dial(business_ai_config.forward_phone_number, caller_id=call_from)
         else:
             logger.warning(f"Business {business.name} has no valid forward number; hanging up.")
             response.say("Sorry, this number is not in service.")
-            response.hangup()
-        
+            response.hangup()        
         return HTMLResponse(content=str(response), media_type="application/xml")
 
     except Exception as e:

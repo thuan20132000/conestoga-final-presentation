@@ -221,7 +221,7 @@ class ReceptionistStatisticsSerializer(serializers.Serializer):
             'category',
         )
 
-class BusinessDashboardSerializer(BusinessDetailSerializer):
+class BusinessManagementSerializer(BusinessDetailSerializer):
     """Serializer for business dashboard"""
     
     payment_methods = PaymentMethodSerializer(many=True, read_only=True)

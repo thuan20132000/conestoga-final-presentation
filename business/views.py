@@ -14,7 +14,6 @@ from .serializers import (
     BusinessListSerializer,
     OperatingHoursSerializer,
     ReceptionistStatisticsSerializer,
-    BusinessDashboardSerializer,
     BusinessSerializer,
     BusinessSettingsSerializer,
     BusinessRolesSerializer,
@@ -22,6 +21,7 @@ from .serializers import (
     BusinessRegisterSerializer,
     GoogleBusinessRegisterSerializer,
     GoogleLoginSerializer,
+    BusinessManagementSerializer,
 )
 from appointment.serializers import AppointmentDetailSerializer
 from payment.serializers import PaymentSerializer
@@ -196,12 +196,12 @@ class BusinessViewSet(BaseModelViewSet):
             return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-    @action(detail=True, methods=['get'], url_path='dashboard')
-    def dashboard(self, request, pk=None):
-        """Get dashboard data for a business."""
+    @action(detail=True, methods=['get'], url_path='management')
+    def management(self, request, pk=None):
+        """Get management data for a business."""
         try:
             object = self.get_object()
-            serializer = BusinessDashboardSerializer(object)
+            serializer = BusinessManagementSerializer(object)
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

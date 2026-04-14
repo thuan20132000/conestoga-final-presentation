@@ -1,5 +1,8 @@
 from django.db import transaction
-from datetime import time
+from django.db.models import Sum, Avg, Count
+from django.utils import timezone
+from datetime import time, date, timedelta
+import calendar
 from decimal import Decimal
 import json
 import os
@@ -7,13 +10,17 @@ from pathlib import Path
 from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking, BusinessType
 from service.models import ServiceCategory, Service
 from staff.models import Staff
-from payment.models import PaymentMethod
+from payment.models import PaymentMethod, Payment
+from client.models import Client
+from appointment.models import Appointment
+from review.models import Review
 from webpush.models import Group, PushInformation
 from main.utils import get_business_managers_group_name
 import csv
 from main.common_settings import ONLINE_BOOKING_URL
 from staff.services import StaffCredentialService
 from subscription.models import BusinessSubscription, SubscriptionStatus, SubscriptionPlan
+from payment.models import PaymentStatusType
 
 
 class BusinessInitializerService:
@@ -502,3 +509,134 @@ class BusinessGoogleAuthService:
             raise ValueError('No account found for this Google email. Please register first.')
 
         return staff
+
+
+class DashboardService:
+    """Service for computing business dashboard KPI metrics."""
+
+    def __init__(self, business: Business, from_date: date, to_date: date):
+        self.business = business
+        self.from_date = from_date
+        self.to_date = to_date
+        period_days = (to_date - from_date).days + 1
+        self.prev_to_date = from_date - timedelta(days=1)
+        self.prev_from_date = self.prev_to_date - timedelta(days=period_days - 1)
+
+    # ------------------------------------------------------------------
+    # Public
+    # ------------------------------------------------------------------
+
+    def get_dashboard_data(self) -> dict:
+        return {
+            'total_appointments': self._total_appointments(),
+            'total_revenue': self._total_revenue(),
+            'total_customers': self._total_customers(),
+            'average_rating': self._average_rating(),
+            'pending_appointments': self._pending_appointments(),
+            'completed_payments': self._completed_payments(),
+            'active_staff': self._active_staff(),
+        }
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _change_percentage(self, current, previous):
+        """Return % change vs previous period, or None if no prior data."""
+        if previous is None or previous == 0:
+            return None
+        return round(((current - previous) / previous) * 100, 1)
+
+    # ------------------------------------------------------------------
+    # Metrics
+    # ------------------------------------------------------------------
+
+    def _total_appointments(self) -> dict:
+        base = dict(business=self.business, is_deleted=False)
+        current = Appointment.objects.filter(
+            appointment_date__range=(self.from_date, self.to_date), **base
+        ).count()
+        previous = Appointment.objects.filter(
+            appointment_date__range=(self.prev_from_date, self.prev_to_date), **base
+        ).count()
+        return {
+            'count': current,
+            'change_percentage': self._change_percentage(current, previous),
+        }
+
+    def _total_revenue(self) -> dict:
+        current_amount = (
+            Payment.objects.filter(
+                created_at__date__range=(self.from_date, self.to_date), 
+                business=self.business,
+                status=PaymentStatusType.COMPLETED
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        )
+        previous_amount = (
+            Payment.objects.filter(
+                created_at__date__range=(self.prev_from_date, self.prev_to_date), 
+                business=self.business,
+                status=PaymentStatusType.COMPLETED
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        )
+        return {
+            'amount': float(current_amount),
+            'change_percentage': self._change_percentage(
+                float(current_amount), float(previous_amount)
+            ),
+        }
+
+    def _total_customers(self) -> dict:
+        base = dict(primary_business=self.business, is_active=True, is_deleted=False)
+        current = Client.objects.filter(
+            created_at__date__range=(self.from_date, self.to_date), **base
+        ).count()
+        previous = Client.objects.filter(
+            created_at__date__range=(self.prev_from_date, self.prev_to_date), **base
+        ).count()
+        week_ago = timezone.now() - timedelta(days=7)
+        new_this_week = Client.objects.filter(created_at__gte=week_ago, **base).count()
+        return {
+            'count': current,
+            'new_this_week': new_this_week,
+            'change_percentage': self._change_percentage(current, previous),
+        }
+
+    def _average_rating(self) -> dict:
+        qs = Review.objects.filter(
+            appointment__business=self.business,
+            is_active=True,
+            is_deleted=False,
+            reviewed_at__date__range=(self.from_date, self.to_date),
+        )
+        result = qs.aggregate(avg=Avg('rating'), total=Count('id'))
+        avg = result['avg']
+        return {
+            'value': round(float(avg), 1) if avg is not None else None,
+            'review_count': result['total'],
+        }
+
+    def _pending_appointments(self) -> dict:
+        count = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            status='scheduled',
+            is_deleted=False,
+        ).count()
+        return {'count': count}
+
+    def _completed_payments(self) -> dict:
+        count = Payment.objects.filter(
+            business=self.business,
+            status=PaymentStatusType.COMPLETED,
+            created_at__date__range=(self.from_date, self.to_date),
+        ).count()
+        return {'count': count}
+
+    def _active_staff(self) -> dict:
+        count = Staff.objects.filter(
+            business=self.business,
+            is_active=True,
+            is_deleted=False,
+        ).count()
+        return {'count': count}

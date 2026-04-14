@@ -221,6 +221,42 @@ class ReceptionistStatisticsSerializer(serializers.Serializer):
             'category',
         )
 
+class AppointmentKPISerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    change_percentage = serializers.FloatField(allow_null=True)
+
+
+class RevenueKPISerializer(serializers.Serializer):
+    amount = serializers.FloatField()
+    change_percentage = serializers.FloatField(allow_null=True)
+
+
+class CustomerKPISerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    new_this_week = serializers.IntegerField()
+    change_percentage = serializers.FloatField(allow_null=True)
+
+
+class RatingKPISerializer(serializers.Serializer):
+    value = serializers.FloatField(allow_null=True)
+    review_count = serializers.IntegerField()
+
+
+class CountKPISerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+
+
+class BusinessDashboardSerializer(serializers.Serializer):
+    """Serializer for business dashboard KPI metrics."""
+    total_appointments = AppointmentKPISerializer()
+    total_revenue = RevenueKPISerializer()
+    total_customers = CustomerKPISerializer()
+    average_rating = RatingKPISerializer()
+    pending_appointments = CountKPISerializer()
+    completed_payments = CountKPISerializer()
+    active_staff = CountKPISerializer()
+
+
 class BusinessManagementSerializer(BusinessDetailSerializer):
     """Serializer for business dashboard"""
     

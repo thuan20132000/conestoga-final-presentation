@@ -373,7 +373,7 @@ class BusinessRegisterService(BusinessInitializerService):
             self.category_csv_path = "dummy/hair_salon_category2026.csv"
         
        
-    def initialize(self):
+    def initialize(self, send_sms=True):
         with transaction.atomic():
             self.business = self._create_business()
             self._create_business_settings()
@@ -386,7 +386,7 @@ class BusinessRegisterService(BusinessInitializerService):
             self._create_services()
             self._subscribe_free_trial()
             self._create_staff()
-            owner = self._create_owner()
+            owner = self._create_owner(send_sms=send_sms)
             self.owner = owner
             return owner
             
@@ -413,12 +413,13 @@ class BusinessRegisterService(BusinessInitializerService):
         business = Business.objects.create(**business_data)
         return business
             
-    def _create_owner(self):
+    def _create_owner(self, send_sms=True):
         """Create default owner"""
         owner_role = BusinessRoles.objects.get(name='Owner', business=self.business)
         owner = Staff.objects.create(business=self.business, role=owner_role, **self.owner_data)
         
-        StaffCredentialService.create_or_reset_credentials(owner, send_sms=True)
+        if owner.phone:
+            StaffCredentialService.create_or_reset_credentials(owner, send_sms=send_sms)
         return owner
 
     def _subscribe_free_trial(self):
@@ -429,3 +430,75 @@ class BusinessRegisterService(BusinessInitializerService):
             status=SubscriptionStatus.TRIALING,
         )
         return subscription
+
+
+class BusinessGoogleAuthService:
+    """Handles Google OAuth registration and login for business owners."""
+
+    @staticmethod
+    def _verify_google_token(google_id_token: str) -> dict:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+        from django.conf import settings
+
+        google_client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
+        if not google_client_id:
+            raise ValueError('Google login is not configured.')
+
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                google_id_token,
+                google_requests.Request(),
+                google_client_id,
+                clock_skew_in_seconds=10,
+            )
+        except ValueError as e:
+            raise ValueError('Invalid Google token.')
+
+        email = idinfo.get('email')
+        if not email or not idinfo.get('email_verified'):
+            raise ValueError('Google account email is not verified.')
+
+        return idinfo
+
+    @staticmethod
+    def register(google_id_token: str, business_data: dict, business_type_name: str, settings_data: dict) -> Staff:
+        """
+        Register a new business + owner via Google OAuth.
+        Owner identity is derived from the verified Google token.
+        No SMS credentials are sent.
+        """
+        idinfo = BusinessGoogleAuthService._verify_google_token(google_id_token)
+
+        email = idinfo['email']
+        if Staff.objects.filter(email__iexact=email, is_deleted=False).exists():
+            raise ValueError('An account with this Google email already exists.')
+
+        owner_data = {
+            'first_name': idinfo.get('given_name', ''),
+            'last_name': idinfo.get('family_name', ''),
+            'email': email,
+        }
+
+        service = BusinessRegisterService(business_data, owner_data, business_type_name, settings_data)
+        owner = service.initialize(send_sms=False)
+        owner.set_unusable_password()
+        owner.save(update_fields=['password'])
+        return owner
+
+    @staticmethod
+    def login(google_id_token: str) -> Staff:
+        """
+        Authenticate a business owner via Google OAuth.
+        Looks up Staff by the verified email address.
+        """
+        idinfo = BusinessGoogleAuthService._verify_google_token(google_id_token)
+        email = idinfo['email']
+
+        print(f"LOGIN Email: {email}")
+        try:
+            staff = Staff.objects.get(email__iexact=email, is_deleted=False, is_active=True)
+        except Staff.DoesNotExist:
+            raise ValueError('No account found for this Google email. Please register first.')
+
+        return staff

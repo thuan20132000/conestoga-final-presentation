@@ -345,3 +345,24 @@ class BusinessRegisterSerializer(serializers.Serializer):
     class Meta:
         fields = ['business', 'owner', 'settings']
         read_only_fields = ['business', 'owner', 'settings']
+
+
+class GoogleBusinessRegisterSerializer(serializers.Serializer):
+    """
+    Serializer for Google-based business registration.
+    Owner identity (name, email) is extracted from the verified Google token.
+    """
+    google_id_token = serializers.CharField(required=True)
+    business = BusinessSerializer()
+    settings = BusinessSettingsRegisterSerializer()
+
+    class Meta:
+        fields = ['google_id_token', 'business', 'settings']
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    """Serializer for Google-based staff/owner login."""
+    google_id_token = serializers.CharField(required=True)
+
+    class Meta:
+        fields = ['google_id_token']

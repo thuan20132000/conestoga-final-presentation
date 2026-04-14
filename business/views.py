@@ -20,6 +20,8 @@ from .serializers import (
     BusinessRolesSerializer,
     BusinessOnlineBookingSerializer,
     BusinessRegisterSerializer,
+    GoogleBusinessRegisterSerializer,
+    GoogleLoginSerializer,
 )
 from appointment.serializers import AppointmentDetailSerializer
 from payment.serializers import PaymentSerializer
@@ -33,7 +35,7 @@ from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
 from payment.services import PaymentService
 from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
-from .services import BusinessRegisterService
+from .services import BusinessRegisterService, BusinessGoogleAuthService
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.translation import gettext as _
 
@@ -375,5 +377,112 @@ class BusinessRegisterView(BaseAPIView):
             return Response({
                 'success': False,
                 'message': _('Error during registration'),
+                'error': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BusinessGoogleRegisterView(BaseAPIView):
+    """
+    Public endpoint to register a new business and owner via Google OAuth.
+    POST /api/business/auth/google/register/
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = GoogleBusinessRegisterSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({
+                    'success': False,
+                    'message': _('Registration failed'),
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            google_id_token = serializer.validated_data['google_id_token']
+            business_data = serializer.validated_data['business']
+            business_type_name = business_data.get('business_type')
+            settings_data = serializer.validated_data['settings']
+
+            owner = BusinessGoogleAuthService.register(
+                google_id_token=google_id_token,
+                business_data=business_data,
+                business_type_name=business_type_name,
+                settings_data=settings_data,
+            )
+
+            user_serializer = UserProfileSerializer(owner)
+            refresh = RefreshToken.for_user(owner)
+
+            return Response({
+                'success': True,
+                'message': _('Registration successful'),
+                'results': {
+                    'user': user_serializer.data,
+                    'tokens': {
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        except ValueError as exc:
+            return Response({
+                'success': False,
+                'message': str(exc),
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as exc:
+            return Response({
+                'success': False,
+                'message': _('Error during registration'),
+                'error': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BusinessGoogleLoginView(BaseAPIView):
+    """
+    Public endpoint for business owner login via Google OAuth.
+    POST /api/business/auth/google/login/
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = GoogleLoginSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({
+                    'success': False,
+                    'message': _('Login failed'),
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            google_id_token = serializer.validated_data['google_id_token']
+            owner = BusinessGoogleAuthService.login(google_id_token=google_id_token)
+            user_serializer = UserProfileSerializer(owner)
+            refresh = RefreshToken.for_user(owner)
+            return Response({
+                'success': True,
+                'message': _('Login successful'),
+                'results': {
+                    'user': user_serializer.data,
+                    'tokens': {
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                }
+            }, status=status.HTTP_200_OK)
+
+        except ValueError as exc:
+            return Response({
+                'success': False,
+                'message': str(exc),
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as exc:
+            return Response({
+                'success': False,
+                'message': _('Error during login'),
                 'error': str(exc)
             }, status=status.HTTP_400_BAD_REQUEST)

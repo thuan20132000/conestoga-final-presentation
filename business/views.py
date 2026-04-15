@@ -22,6 +22,7 @@ from .serializers import (
     BusinessRegisterSerializer,
     GoogleBusinessRegisterSerializer,
     GoogleLoginSerializer,
+    BusinessManagementSerializer,
 )
 from appointment.serializers import AppointmentDetailSerializer
 from payment.serializers import PaymentSerializer
@@ -35,7 +36,7 @@ from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
 from payment.services import PaymentService
 from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
-from .services import BusinessRegisterService, BusinessGoogleAuthService
+from .services import BusinessRegisterService, BusinessGoogleAuthService, DashboardService
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.translation import gettext as _
 
@@ -198,10 +199,39 @@ class BusinessViewSet(BaseModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='dashboard')
     def dashboard(self, request, pk=None):
-        """Get dashboard data for a business."""
+        """Get dashboard KPI metrics for a business."""
+        try:
+            from datetime import date
+            import calendar as cal
+
+            from_date_str = request.query_params.get('from_date')
+            to_date_str = request.query_params.get('to_date')
+
+            if from_date_str and to_date_str:
+                from_date = date.fromisoformat(from_date_str)
+                to_date = date.fromisoformat(to_date_str)
+            else:
+                today = date.today()
+                from_date = today.replace(day=1)
+                last_day = cal.monthrange(today.year, today.month)[1]
+                to_date = today.replace(day=last_day)
+
+            business = self.get_object()
+            service = DashboardService(business, from_date, to_date)
+            data = service.get_dashboard_data()
+            serializer = BusinessDashboardSerializer(data)
+            return self.response_success(serializer.data)
+        except ValueError as e:
+            return self.response_error({'error': str(e)}, status_code=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], url_path='management')
+    def management(self, request, pk=None):
+        """Get management data for a business."""
         try:
             object = self.get_object()
-            serializer = BusinessDashboardSerializer(object)
+            serializer = BusinessManagementSerializer(object)
             return self.response_success(serializer.data)
         except Exception as e:
             return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)

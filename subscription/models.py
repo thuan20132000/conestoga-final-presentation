@@ -47,6 +47,9 @@ class SubscriptionPlan(SoftDeleteModel):
     has_ai_receptionist = models.BooleanField(default=False)
     has_online_booking = models.BooleanField(default=True)
     has_analytics = models.BooleanField(default=False)
+    has_sms_notifications = models.BooleanField(default=False)
+    has_online_gift_cards = models.BooleanField(default=False)
+    has_salary_management = models.BooleanField(default=False)
 
     is_active = models.BooleanField(default=True)
     ordering = models.IntegerField(default=0)

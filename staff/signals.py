@@ -73,6 +73,7 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
                 channel=Notification.Channel.PUSH,
                 to=None,
                 group_name=get_business_managers_group_name(business_id),
+                business_id=business_id,
             )
             
             
@@ -91,6 +92,7 @@ def handle_time_entry_post_save(sender, instance, created, **kwargs):
                 channel=Notification.Channel.PUSH,
                 to=None,
                 group_name=get_business_managers_group_name(business_id),
+                business_id=business_id,
             )
             
     except Exception as e:
@@ -122,6 +124,7 @@ def handle_staff_off_day_post_save(sender, instance, created, **kwargs):
                 channel=Notification.Channel.PUSH,
                 to=None,
                 group_name=get_business_managers_group_name(business_id),
+                business_id=business_id,
             )
             
             

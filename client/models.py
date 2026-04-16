@@ -124,6 +124,41 @@ class Client(SoftDeleteModel):
         super().save(*args, **kwargs)
 
 
+class ClientSocialAccount(models.Model):
+    """Links a Client to a third-party OAuth provider identity."""
+
+    PROVIDER_CHOICES = [
+        ("google", "Google"),
+        ("facebook", "Facebook"),
+    ]
+
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="social_accounts",
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    provider_user_id = models.CharField(
+        max_length=255,
+        help_text="Unique user ID returned by the provider (Google sub / Facebook id)",
+    )
+    email = models.EmailField(
+        blank=True,
+        null=True,
+        help_text="Email address as returned by the provider at time of login",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("provider", "provider_user_id")]
+        verbose_name = "Client Social Account"
+        verbose_name_plural = "Client Social Accounts"
+
+    def __str__(self):
+        return f"{self.client} via {self.get_provider_display()} ({self.provider_user_id})"
+
+
 class ClientOTP(models.Model):
     """Stores OTP codes for client passwordless authentication"""
 

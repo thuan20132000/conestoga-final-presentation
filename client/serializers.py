@@ -243,6 +243,13 @@ class ClientGoogleLoginSerializer(serializers.Serializer):
     business_id = serializers.UUIDField(required=True)
 
 
+class ClientFacebookLoginSerializer(serializers.Serializer):
+    """Validates Facebook OAuth login payload."""
+
+    facebook_access_token = serializers.CharField(required=True)
+    business_id = serializers.UUIDField(required=True)
+
+
 class ClientOTPRequestSerializer(serializers.Serializer):
     """Validates OTP request payload."""
 

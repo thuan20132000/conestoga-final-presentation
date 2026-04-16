@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .models import Client, ClientOTP
+from .models import Client, ClientOTP, ClientSocialAccount
 from .auth import (
     generate_client_tokens,
     decode_client_token,
@@ -260,6 +260,7 @@ class ClientAuthService:
     def google_login(google_id_token, business_id):
         """
         Verify Google ID token, find or create client, return JWT tokens.
+        Uses ClientSocialAccount for identity lookup to avoid duplicates.
         Returns (success: bool, data: dict|str).
         """
         from google.oauth2 import id_token
@@ -286,30 +287,181 @@ class ClientAuthService:
         if not email or not idinfo.get("email_verified"):
             return False, "Google account email is not verified."
 
+        provider_user_id = idinfo.get("sub")
+
         # Validate business exists
         try:
             business = Business.objects.get(id=business_id, is_deleted=False)
         except Business.DoesNotExist:
             return False, "Business not found."
 
-        # Find or create client
         is_new_client = False
-        client = Client.objects.filter(
-            primary_business_id=business_id,
-            email__iexact=email,
-            is_active=True,
-            is_deleted=False,
+
+        # Step 1: look up by provider identity
+        social_account = ClientSocialAccount.objects.select_related("client").filter(
+            provider="google",
+            provider_user_id=provider_user_id,
         ).first()
 
-        if not client:
-            client = Client.objects.create(
-                first_name=idinfo.get("given_name", ""),
-                last_name=idinfo.get("family_name", ""),
-                email=email,
-                primary_business=business,
+        if social_account:
+            client = social_account.client
+            # Keep the stored email in sync if it changed
+            if social_account.email != email:
+                social_account.email = email
+                social_account.save(update_fields=["email", "updated_at"])
+        else:
+            # Step 2: link to an existing client matched by email
+            client = Client.objects.filter(
+                primary_business_id=business_id,
+                email__iexact=email,
                 is_active=True,
+                is_deleted=False,
+            ).first()
+
+            # Step 3: create a brand-new client
+            if not client:
+                client = Client.objects.create(
+                    first_name=idinfo.get("given_name", ""),
+                    last_name=idinfo.get("family_name", ""),
+                    email=email,
+                    primary_business=business,
+                    is_active=True,
+                )
+                is_new_client = True
+
+            ClientSocialAccount.objects.create(
+                client=client,
+                provider="google",
+                provider_user_id=provider_user_id,
+                email=email,
             )
-            is_new_client = True
+
+        tokens = generate_client_tokens(client)
+
+        return True, {
+            "tokens": tokens,
+            "client": {
+                "id": str(client.id),
+                "first_name": client.first_name,
+                "last_name": client.last_name,
+                "email": client.email,
+                "phone": client.phone,
+                "primary_business_id": (
+                    str(client.primary_business_id)
+                    if client.primary_business_id
+                    else None
+                ),
+            },
+            "is_new_client": is_new_client,
+        }
+
+    @staticmethod
+    def facebook_login(facebook_access_token, business_id):
+        """
+        Verify Facebook access token via Graph API, find or create client, return JWT tokens.
+        Uses ClientSocialAccount for identity lookup to avoid duplicates.
+        Returns (success: bool, data: dict|str).
+        """
+        import requests as http_requests
+        from django.conf import settings
+        from business.models import Business
+
+        app_id = getattr(settings, "FACEBOOK_APP_ID", "")
+        app_secret = getattr(settings, "FACEBOOK_APP_SECRET", "")
+        if not app_id or not app_secret:
+            return False, "Facebook login is not configured."
+
+        # Verify the token belongs to this app and check granted scopes
+        try:
+            inspect_resp = http_requests.get(
+                "https://graph.facebook.com/debug_token",
+                params={
+                    "input_token": facebook_access_token,
+                    "access_token": f"{app_id}|{app_secret}",
+                },
+                timeout=10,
+            )
+            inspect_resp.raise_for_status()
+            inspect_data = inspect_resp.json().get("data", {})
+        except Exception:
+            return False, "Failed to inspect Facebook token."
+
+        if not inspect_data.get("is_valid") or inspect_data.get("app_id") != app_id:
+            return False, "Facebook token is not valid for this application."
+
+        granted_scopes = inspect_data.get("scopes", [])
+
+        # Fetch user profile — request email only when permission was granted
+        fields = "id,first_name,last_name"
+        if "email" in granted_scopes:
+            fields += ",email"
+
+        try:
+            response = http_requests.get(
+                "https://graph.facebook.com/me",
+                params={"fields": fields, "access_token": facebook_access_token},
+                timeout=10,
+            )
+            response.raise_for_status()
+            fb_data = response.json()
+        except Exception:
+            return False, "Failed to verify Facebook token."
+
+        if "error" in fb_data:
+            return False, "Invalid Facebook token."
+
+        provider_user_id = fb_data.get("id")
+        email = fb_data.get("email") if isinstance(fb_data.get("email"), str) else None
+
+        # Validate business exists
+        try:
+            business = Business.objects.get(id=business_id, is_deleted=False)
+        except Business.DoesNotExist:
+            return False, "Business not found."
+
+        is_new_client = False
+
+        # Step 1: look up by provider identity
+        social_account = ClientSocialAccount.objects.select_related("client").filter(
+            provider="facebook",
+            provider_user_id=provider_user_id,
+        ).first()
+
+        if social_account:
+            client = social_account.client
+            # Keep the stored email in sync if it changed
+            if email and social_account.email != email:
+                social_account.email = email
+                social_account.save(update_fields=["email", "updated_at"])
+        else:
+            client = None
+
+            # Step 2: link to an existing client matched by email (if email was granted)
+            if email:
+                client = Client.objects.filter(
+                    primary_business_id=business_id,
+                    email__iexact=email,
+                    is_active=True,
+                    is_deleted=False,
+                ).first()
+
+            # Step 3: create a brand-new client
+            if not client:
+                client = Client.objects.create(
+                    first_name=fb_data.get("first_name", ""),
+                    last_name=fb_data.get("last_name", ""),
+                    email=email,
+                    primary_business=business,
+                    is_active=True,
+                )
+                is_new_client = True
+
+            ClientSocialAccount.objects.create(
+                client=client,
+                provider="facebook",
+                provider_user_id=provider_user_id,
+                email=email,
+            )
 
         tokens = generate_client_tokens(client)
 

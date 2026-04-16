@@ -229,6 +229,7 @@ LOGGING = {
 # CORS and cookies
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # Next.js dev origin
+    "https://localhost:3000",  # Next.js dev origin
     "http://127.0.0.1:3001",  # Frontend dev origin
     "https://localhost:3001",  # Frontend dev origin
     "http://192.168.2.170:3000",  # Django dev origin
@@ -313,3 +314,6 @@ CALENDAR_LOGIN_URL = config('CALENDAR_LOGIN_URL', default='http://127.0.0.1:3001
 
 # Google OAuth (for client login)
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+
+FACEBOOK_APP_ID = config('FACEBOOK_APP_ID', default='')
+FACEBOOK_APP_SECRET = config('FACEBOOK_APP_SECRET', default='')

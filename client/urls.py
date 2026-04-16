@@ -4,6 +4,7 @@ from .views import (
     ClientViewSet,
     ClientRegisterView,
     ClientGoogleLoginView,
+    ClientFacebookLoginView,
     ClientRequestOTPView,
     ClientVerifyOTPView,
     ClientRefreshTokenView,
@@ -30,6 +31,11 @@ urlpatterns = [
         "client-auth/google/",
         ClientGoogleLoginView.as_view(),
         name="client-google-login",
+    ),
+    path(
+        "client-auth/facebook/",
+        ClientFacebookLoginView.as_view(),
+        name="client-facebook-login",
     ),
     path(
         "client-auth/request-otp/",

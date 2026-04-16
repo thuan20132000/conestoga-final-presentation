@@ -246,15 +246,69 @@ class CountKPISerializer(serializers.Serializer):
     count = serializers.IntegerField()
 
 
+class TodaysAppointmentSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    client_name = serializers.CharField(allow_null=True)
+    start_at = serializers.DateTimeField(allow_null=True)
+    booking_source = serializers.CharField()
+    services = serializers.ListField(child=serializers.CharField())
+
+
+class AppointmentsByStatusSerializer(serializers.Serializer):
+    scheduled = serializers.IntegerField()
+    in_service = serializers.IntegerField()
+    checked_in = serializers.IntegerField()
+    checked_out = serializers.IntegerField()
+    cancelled = serializers.IntegerField()
+    no_show = serializers.IntegerField()
+    pending_payment = serializers.IntegerField()
+
+
+class BookingSourcesSerializer(serializers.Serializer):
+    online = serializers.IntegerField()
+    phone = serializers.IntegerField()
+    walk_in = serializers.IntegerField()
+    staff = serializers.IntegerField()
+    ai_receptionist = serializers.IntegerField()
+
+
+class RevenueByMethodSerializer(serializers.Serializer):
+    method = serializers.CharField()
+    amount = serializers.FloatField()
+
+
+class StaffPerformanceSerializer(serializers.Serializer):
+    staff_id = serializers.IntegerField()
+    name = serializers.CharField()
+    appointment_count = serializers.IntegerField()
+    revenue = serializers.FloatField()
+
+
+class DailyTrendSerializer(serializers.Serializer):
+    date = serializers.DateField()
+    appointments = serializers.IntegerField()
+    revenue = serializers.FloatField()
+
+
 class BusinessDashboardSerializer(serializers.Serializer):
     """Serializer for business dashboard KPI metrics."""
     total_appointments = AppointmentKPISerializer()
     total_revenue = RevenueKPISerializer()
     total_customers = CustomerKPISerializer()
     average_rating = RatingKPISerializer()
-    pending_appointments = CountKPISerializer()
     completed_payments = CountKPISerializer()
     active_staff = CountKPISerializer()
+    todays_appointments = TodaysAppointmentSerializer(many=True)
+    appointments_by_status = AppointmentsByStatusSerializer()
+    booking_sources = BookingSourcesSerializer()
+    revenue_by_payment_method = RevenueByMethodSerializer(many=True)
+    total_tips = serializers.FloatField()
+    average_ticket_value = serializers.FloatField()
+    cancellation_rate = serializers.FloatField()
+    no_show_rate = serializers.FloatField()
+    staff_performance = StaffPerformanceSerializer(many=True)
+    daily_trends = DailyTrendSerializer(many=True)
 
 
 class BusinessManagementSerializer(BusinessDetailSerializer):

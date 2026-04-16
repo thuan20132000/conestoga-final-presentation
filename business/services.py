@@ -21,6 +21,7 @@ from main.common_settings import ONLINE_BOOKING_URL
 from staff.services import StaffCredentialService
 from subscription.models import BusinessSubscription, SubscriptionStatus, SubscriptionPlan
 from payment.models import PaymentStatusType
+from appointment.models import AppointmentStatusType
 
 
 class BusinessInitializerService:
@@ -502,7 +503,6 @@ class BusinessGoogleAuthService:
         idinfo = BusinessGoogleAuthService._verify_google_token(google_id_token)
         email = idinfo['email']
 
-        print(f"LOGIN Email: {email}")
         try:
             staff = Staff.objects.get(email__iexact=email, is_deleted=False, is_active=True)
         except Staff.DoesNotExist:
@@ -532,9 +532,18 @@ class DashboardService:
             'total_revenue': self._total_revenue(),
             'total_customers': self._total_customers(),
             'average_rating': self._average_rating(),
-            'pending_appointments': self._pending_appointments(),
             'completed_payments': self._completed_payments(),
             'active_staff': self._active_staff(),
+            'todays_appointments': self._todays_appointments(),
+            'appointments_by_status': self._appointments_by_status(),
+            'booking_sources': self._booking_sources(),
+            'revenue_by_payment_method': self._revenue_by_payment_method(),
+            'total_tips': self._total_tips(),
+            'average_ticket_value': self._average_ticket_value(),
+            'cancellation_rate': self._cancellation_rate(),
+            'no_show_rate': self._no_show_rate(),
+            'staff_performance': self._staff_performance(),
+            'daily_trends': self._daily_trends(),
         }
 
     # ------------------------------------------------------------------
@@ -552,7 +561,12 @@ class DashboardService:
     # ------------------------------------------------------------------
 
     def _total_appointments(self) -> dict:
-        base = dict(business=self.business, is_deleted=False)
+        base = dict(business=self.business,status__in=[
+            AppointmentStatusType.SCHEDULED,
+            AppointmentStatusType.IN_SERVICE,
+            AppointmentStatusType.CHECKED_IN,
+            AppointmentStatusType.CANCELLED,
+        ], is_deleted=False)
         current = Appointment.objects.filter(
             appointment_date__range=(self.from_date, self.to_date), **base
         ).count()
@@ -588,9 +602,7 @@ class DashboardService:
 
     def _total_customers(self) -> dict:
         base = dict(primary_business=self.business, is_active=True, is_deleted=False)
-        current = Client.objects.filter(
-            created_at__date__range=(self.from_date, self.to_date), **base
-        ).count()
+        current = Client.objects.filter(**base).count()
         previous = Client.objects.filter(
             created_at__date__range=(self.prev_from_date, self.prev_to_date), **base
         ).count()
@@ -616,15 +628,6 @@ class DashboardService:
             'review_count': result['total'],
         }
 
-    def _pending_appointments(self) -> dict:
-        count = Appointment.objects.filter(
-            business=self.business,
-            appointment_date__range=(self.from_date, self.to_date),
-            status='scheduled',
-            is_deleted=False,
-        ).count()
-        return {'count': count}
-
     def _completed_payments(self) -> dict:
         count = Payment.objects.filter(
             business=self.business,
@@ -640,3 +643,223 @@ class DashboardService:
             is_deleted=False,
         ).count()
         return {'count': count}
+
+    def _todays_appointments(self) -> list:
+        from appointment.models import Appointment
+        today = date.today()
+        appts = (
+            Appointment.objects
+            .filter(business=self.business, appointment_date=today, status__in=[
+                AppointmentStatusType.SCHEDULED,
+                AppointmentStatusType.IN_SERVICE,
+                AppointmentStatusType.CHECKED_IN,
+                AppointmentStatusType.CANCELLED,
+                AppointmentStatusType.NO_SHOW,
+            ], is_deleted=False)
+            .select_related('client')
+            .prefetch_related('appointment_services__service')
+            .order_by('start_at')
+        )
+        result = []
+        for appt in appts:
+            client = appt.client
+            if client:
+                client_name = f"{client.first_name or ''} {client.last_name or ''}".strip() or None
+            else:
+                client_name = None
+            services = [
+                as_.service.name
+                for as_ in appt.appointment_services.all()
+                if as_.service and not as_.is_deleted
+            ]
+            result.append({
+                'id': appt.id,
+                'status': appt.status,
+                'client_name': client_name,
+                'start_at': appt.start_at,
+                'booking_source': appt.booking_source,
+                'services': services,
+            })
+        return result
+
+    def _appointments_by_status(self) -> dict:
+        from appointment.models import Appointment, AppointmentStatusType
+        base_qs = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            is_deleted=False,
+        )
+        return {
+            status_val: base_qs.filter(status=status_val).count()
+            for status_val, _ in AppointmentStatusType.choices
+        }
+
+    def _booking_sources(self) -> dict:
+        from appointment.models import Appointment, BookingSourceType
+        base_qs = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            is_deleted=False,
+        )
+        return {
+            source_val: base_qs.filter(booking_source=source_val).count()
+            for source_val, _ in BookingSourceType.choices
+        }
+
+    def _revenue_by_payment_method(self) -> list:
+        rows = (
+            Payment.objects
+            .filter(
+                business=self.business,
+                status=PaymentStatusType.COMPLETED,
+                created_at__date__range=(self.from_date, self.to_date),
+            )
+            .values('payment_method_type')
+            .annotate(total=Sum('amount'))
+            .order_by('-total')
+        )
+        return [
+            {'method': row['payment_method_type'], 'amount': float(row['total'] or 0)}
+            for row in rows
+        ]
+
+    def _total_tips(self) -> float:
+        from appointment.models import AppointmentService
+        total = (
+            AppointmentService.objects
+            .filter(
+                appointment__business=self.business,
+                appointment__appointment_date__range=(self.from_date, self.to_date),
+                appointment__is_deleted=False,
+                is_deleted=False,
+            )
+            .aggregate(total=Sum('tip_amount'))['total']
+        )
+        return float(total or 0)
+
+    def _average_ticket_value(self) -> float:
+        completed_count = Payment.objects.filter(
+            business=self.business,
+            status=PaymentStatusType.COMPLETED,
+            created_at__date__range=(self.from_date, self.to_date),
+        ).count()
+        if completed_count == 0:
+            return 0.0
+        total_revenue = (
+            Payment.objects
+            .filter(
+                business=self.business,
+                status=PaymentStatusType.COMPLETED,
+                created_at__date__range=(self.from_date, self.to_date),
+            )
+            .aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        )
+        return round(float(total_revenue) / completed_count, 2)
+
+    def _cancellation_rate(self) -> float:
+        from appointment.models import Appointment
+        total = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            is_deleted=False,
+        ).count()
+        if total == 0:
+            return 0.0
+        cancelled = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            is_deleted=False,
+            status='cancelled',
+        ).count()
+        return round((cancelled / total) * 100, 1)
+
+    def _no_show_rate(self) -> float:
+        from appointment.models import Appointment
+        total = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            is_deleted=False,
+        ).count()
+        if total == 0:
+            return 0.0
+        no_shows = Appointment.objects.filter(
+            business=self.business,
+            appointment_date__range=(self.from_date, self.to_date),
+            is_deleted=False,
+            status='no_show',
+        ).count()
+        return round((no_shows / total) * 100, 1)
+
+    def _staff_performance(self) -> list:
+        staff_members = Staff.objects.filter(
+            business=self.business,
+            is_active=True,
+            is_deleted=False,
+        )
+        result = []
+        for staff in staff_members:
+            appt_count = (
+                staff.appointment_services
+                .filter(
+                    appointment__business=self.business,
+                    appointment__appointment_date__range=(self.from_date, self.to_date),
+                    appointment__is_deleted=False,
+                    is_deleted=False,
+                )
+                .values('appointment')
+                .distinct()
+                .count()
+            )
+            revenue = (
+                Payment.objects
+                .filter(
+                    business=self.business,
+                    status=PaymentStatusType.COMPLETED,
+                    created_at__date__range=(self.from_date, self.to_date),
+                    appointment__appointment_services__staff=staff,
+                    appointment__appointment_services__is_deleted=False,
+                )
+                .distinct()
+                .aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            )
+            result.append({
+                'staff_id': staff.id,
+                'name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
+                'appointment_count': appt_count,
+                'revenue': float(revenue),
+            })
+        result.sort(key=lambda x: x['revenue'], reverse=True)
+        return result
+
+    def _daily_trends(self) -> list:
+        from appointment.models import Appointment
+        current = self.from_date
+        result = []
+        while current <= self.to_date:
+            appt_count = Appointment.objects.filter(
+                business=self.business,
+                appointment_date=current,
+                status__in=[
+                    AppointmentStatusType.SCHEDULED,
+                    AppointmentStatusType.IN_SERVICE,
+                    AppointmentStatusType.CHECKED_IN,
+                ],
+                is_deleted=False,
+            ).count()
+            daily_revenue = (
+                Payment.objects
+                .filter(
+                    business=self.business,
+                    status=PaymentStatusType.COMPLETED,
+                    created_at__date=current,
+                )
+                .aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            )
+            result.append({
+                'date': current,
+                'appointments': appt_count,
+                'revenue': float(daily_revenue),
+            })
+            current += timedelta(days=1)
+        
+        return result

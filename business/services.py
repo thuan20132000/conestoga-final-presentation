@@ -824,7 +824,7 @@ class DashboardService:
             )
             result.append({
                 'staff_id': staff.id,
-                'name': f"{staff.first_name or ''} {staff.last_name or ''}".strip(),
+                'name': f"{staff.first_name or ''}".strip(),
                 'appointment_count': appt_count,
                 'revenue': float(revenue),
             })

@@ -11,6 +11,7 @@ from .serializers import (
     ClientUpdateSerializer,
     ClientRegisterSerializer,
     ClientGoogleLoginSerializer,
+    ClientFacebookLoginSerializer,
     ClientOTPRequestSerializer,
     ClientOTPVerifySerializer,
     ClientTokenRefreshSerializer,
@@ -185,6 +186,24 @@ class ClientGoogleLoginView(BaseAPIView):
 
         success, data = ClientAuthService.google_login(
             google_id_token=serializer.validated_data["google_id_token"],
+            business_id=serializer.validated_data["business_id"],
+        )
+
+        if not success:
+            return self.response_error(message=data)
+
+        return self.response_success(data=data, message="Login successful.")
+
+
+class ClientFacebookLoginView(BaseAPIView):
+    """Login/register client via Facebook. POST /api/client-auth/facebook/"""
+
+    def post(self, request):
+        serializer = ClientFacebookLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        success, data = ClientAuthService.facebook_login(
+            facebook_access_token=serializer.validated_data["facebook_access_token"],
             business_id=serializer.validated_data["business_id"],
         )
 

@@ -806,7 +806,7 @@ class DashboardService:
         )
         result = []
         for staff in staff_members:
-            completed_appt_count = (
+            total_completed_services = (
                 staff.appointment_services
                 .filter(
                     appointment__business=self.business,
@@ -820,7 +820,7 @@ class DashboardService:
                 .count()
             )
             
-            total_staff_requested = (
+            total_services_requested = (
                 staff.appointment_services.filter(
                     is_staff_request=True,
                     appointment__status=AppointmentStatusType.CHECKED_OUT,
@@ -845,8 +845,8 @@ class DashboardService:
             result.append({
                 'staff_id': staff.id,
                 'name': f"{staff.first_name or ''}".strip(),
-                'appointment_count': completed_appt_count,
-                'total_staff_requested': total_staff_requested,
+                'total_completed_services': total_completed_services,
+                'total_services_requested': total_services_requested,
                 'revenue': float(revenue),
             })
         result.sort(key=lambda x: x['revenue'], reverse=True)

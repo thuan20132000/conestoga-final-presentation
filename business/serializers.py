@@ -281,7 +281,8 @@ class RevenueByMethodSerializer(serializers.Serializer):
 class StaffPerformanceSerializer(serializers.Serializer):
     staff_id = serializers.IntegerField()
     name = serializers.CharField()
-    appointment_count = serializers.IntegerField()
+    total_completed_services = serializers.IntegerField()
+    total_services_requested = serializers.IntegerField()
     revenue = serializers.FloatField()
 
 

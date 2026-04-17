@@ -700,6 +700,13 @@ class DashboardService:
             business=self.business,
             appointment_date__range=(self.from_date, self.to_date),
             is_deleted=False,
+            status__in=[
+                AppointmentStatusType.SCHEDULED,
+                AppointmentStatusType.IN_SERVICE,
+                AppointmentStatusType.CHECKED_IN,
+                AppointmentStatusType.CANCELLED,
+                AppointmentStatusType.NO_SHOW,
+            ],
         )
         return {
             source_val: base_qs.filter(booking_source=source_val).count()
@@ -795,6 +802,7 @@ class DashboardService:
             business=self.business,
             is_active=True,
             is_deleted=False,
+            role__name__in=['Technician', 'Stylist'],
         )
         result = []
         for staff in staff_members:

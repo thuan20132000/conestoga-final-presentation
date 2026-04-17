@@ -806,18 +806,30 @@ class DashboardService:
         )
         result = []
         for staff in staff_members:
-            appt_count = (
+            completed_appt_count = (
                 staff.appointment_services
                 .filter(
                     appointment__business=self.business,
                     appointment__appointment_date__range=(self.from_date, self.to_date),
                     appointment__is_deleted=False,
+                    appointment__status=AppointmentStatusType.CHECKED_OUT,
                     is_deleted=False,
                 )
                 .values('appointment')
                 .distinct()
                 .count()
             )
+            
+            total_staff_requested = (
+                staff.appointment_services.filter(
+                    is_staff_request=True,
+                    appointment__status=AppointmentStatusType.CHECKED_OUT,
+                    appointment__is_deleted=False,
+                    is_deleted=False,
+                )
+                .count()
+            )
+            
             revenue = (
                 Payment.objects
                 .filter(
@@ -833,7 +845,8 @@ class DashboardService:
             result.append({
                 'staff_id': staff.id,
                 'name': f"{staff.first_name or ''}".strip(),
-                'appointment_count': appt_count,
+                'appointment_count': completed_appt_count,
+                'total_staff_requested': total_staff_requested,
                 'revenue': float(revenue),
             })
         result.sort(key=lambda x: x['revenue'], reverse=True)

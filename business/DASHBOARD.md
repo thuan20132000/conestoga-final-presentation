@@ -3,7 +3,7 @@
 ## Endpoint
 
 ```
-GET /api/businesses/{business_id}/dashboard/
+GET /api/business/{business_id}/dashboard/
 ```
 
 **Auth:** Bearer token required (`Authorization: Bearer <access_token>`)
@@ -20,9 +20,9 @@ Both `from_date` and `to_date` must be provided together. If either is omitted, 
 **Examples:**
 
 ```
-GET /api/businesses/1/dashboard/
-GET /api/businesses/1/dashboard/?from_date=2026-04-01&to_date=2026-04-30
-GET /api/businesses/1/dashboard/?from_date=2026-04-01&to_date=2026-04-16
+GET /api/business/1/dashboard/
+GET /api/business/1/dashboard/?from_date=2026-04-01&to_date=2026-04-30
+GET /api/business/1/dashboard/?from_date=2026-04-01&to_date=2026-04-16
 ```
 
 ---

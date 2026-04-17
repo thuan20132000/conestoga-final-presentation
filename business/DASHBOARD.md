@@ -61,8 +61,9 @@ All dashboard data lives under `results`.
 | `average_ticket_value`     | number (float)    | Total revenue / number of completed payments                   |
 | `cancellation_rate`        | number (float)    | Percentage of appointments that were cancelled                 |
 | `no_show_rate`             | number (float)    | Percentage of appointments that were no-shows                  |
-| `staff_performance`        | array             | Per-staff appointment count and revenue, sorted by revenue     |
+| `staff_performance`        | array             | Per-staff appointment count, revenue, and client requests, sorted by revenue |
 | `daily_trends`             | array             | Day-by-day appointment count and revenue for the selected range|
+| `staff_requested_by_client`| object            | Count of distinct staff members specifically requested by a client in the period |
 
 ---
 
@@ -259,22 +260,27 @@ Sorted descending by `revenue`. Includes all active staff even if they had zero 
     "staff_id": 12,
     "name": "Diana Le",
     "appointment_count": 34,
-    "revenue": 1670.00
+    "revenue": 1670.00,
+    "total_staff_requested": 18
   },
   {
     "staff_id": 8,
     "name": "John Nguyen",
     "appointment_count": 28,
-    "revenue": 1240.50
+    "revenue": 1240.50,
+    "total_staff_requested": 10
   },
   {
     "staff_id": 15,
     "name": "Tony Pham",
     "appointment_count": 0,
-    "revenue": 0.0
+    "revenue": 0.0,
+    "total_staff_requested": 0
   }
 ]
 ```
+
+- `total_staff_requested`: number of checked-out appointment services where the client specifically requested this staff member (`is_staff_request = true`).
 
 ---
 
@@ -290,6 +296,16 @@ One entry per day in `[from_date, to_date]`, inclusive. Useful for line/bar char
   { "date": "2026-04-16", "appointments": 7,  "revenue": 290.50 }
 ]
 ```
+
+---
+
+### `staff_requested_by_client`
+```json
+{
+  "count": 4
+}
+```
+- `count`: number of **distinct staff members** who had at least one appointment service in the period where the client explicitly requested them (`is_staff_request = true`). Only considers appointments that are not soft-deleted.
 
 ---
 
@@ -341,13 +357,14 @@ One entry per day in `[from_date, to_date]`, inclusive. Useful for line/bar char
     "cancellation_rate": 9.8,
     "no_show_rate": 3.5,
     "staff_performance": [
-      { "staff_id": 12, "name": "Diana Le",    "appointment_count": 34, "revenue": 1670.00 },
-      { "staff_id": 8,  "name": "John Nguyen", "appointment_count": 28, "revenue": 1240.50 }
+      { "staff_id": 12, "name": "Diana Le",    "appointment_count": 34, "revenue": 1670.00, "total_staff_requested": 18 },
+      { "staff_id": 8,  "name": "John Nguyen", "appointment_count": 28, "revenue": 1240.50, "total_staff_requested": 10 }
     ],
     "daily_trends": [
       { "date": "2026-04-01", "appointments": 12, "revenue": 480.00 },
       { "date": "2026-04-02", "appointments": 9,  "revenue": 355.00 }
-    ]
+    ],
+    "staff_requested_by_client": { "count": 4 }
   }
 }
 ```
@@ -377,11 +394,12 @@ One entry per day in `[from_date, to_date]`, inclusive. Useful for line/bar char
 │  revenue_by_payment_method  │                                       │
 ├─────────────────────────────┴───────────────────────────────────────┤
 │  Staff Performance                                                  │
-│  [Table: staff name | appointments | revenue | bar indicator]       │
+│  [Table: staff name | appointments | client requests | revenue]     │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Rate Cards                                                         │
 │  Cancellation Rate: 9.8%   No-Show Rate: 3.5%                       │
 │  Avg Ticket: $49.19        Total Tips: $320.00                      │
+│  Staff Requested by Client: 4                                       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -396,3 +414,5 @@ One entry per day in `[from_date, to_date]`, inclusive. Useful for line/bar char
 - **`average_ticket_value`** returns `0.0` when there are no completed payments — guard against divide-by-zero display.
 - **`client_name`** in `todays_appointments` can be `null` for walk-in clients with no profile.
 - **`start_at`** in `todays_appointments` can be `null` if the appointment was created without a specific time slot.
+- **`staff_requested_by_client`** counts distinct staff, not total request events — a staff member with multiple client-requested appointments counts as 1.
+- **`total_staff_requested`** in `staff_performance` is the raw count of individual appointment services where that staff was requested by a client (checked-out only).

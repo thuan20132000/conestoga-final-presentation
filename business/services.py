@@ -22,6 +22,7 @@ from staff.services import StaffCredentialService
 from subscription.models import BusinessSubscription, SubscriptionStatus, SubscriptionPlan
 from payment.models import PaymentStatusType
 from appointment.models import AppointmentStatusType
+from notifications.services import EmailService
 
 
 class BusinessInitializerService:
@@ -379,7 +380,26 @@ class BusinessRegisterService(BusinessInitializerService):
             self._create_staff()
             owner = self._create_owner(send_sms=send_sms)
             self.owner = owner
-            return owner
+
+        self._send_welcome_email(owner)
+        return owner
+
+    def _send_welcome_email(self, owner):
+        if not owner.email:
+            return
+        from django.conf import settings as django_settings
+        dashboard_url = getattr(django_settings, 'DASHBOARD_URL', 'https://partners.bookngon.com/dashboard/')
+        context = {
+            'owner_name': owner.first_name or owner.email,
+            'business_name': self.business.name,
+            'dashboard_url': dashboard_url,
+        }
+        EmailService().send_async(
+            subject=f"Welcome to Bookngon – {self.business.name} is ready!",
+            to_email=owner.email,
+            template='emails/business_welcome.html',
+            context=context,
+        )
             
             
     def _create_business(self):

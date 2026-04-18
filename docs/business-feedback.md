@@ -108,9 +108,28 @@ Platform admins manage feedback at `/admin/business/businessfeedback/`.
 | `general` | General comment or question |
 | `complaint` | Dissatisfaction with the platform |
 
+## Notifications
+
+### On feedback submission
+
+When a business owner/manager submits feedback, a **confirmation email** is sent to the submitter with a summary of their feedback (category, subject, message).
+
+- Template: `business/templates/emails/feedback_confirmation.html`
+- Sent via: `EmailService.send_async()` in `BusinessFeedbackViewSet.perform_create()`
+
+### On feedback resolved
+
+When a platform admin changes the status to `resolved` (via Django admin), the following are triggered automatically via a `pre_save` signal in `business/signals.py`:
+
+1. **Email** — sent to the submitter with feedback details and the admin's response (if provided)
+2. **Push notification** — sent to the business managers group
+
+- Template: `business/templates/emails/feedback_resolved.html`
+- Signal: `handle_feedback_resolved` in `business/signals.py`
+
 ## Status Flow
 
 ```
-pending → reviewed → in_progress → resolved
+pending → reviewed → in_progress → resolved (triggers email + push notification)
                                   → closed
 ```

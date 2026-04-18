@@ -113,27 +113,6 @@ class BusinessInitializerService:
                 'phone': '1234567891',
                 'role': technician_role,
             },
-            {
-                'first_name': 'Chris',
-                'last_name': 'Pham',
-                'email': 'chris.pham@example.com',
-                'phone': '1234567891',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Diana',
-                'last_name': 'Le',
-                'email': 'diana.le@example.com',
-                'phone': '1234567891',
-                'role': technician_role,
-            },
-            {
-                'first_name': 'Eric',
-                'last_name': 'Vu',
-                'email': 'eric.vu@example.com',
-                'phone': '1234567891',
-                'role': technician_role,
-            },
         ]
         for staff in defaults_staff:
             Staff.objects.create(business=self.business, **staff)
@@ -233,6 +212,8 @@ class BusinessInitializerService:
             reader = csv.reader(f)
             next(reader)  # Skip header row
             for row in reader:
+                if not row:
+                    continue
                 category = ServiceCategory.objects.create(
                     business=self.business,
                     name=row[2],
@@ -251,6 +232,8 @@ class BusinessInitializerService:
             reader = csv.reader(f)
             next(reader)  # Skip header row
             for row in reader:
+                if not row:
+                    continue
                 category = self.category_mapping.get(row[5])
                 if not category:
                     category = None

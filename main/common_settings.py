@@ -317,3 +317,5 @@ GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 
 FACEBOOK_APP_ID = config('FACEBOOK_APP_ID', default='')
 FACEBOOK_APP_SECRET = config('FACEBOOK_APP_SECRET', default='')
+
+DASHBOARD_URL = config('DASHBOARD_URL', default='https://partners.bookngon.com/dashboard/')

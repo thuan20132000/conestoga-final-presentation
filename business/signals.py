@@ -1,38 +1,55 @@
-# from django.db.models.signals import post_save
-# from django.dispatch import receiver
-# import os
+import logging
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
 
-# from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking
-# from service.models import ServiceCategory, Service
-# from staff.models import Staff
-# from datetime import time
-# from payment.models import PaymentMethod
-# from webpush.models import Group, PushInformation
+from .models import BusinessFeedback
+from notifications.services import EmailService, NotificationDispatcher
 
-# from main.utils import get_business_managers_group_name
-# from .services import BusinessInitializerService, BusinessDefaultsService
+logger = logging.getLogger(__name__)
+dispatcher = NotificationDispatcher()
 
 
-# @receiver(post_save, sender=Business)
-# def create_business_defaults(sender, instance, created, **kwargs):
-#     """
-#     Create default settings/roles/etc when a business is created.
-#     In development, optional sample data (services + staff) can be seeded
-#     by setting AUTO_SEED_SAMPLE_BUSINESS_DATA=true in the environment.
-#     """
-#     if not created:
-#         return
+@receiver(pre_save, sender=BusinessFeedback)
+def handle_feedback_resolved(sender, instance, **kwargs):
+    """Send email and push notification when feedback is resolved."""
+    if not instance.pk:
+        return
 
-#     business = instance
-#     auto_seed_sample = os.getenv("AUTO_SEED_SAMPLE_BUSINESS_DATA", "").lower() in (
-#         "1",
-#         "true",
-#         "yes",
-#     )
+    try:
+        old = BusinessFeedback.objects.get(pk=instance.pk)
+    except BusinessFeedback.DoesNotExist:
+        return
 
-#     if auto_seed_sample:
-#         service_csv_path = "dummy/services_by_salon_2026-01-26.csv"
-#         category_csv_path = "dummy/service_categories_by_salon_2026-01-26.csv"
-#         BusinessInitializerService(business, service_csv_path, category_csv_path).initialize()
-#     else:
-#         BusinessDefaultsService(business).initialize()
+    if old.status == instance.status or instance.status != 'resolved':
+        return
+
+    user = instance.submitted_by
+    business = instance.business
+
+    # Send email notification
+    if user.email:
+        EmailService().send_async(
+            subject=f"Your feedback has been resolved – {instance.subject}",
+            to_email=user.email,
+            template='emails/feedback_resolved.html',
+            context={
+                'submitted_by_name': user.get_full_name() or user.username,
+                'business_name': business.name,
+                'category': instance.get_category_display(),
+                'subject': instance.subject,
+                'message': instance.message,
+                'admin_response': instance.admin_response or '',
+            },
+        )
+
+    # Send push notification
+    from main.utils import get_business_managers_group_name
+    group_name = get_business_managers_group_name(business.id)
+    dispatcher.dispatchAsync(
+        channel='push',
+        to=user,
+        title='Feedback Resolved',
+        body=f'Your feedback "{instance.subject}" has been resolved.',
+        business_id=str(business.id),
+        group_name=group_name,
+    )

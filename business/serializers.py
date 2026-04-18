@@ -9,6 +9,7 @@ from .models import (
     BusinessRoles,
     BusinessOnlineBooking,
     BusinessBanner,
+    BusinessFeedback,
 )
 from payment.serializers import PaymentMethodSerializer, PaymentGatewaySerializer
 from subscription.serializers import BusinessSubscriptionSerializer
@@ -457,3 +458,25 @@ class GoogleLoginSerializer(serializers.Serializer):
 
     class Meta:
         fields = ['google_id_token']
+
+
+class BusinessFeedbackSerializer(serializers.ModelSerializer):
+    """Serializer for business feedback to the platform."""
+    submitted_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BusinessFeedback
+        fields = [
+            'id', 'business', 'submitted_by', 'submitted_by_name',
+            'category', 'subject', 'message', 'status',
+            'admin_response', 'admin_responded_at',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'business', 'submitted_by',
+            'status', 'admin_response', 'admin_responded_at',
+            'created_at', 'updated_at',
+        ]
+
+    def get_submitted_by_name(self, obj):
+        return obj.submitted_by.get_full_name() if obj.submitted_by else None

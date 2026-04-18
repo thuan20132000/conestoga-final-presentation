@@ -363,3 +363,37 @@ class BusinessBanner(SoftDeleteModel):
             return False
 
         return True
+
+
+class BusinessFeedback(SoftDeleteModel):
+    """Feedback from business owners to the platform."""
+    CATEGORY_CHOICES = [
+        ('bug', _('Bug')),
+        ('feature_request', _('Feature Request')),
+        ('general', _('General')),
+        ('complaint', _('Complaint')),
+    ]
+    STATUS_CHOICES = [
+        ('pending', _('Pending')),
+        ('reviewed', _('Reviewed')),
+        ('in_progress', _('In Progress')),
+        ('resolved', _('Resolved')),
+        ('closed', _('Closed')),
+    ]
+
+    business = models.ForeignKey('Business', on_delete=models.CASCADE, related_name='feedbacks')
+    submitted_by = models.ForeignKey('staff.Staff', on_delete=models.CASCADE, related_name='submitted_feedbacks')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general')
+    subject = models.CharField(max_length=255)
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_response = models.TextField(null=True, blank=True)
+    admin_responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = _('Business Feedback')
+        verbose_name_plural = _('Business Feedbacks')
+
+    def __str__(self):
+        return f"{self.business.name} - {self.subject}"

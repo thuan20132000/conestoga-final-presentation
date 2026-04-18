@@ -4,13 +4,14 @@ from django.forms.models import BaseInlineFormSet
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from .models import (
-    BusinessType, 
-    Business, 
-    OperatingHours, 
-    BusinessSettings, 
-    BusinessRoles, 
+    BusinessType,
+    Business,
+    OperatingHours,
+    BusinessSettings,
+    BusinessRoles,
     BusinessOnlineBooking,
     BusinessBanner,
+    BusinessFeedback,
 )
 from staff.models import Staff
 
@@ -200,3 +201,20 @@ class BusinessBannerAdmin(admin.ModelAdmin):
     list_filter = ['business', 'type', 'is_active']
     search_fields = ['business__name', 'title', 'message', 'cta_text', 'cta_url']
     ordering = ['business__name', 'type', 'title']
+
+
+@admin.register(BusinessFeedback)
+class BusinessFeedbackAdmin(admin.ModelAdmin):
+    list_display = ['business', 'submitted_by', 'category', 'subject', 'status', 'created_at']
+    list_filter = ['category', 'status', 'created_at']
+    search_fields = ['business__name', 'subject', 'message']
+    ordering = ['-created_at']
+    readonly_fields = ['business', 'submitted_by', 'category', 'subject', 'message', 'created_at', 'updated_at']
+    fieldsets = (
+        (_('Feedback'), {
+            'fields': ('business', 'submitted_by', 'category', 'subject', 'message', 'created_at')
+        }),
+        (_('Admin Response'), {
+            'fields': ('status', 'admin_response', 'admin_responded_at')
+        }),
+    )

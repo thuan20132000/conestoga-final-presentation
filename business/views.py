@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from .models import (
     BusinessType, Business, OperatingHours, BusinessSettings, BusinessOnlineBooking,
+    BusinessFeedback,
 )
 from receptionist.models import AIConfigurationStatus
 from .serializers import (
@@ -23,6 +24,7 @@ from .serializers import (
     GoogleBusinessRegisterSerializer,
     GoogleLoginSerializer,
     BusinessManagementSerializer,
+    BusinessFeedbackSerializer,
 )
 from appointment.serializers import AppointmentDetailSerializer
 from payment.serializers import PaymentSerializer
@@ -516,3 +518,41 @@ class BusinessGoogleLoginView(BaseAPIView):
                 'message': _('Error during login'),
                 'error': str(exc)
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BusinessFeedbackViewSet(BaseModelViewSet):
+    """ViewSet for business feedback to the platform."""
+    queryset = BusinessFeedback.objects.select_related('business', 'submitted_by').all()
+    serializer_class = BusinessFeedbackSerializer
+    permission_classes = [IsAuthenticated, IsBusinessManager]
+
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            business=self.request.user.business
+        )
+
+    def perform_create(self, serializer):
+        feedback = serializer.save(
+            business=self.request.user.business,
+            submitted_by=self.request.user,
+        )
+        self._send_confirmation_email(feedback)
+
+    def _send_confirmation_email(self, feedback):
+        user = feedback.submitted_by
+        email = user.email
+        if not email:
+            return
+        from notifications.services import EmailService
+        EmailService().send_async(
+            subject=f"Thanks for your feedback – {feedback.subject}",
+            to_email=email,
+            template='emails/feedback_confirmation.html',
+            context={
+                'submitted_by_name': user.get_full_name() or user.username,
+                'business_name': feedback.business.name,
+                'category': feedback.get_category_display(),
+                'subject': feedback.subject,
+                'message': feedback.message,
+            },
+        )

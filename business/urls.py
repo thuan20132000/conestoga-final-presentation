@@ -9,6 +9,7 @@ from .views import (
     BusinessRegisterView,
     BusinessGoogleRegisterView,
     BusinessGoogleLoginView,
+    BusinessFeedbackViewSet,
 )
 
 # Create a router and register our viewsets with it
@@ -18,6 +19,7 @@ router.register(r'business-type', BusinessTypeViewSet, basename='business-type')
 router.register(r'operating-hours', OperatingHoursViewSet, basename='operating-hours')
 router.register(r'business-settings', BusinessSettingsViewSet, basename='business-settings')
 router.register(r'business-online-booking', BusinessOnlineBookingViewSet, basename='business-online-booking')
+router.register(r'business-feedback', BusinessFeedbackViewSet, basename='business-feedback')
 
 # The API URLs are now determined automatically by the router
 urlpatterns = [

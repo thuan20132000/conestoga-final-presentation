@@ -460,6 +460,27 @@ class GoogleLoginSerializer(serializers.Serializer):
         fields = ['google_id_token']
 
 
+class FacebookBusinessRegisterSerializer(serializers.Serializer):
+    """
+    Serializer for Facebook-based business registration.
+    Owner identity (name, email) is extracted from the verified Facebook token.
+    """
+    facebook_access_token = serializers.CharField(required=True)
+    business = BusinessSerializer()
+    settings = BusinessSettingsRegisterSerializer()
+
+    class Meta:
+        fields = ['facebook_access_token', 'business', 'settings']
+
+
+class FacebookLoginSerializer(serializers.Serializer):
+    """Serializer for Facebook-based staff/owner login."""
+    facebook_access_token = serializers.CharField(required=True)
+
+    class Meta:
+        fields = ['facebook_access_token']
+
+
 class BusinessFeedbackSerializer(serializers.ModelSerializer):
     """Serializer for business feedback to the platform."""
     submitted_by_name = serializers.SerializerMethodField()

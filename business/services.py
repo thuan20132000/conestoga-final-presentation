@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking, BusinessType
 from service.models import ServiceCategory, Service
-from staff.models import Staff
+from staff.models import Staff, StaffSocialAccount
 from payment.models import PaymentMethod, Payment
 from client.models import Client
 from appointment.models import Appointment
@@ -481,9 +481,15 @@ class BusinessGoogleAuthService:
         """
         idinfo = BusinessGoogleAuthService._verify_google_token(google_id_token)
 
+        provider_user_id = idinfo['sub']
+        if StaffSocialAccount.objects.filter(
+            provider='google', provider_user_id=provider_user_id
+        ).exists():
+            raise ValueError('A business is already registered with this Google account.')
+
         email = idinfo['email']
         if Staff.objects.filter(email__iexact=email, is_deleted=False).exists():
-            raise ValueError('An account with this Google email already exists.')
+            raise ValueError('An account with this email already exists.')
 
         owner_data = {
             'first_name': idinfo.get('given_name', ''),
@@ -495,21 +501,180 @@ class BusinessGoogleAuthService:
         owner = service.initialize(send_sms=False)
         owner.set_unusable_password()
         owner.save(update_fields=['password'])
+
+        StaffSocialAccount.objects.create(
+            staff=owner,
+            provider='google',
+            provider_user_id=provider_user_id,
+            email=email,
+        )
         return owner
 
     @staticmethod
     def login(google_id_token: str) -> Staff:
         """
         Authenticate a business owner via Google OAuth.
-        Looks up Staff by the verified email address.
+        Looks up Staff by the provider identity stored in StaffSocialAccount,
+        with a lazy backfill fallback to email lookup for owners who registered
+        before the StaffSocialAccount table was introduced.
         """
         idinfo = BusinessGoogleAuthService._verify_google_token(google_id_token)
+        provider_user_id = idinfo['sub']
         email = idinfo['email']
 
+        social_account = StaffSocialAccount.objects.select_related('staff').filter(
+            provider='google',
+            provider_user_id=provider_user_id,
+        ).first()
+
+        if social_account:
+            staff = social_account.staff
+            if email and social_account.email != email:
+                social_account.email = email
+                social_account.save(update_fields=['email', 'updated_at'])
+        else:
+            staff = Staff.objects.filter(
+                email__iexact=email, is_deleted=False, is_active=True
+            ).first()
+            if not staff:
+                raise ValueError('No account found for this Google email. Please register first.')
+            StaffSocialAccount.objects.create(
+                staff=staff,
+                provider='google',
+                provider_user_id=provider_user_id,
+                email=email,
+            )
+
+        if staff.is_deleted or not staff.is_active:
+            raise ValueError('This account is no longer active.')
+
+        return staff
+
+
+class BusinessFacebookAuthService:
+    """Handles Facebook OAuth registration and login for business owners."""
+
+    @staticmethod
+    def _verify_facebook_token(facebook_access_token: str) -> dict:
+        """
+        Verify the Facebook access token via Graph API.
+        Returns {id, first_name, last_name, email} — email may be None when
+        the user did not grant the email permission.
+        """
+        import requests as http_requests
+        from django.conf import settings
+
+        app_id = getattr(settings, 'FACEBOOK_APP_ID', '')
+        app_secret = getattr(settings, 'FACEBOOK_APP_SECRET', '')
+        if not app_id or not app_secret:
+            raise ValueError('Facebook login is not configured.')
+
         try:
-            staff = Staff.objects.get(email__iexact=email, is_deleted=False, is_active=True)
-        except Staff.DoesNotExist:
-            raise ValueError('No account found for this Google email. Please register first.')
+            inspect_resp = http_requests.get(
+                'https://graph.facebook.com/debug_token',
+                params={
+                    'input_token': facebook_access_token,
+                    'access_token': f'{app_id}|{app_secret}',
+                },
+                timeout=10,
+            )
+            inspect_resp.raise_for_status()
+            inspect_data = inspect_resp.json().get('data', {})
+        except Exception:
+            raise ValueError('Failed to inspect Facebook token.')
+
+        if not inspect_data.get('is_valid') or inspect_data.get('app_id') != app_id:
+            raise ValueError('Facebook token is not valid for this application.')
+
+        granted_scopes = inspect_data.get('scopes', [])
+
+        fields = 'id,first_name,last_name'
+        if 'email' in granted_scopes:
+            fields += ',email'
+
+        try:
+            response = http_requests.get(
+                'https://graph.facebook.com/me',
+                params={'fields': fields, 'access_token': facebook_access_token},
+                timeout=10,
+            )
+            response.raise_for_status()
+            fb_data = response.json()
+        except Exception:
+            raise ValueError('Failed to verify Facebook token.')
+
+        if 'error' in fb_data or not fb_data.get('id'):
+            raise ValueError('Invalid Facebook token.')
+
+        email = fb_data.get('email') if isinstance(fb_data.get('email'), str) else None
+        return {
+            'id': fb_data['id'],
+            'first_name': fb_data.get('first_name', ''),
+            'last_name': fb_data.get('last_name', ''),
+            'email': email,
+        }
+
+    @staticmethod
+    def register(facebook_access_token: str, business_data: dict, business_type_name: str, settings_data: dict) -> Staff:
+        """
+        Register a new business + owner via Facebook OAuth.
+        Owner identity is derived from the verified Facebook token.
+        No SMS credentials are sent.
+        """
+        fb_data = BusinessFacebookAuthService._verify_facebook_token(facebook_access_token)
+
+        if StaffSocialAccount.objects.filter(
+            provider='facebook', provider_user_id=fb_data['id']
+        ).exists():
+            raise ValueError('A business is already registered with this Facebook account.')
+
+        email = fb_data['email']
+        if email and Staff.objects.filter(email__iexact=email, is_deleted=False).exists():
+            raise ValueError('An account with this email already exists.')
+
+        owner_data = {
+            'first_name': fb_data['first_name'],
+            'last_name': fb_data['last_name'],
+            'email': email or '',
+        }
+
+        service = BusinessRegisterService(business_data, owner_data, business_type_name, settings_data)
+        owner = service.initialize(send_sms=False)
+        owner.set_unusable_password()
+        owner.save(update_fields=['password'])
+
+        StaffSocialAccount.objects.create(
+            staff=owner,
+            provider='facebook',
+            provider_user_id=fb_data['id'],
+            email=email,
+        )
+        return owner
+
+    @staticmethod
+    def login(facebook_access_token: str) -> Staff:
+        """
+        Authenticate a business owner via Facebook OAuth.
+        Looks up Staff by the provider identity stored in StaffSocialAccount.
+        """
+        fb_data = BusinessFacebookAuthService._verify_facebook_token(facebook_access_token)
+
+        social_account = StaffSocialAccount.objects.select_related('staff').filter(
+            provider='facebook',
+            provider_user_id=fb_data['id'],
+        ).first()
+
+        if not social_account:
+            raise ValueError('No account found for this Facebook identity. Please register first.')
+
+        staff = social_account.staff
+        if staff.is_deleted or not staff.is_active:
+            raise ValueError('This account is no longer active.')
+
+        new_email = fb_data['email']
+        if new_email and social_account.email != new_email:
+            social_account.email = new_email
+            social_account.save(update_fields=['email', 'updated_at'])
 
         return staff
 

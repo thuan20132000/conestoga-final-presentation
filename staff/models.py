@@ -56,6 +56,41 @@ class Staff(AbstractUser, SoftDeleteModel):
         if not self.working_hours.all():
             self.create_default_working_hours()
 
+class StaffSocialAccount(models.Model):
+    """Links a Staff/owner to a third-party OAuth provider identity."""
+
+    PROVIDER_CHOICES = [
+        ("google", "Google"),
+        ("facebook", "Facebook"),
+    ]
+
+    staff = models.ForeignKey(
+        Staff,
+        on_delete=models.CASCADE,
+        related_name="social_accounts",
+    )
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    provider_user_id = models.CharField(
+        max_length=255,
+        help_text="Unique user ID returned by the provider (Google sub / Facebook id)",
+    )
+    email = models.EmailField(
+        blank=True,
+        null=True,
+        help_text="Email address as returned by the provider at time of login",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("provider", "provider_user_id")]
+        verbose_name = "Staff Social Account"
+        verbose_name_plural = "Staff Social Accounts"
+
+    def __str__(self):
+        return f"{self.staff} via {self.get_provider_display()} ({self.provider_user_id})"
+
+
 class StaffService(SoftDeleteModel):
     """Many-to-many relationship between staff and services they can provide"""
     staff = models.ForeignKey('staff.Staff', on_delete=models.CASCADE, related_name='staff_services')

@@ -23,6 +23,8 @@ from .serializers import (
     BusinessRegisterSerializer,
     GoogleBusinessRegisterSerializer,
     GoogleLoginSerializer,
+    FacebookBusinessRegisterSerializer,
+    FacebookLoginSerializer,
     BusinessManagementSerializer,
     BusinessFeedbackSerializer,
 )
@@ -38,7 +40,7 @@ from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
 from payment.services import PaymentService
 from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
-from .services import BusinessRegisterService, BusinessGoogleAuthService, DashboardService
+from .services import BusinessRegisterService, BusinessGoogleAuthService, BusinessFacebookAuthService, DashboardService
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.translation import gettext as _
 
@@ -492,6 +494,113 @@ class BusinessGoogleLoginView(BaseAPIView):
 
             google_id_token = serializer.validated_data['google_id_token']
             owner = BusinessGoogleAuthService.login(google_id_token=google_id_token)
+            user_serializer = UserProfileSerializer(owner)
+            refresh = RefreshToken.for_user(owner)
+            return Response({
+                'success': True,
+                'message': _('Login successful'),
+                'results': {
+                    'user': user_serializer.data,
+                    'tokens': {
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                }
+            }, status=status.HTTP_200_OK)
+
+        except ValueError as exc:
+            return Response({
+                'success': False,
+                'message': str(exc),
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as exc:
+            return Response({
+                'success': False,
+                'message': _('Error during login'),
+                'error': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BusinessFacebookRegisterView(BaseAPIView):
+    """
+    Public endpoint to register a new business and owner via Facebook OAuth.
+    POST /api/business/auth/facebook/register/
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = FacebookBusinessRegisterSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({
+                    'success': False,
+                    'message': _('Registration failed'),
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            facebook_access_token = serializer.validated_data['facebook_access_token']
+            business_data = serializer.validated_data['business']
+            business_type_name = business_data.get('business_type')
+            settings_data = serializer.validated_data['settings']
+
+            owner = BusinessFacebookAuthService.register(
+                facebook_access_token=facebook_access_token,
+                business_data=business_data,
+                business_type_name=business_type_name,
+                settings_data=settings_data,
+            )
+
+            user_serializer = UserProfileSerializer(owner)
+            refresh = RefreshToken.for_user(owner)
+
+            return Response({
+                'success': True,
+                'message': _('Registration successful'),
+                'results': {
+                    'user': user_serializer.data,
+                    'tokens': {
+                        'refresh': str(refresh),
+                        'access': str(refresh.access_token),
+                    }
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        except ValueError as exc:
+            return Response({
+                'success': False,
+                'message': str(exc),
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as exc:
+            return Response({
+                'success': False,
+                'message': _('Error during registration'),
+                'error': str(exc)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class BusinessFacebookLoginView(BaseAPIView):
+    """
+    Public endpoint for business owner login via Facebook OAuth.
+    POST /api/business/auth/facebook/login/
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        try:
+            serializer = FacebookLoginSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response({
+                    'success': False,
+                    'message': _('Login failed'),
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            facebook_access_token = serializer.validated_data['facebook_access_token']
+            owner = BusinessFacebookAuthService.login(facebook_access_token=facebook_access_token)
             user_serializer = UserProfileSerializer(owner)
             refresh = RefreshToken.for_user(owner)
             return Response({

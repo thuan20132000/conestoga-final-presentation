@@ -9,6 +9,8 @@ from .views import (
     BusinessRegisterView,
     BusinessGoogleRegisterView,
     BusinessGoogleLoginView,
+    BusinessFacebookRegisterView,
+    BusinessFacebookLoginView,
     BusinessFeedbackViewSet,
 )
 
@@ -27,4 +29,6 @@ urlpatterns = [
     path('business/auth/register/', BusinessRegisterView.as_view(), name='business-register'),
     path('business/auth/google/register/', BusinessGoogleRegisterView.as_view(), name='business-google-register'),
     path('business/auth/google/login/', BusinessGoogleLoginView.as_view(), name='business-google-login'),
+    path('business/auth/facebook/register/', BusinessFacebookRegisterView.as_view(), name='business-facebook-register'),
+    path('business/auth/facebook/login/', BusinessFacebookLoginView.as_view(), name='business-facebook-login'),
 ]

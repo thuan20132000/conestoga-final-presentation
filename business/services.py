@@ -974,50 +974,34 @@ class DashboardService:
         )
         result = []
         for staff in staff_members:
-            total_completed_services = (
-                staff.appointment_services
-                .filter(
-                    appointment__business=self.business,
-                    appointment__appointment_date__range=(self.from_date, self.to_date),
-                    appointment__is_deleted=False,
-                    appointment__status=AppointmentStatusType.CHECKED_OUT,
-                    is_deleted=False,
-                )
-                .values('appointment')
-                .distinct()
-                .count()
+            service_qs = staff.appointment_services.filter(
+                appointment__business=self.business,
+                appointment__appointment_date__range=(self.from_date, self.to_date),
+                appointment__is_deleted=False,
+                is_active=True,
+                is_deleted=False,
             )
             
-            total_services_requested = (
-                staff.appointment_services.filter(
-                    is_staff_request=True,
-                    appointment__status=AppointmentStatusType.CHECKED_OUT,
-                    appointment__is_deleted=False,
-                    is_deleted=False,
-                )
-                .count()
+            completed_service_qs = service_qs.filter(
+                appointment__status=AppointmentStatusType.CHECKED_OUT,
+            )
+            service_sales_amount = (
+                completed_service_qs.aggregate(total=Sum('custom_price'))['total'] or Decimal('0')
             )
             
-            revenue = (
-                Payment.objects
-                .filter(
-                    business=self.business,
-                    status=PaymentStatusType.COMPLETED,
-                    created_at__date__range=(self.from_date, self.to_date),
-                    appointment__appointment_services__staff=staff,
-                    appointment__appointment_services__is_deleted=False,
-                )
-                .distinct()
-                .aggregate(total=Sum('amount'))['total'] or Decimal('0')
-            )
+            total_completed_services = completed_service_qs.count()
+            total_appointment_services_requested = service_qs.filter(
+                is_staff_request=True
+            ).values('appointment').distinct().count()
+            
             result.append({
                 'staff_id': staff.id,
                 'name': f"{staff.first_name or ''}".strip(),
                 'total_completed_services': total_completed_services,
-                'total_services_requested': total_services_requested,
-                'revenue': float(revenue),
+                'total_services_requested': total_appointment_services_requested,
+                'sales': float(service_sales_amount),
             })
-        result.sort(key=lambda x: x['revenue'], reverse=True)
+        result.sort(key=lambda x: x['sales'], reverse=True)
         return result
 
     def _daily_trends(self) -> list:

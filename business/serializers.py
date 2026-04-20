@@ -284,7 +284,7 @@ class StaffPerformanceSerializer(serializers.Serializer):
     name = serializers.CharField()
     total_completed_services = serializers.IntegerField()
     total_services_requested = serializers.IntegerField()
-    revenue = serializers.FloatField()
+    sales = serializers.FloatField()
 
 
 class DailyTrendSerializer(serializers.Serializer):

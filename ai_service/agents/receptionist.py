@@ -55,7 +55,7 @@ def create_receptionist_agent(instructions: str, caller_number: str) -> Realtime
         handoffs=[
             realtime_handoff(
                 faq_agent,
-                tool_description_override="Transfer to the FAQ Agent for business hours, location, or service details or appointment lookup.",
+                tool_description_override="Transfer to the FAQ Agent for business hours, location, or service prices or appointment lookup.",
             ),
             realtime_handoff(
                 reschedule_agent,

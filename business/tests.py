@@ -5,7 +5,7 @@ from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from business.models import BusinessType, Business
+from business.models import BusinessType, Business, BusinessRoles
 from staff.models import Staff, StaffSocialAccount
 from subscription.models import SubscriptionPlan
 
@@ -304,3 +304,79 @@ class BusinessGoogleAuthAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("no account", response.data.get("message", "").lower())
+
+
+@override_settings(MIDDLEWARE=_MIDDLEWARE_WITHOUT_SIGNATURE)
+class BusinessKnowledgeAPITests(APITestCase):
+    def setUp(self):
+        self.business_type = BusinessType.objects.create(name="Salon")
+        self.business = Business.objects.create(
+            name="Knowledge Salon",
+            business_type=self.business_type,
+            phone_number="15552222",
+        )
+        manager_role = BusinessRoles.objects.create(
+            business=self.business,
+            name="Manager",
+        )
+        self.user = Staff.objects.create_user(
+            username="knowledge-manager",
+            password="test-pass-123",
+            business=self.business,
+            role=manager_role,
+        )
+        self.client.force_authenticate(self.user)
+        self.base_url = f"/api/business/{self.business.id}"
+        self.query_params = f"?business_id={self.business.id}"
+
+    @patch("business.views.BusinessKnowledgeService.reindex")
+    def test_reindex_knowledge_success(self, mock_reindex):
+        mock_reindex.return_value = {
+            "created": 2,
+            "updated": 1,
+            "skipped": 0,
+            "deleted": 0,
+            "total_candidates": 3,
+        }
+        response = self.client.post(
+            f"{self.base_url}/reindex-knowledge/{self.query_params}",
+            {"reason": "manual"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["results"]["created"], 2)
+        mock_reindex.assert_called_once()
+
+    def test_reindex_knowledge_rejects_invalid_source_types(self):
+        response = self.client.post(
+            f"{self.base_url}/reindex-knowledge/{self.query_params}",
+            {"source_types": "service"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertFalse(response.data["success"])
+
+    @patch("business.views.BusinessKnowledgeService.search")
+    def test_search_knowledge_success(self, mock_search):
+        mock_search.return_value = [
+            {"title": "Policy", "source_type": "policy", "score": 0.98, "content": "Policy"}
+        ]
+        response = self.client.post(
+            f"{self.base_url}/search-knowledge/{self.query_params}",
+            {"query": "what is your policy?", "top_k": 3},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(len(response.data["results"]), 1)
+        mock_search.assert_called_once()
+
+    def test_search_knowledge_requires_query(self):
+        response = self.client.post(
+            f"{self.base_url}/search-knowledge/{self.query_params}",
+            {"top_k": 3},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.data)
+        self.assertFalse(response.data["success"])

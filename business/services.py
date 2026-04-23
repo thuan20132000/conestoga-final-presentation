@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import transaction, models
 from django.db.models import Sum, Avg, Count
 from django.utils import timezone
 from datetime import time, date, timedelta
@@ -6,10 +6,15 @@ import calendar
 from decimal import Decimal
 import json
 import os
+import logging
+import hashlib
 from pathlib import Path
+from typing import Any
+import requests
+from pgvector.django import CosineDistance
 from .models import Business, BusinessSettings, BusinessRoles, OperatingHours, BusinessOnlineBooking, BusinessType
 from service.models import ServiceCategory, Service
-from staff.models import Staff, StaffSocialAccount
+from staff.models import Staff, StaffSocialAccount, StaffService
 from payment.models import PaymentMethod, Payment
 from client.models import Client
 from appointment.models import Appointment
@@ -23,6 +28,8 @@ from subscription.models import BusinessSubscription, SubscriptionStatus, Subscr
 from payment.models import PaymentStatusType
 from appointment.models import AppointmentStatusType
 from notifications.services import EmailService
+
+logger = logging.getLogger(__name__)
 
 
 class BusinessInitializerService:
@@ -849,6 +856,366 @@ class DashboardService:
                 'services': services,
             })
         return result
+
+
+class BusinessKnowledgeCollectorService:
+    """Collect business domain data into canonical RAG chunks."""
+
+    def __init__(self, business: Business):
+        self.business = business
+
+    def collect(self) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        chunks.extend(self._collect_business_profile())
+        chunks.extend(self._collect_hours())
+        chunks.extend(self._collect_services())
+        chunks.extend(self._collect_service_categories())
+        chunks.extend(self._collect_staff())
+        chunks.extend(self._collect_policies())
+        chunks.extend(self._collect_ai_prompt())
+        return chunks
+
+    def _collect_business_profile(self) -> list[dict[str, Any]]:
+        content = (
+            f"Business name: {self.business.name}\n"
+            f"Description: {self.business.description or 'N/A'}\n"
+            f"Phone: {self.business.phone_number or 'N/A'}\n"
+            f"Email: {self.business.email or 'N/A'}\n"
+            f"Website: {self.business.website or 'N/A'}\n"
+            f"Address: {self.business.address or 'N/A'}\n"
+            f"City: {self.business.city or 'N/A'}\n"
+            f"State/Province: {self.business.state_province or 'N/A'}\n"
+            f"Postal Code: {self.business.postal_code or 'N/A'}\n"
+            f"Country: {self.business.country or 'N/A'}"
+        )
+        return [
+            {
+                "source_type": "business",
+                "source_id": str(self.business.id),
+                "title": f"{self.business.name} profile",
+                "content": content,
+                "metadata": {"business_id": str(self.business.id)},
+            }
+        ]
+
+    def _collect_hours(self) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        hours = OperatingHours.objects.filter(business=self.business).order_by("day_of_week")
+        day_names = dict(OperatingHours.DAY_CHOICES)
+        for item in hours:
+            day_name = day_names.get(item.day_of_week, str(item.day_of_week))
+            if item.is_open:
+                content = (
+                    f"{day_name}: Open {item.open_time or 'N/A'} to {item.close_time or 'N/A'}. "
+                    f"Break enabled: {'yes' if item.is_break_time else 'no'}. "
+                    f"Break window: {item.break_start_time or 'N/A'} to {item.break_end_time or 'N/A'}."
+                )
+            else:
+                content = f"{day_name}: Closed."
+
+            chunks.append(
+                {
+                    "source_type": "hours",
+                    "source_id": str(item.id),
+                    "title": f"Operating hours - {day_name}",
+                    "content": content,
+                    "metadata": {"day_of_week": item.day_of_week, "is_open": item.is_open},
+                }
+            )
+        return chunks
+
+    def _collect_services(self) -> list[dict[str, Any]]:
+        print("Collecting services...")
+        chunks: list[dict[str, Any]] = []
+        services = Service.objects.filter(business=self.business, is_active=True).select_related("category")
+        for service in services:
+            print(f"Service: {service.name}")
+            category_name = service.category.name if service.category else "Uncategorized"
+            content = (
+                f"Service: {service.name}\n"
+                f"Category: {category_name}\n"
+                f"Description: {service.description or 'N/A'}\n"
+                f"Duration minutes: {service.duration_minutes}\n"
+                f"Price: {service.price}\n"
+                f"Online booking enabled: {'yes' if service.is_online_booking else 'no'}"
+            )
+            chunks.append(
+                {
+                    "source_type": "service",
+                    "source_id": str(service.id),
+                    "title": service.name,
+                    "content": content,
+                    "metadata": {
+                        "category_id": service.category_id,
+                        "is_online_booking": service.is_online_booking,
+                    },
+                }
+            )
+        return chunks
+
+    def _collect_service_categories(self) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        categories = ServiceCategory.objects.filter(business=self.business, is_active=True)
+        for category in categories:
+            content = (
+                f"Service category: {category.name}\n"
+                f"Description: {category.description or 'N/A'}\n"
+                f"Sort order: {category.sort_order}"
+            )
+            chunks.append(
+                {
+                    "source_type": "service_category",
+                    "source_id": str(category.id),
+                    "title": category.name,
+                    "content": content,
+                    "metadata": {"sort_order": category.sort_order},
+                }
+            )
+        return chunks
+
+    def _collect_staff(self) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        staffs = Staff.objects.filter(business=self.business, is_deleted=False).select_related("role")
+        for staff in staffs:
+            services = StaffService.objects.filter(staff=staff, is_active=True).select_related("service")
+            service_names = [s.service.name for s in services if s.service]
+            content = (
+                f"Staff name: {staff.get_full_name() or staff.username}\n"
+                f"Role: {staff.role.name if staff.role else 'N/A'}\n"
+                f"Phone: {staff.phone or 'N/A'}\n"
+                f"Email: {staff.email or 'N/A'}\n"
+                f"Specialties: {', '.join(service_names) if service_names else 'N/A'}"
+            )
+            chunks.append(
+                {
+                    "source_type": "staff",
+                    "source_id": str(staff.id),
+                    "title": staff.get_full_name() or staff.username,
+                    "content": content,
+                    "metadata": {"is_active": staff.is_active},
+                }
+            )
+        return chunks
+
+    def _collect_policies(self) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        online_booking = BusinessOnlineBooking.objects.filter(business=self.business).first()
+        if not online_booking:
+            return chunks
+
+        policy_content = online_booking.policy or ""
+        if not policy_content.strip():
+            return chunks
+
+        chunks.append(
+            {
+                "source_type": "policy",
+                "source_id": str(online_booking.id),
+                "title": f"{self.business.name} booking policy",
+                "content": policy_content,
+                "metadata": {"business_online_booking_id": str(online_booking.id)},
+            }
+        )
+        return chunks
+
+    def _collect_ai_prompt(self) -> list[dict[str, Any]]:
+        chunks: list[dict[str, Any]] = []
+        from receptionist.models import AIConfiguration
+
+        ai_config = AIConfiguration.objects.filter(
+            business=self.business,
+            status="active",
+        ).order_by("-updated_at").first()
+        if not ai_config or not ai_config.prompt:
+            return chunks
+
+        chunks.append(
+            {
+                "source_type": "ai_prompt",
+                "source_id": str(ai_config.id),
+                "title": f"{self.business.name} AI prompt",
+                "content": ai_config.prompt,
+                "metadata": {"ai_name": ai_config.ai_name, "language": ai_config.language},
+            }
+        )
+        return chunks
+
+
+class BusinessKnowledgeService:
+    """Embed and store/retrieve business knowledge chunks."""
+
+    EMBEDDING_MODEL = "text-embedding-3-small"
+    MAX_CHUNK_LENGTH = 4000
+    MAX_CHUNKS_PER_REINDEX = 500
+    ALLOWED_SOURCE_TYPES = {
+        "business",
+        "service",
+        "service_category",
+        "staff",
+        "policy",
+        "hours",
+        "banner",
+        "ai_prompt",
+    }
+
+    def __init__(self, business: Business):
+        self.business = business
+        from receptionist.models import KnowledgeChunk
+
+        self.chunk_model = KnowledgeChunk
+
+    @staticmethod
+    def _content_hash(text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def _embed_text(self, text: str) -> list[float]:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is missing")
+
+        response = requests.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={"model": self.EMBEDDING_MODEL, "input": text},
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        data = payload.get("data", [])
+        if not data:
+            raise ValueError("Embedding response did not include data")
+        return data[0]["embedding"]
+
+    def reindex(self, reason: str, source_types: list[str] | None = None) -> dict[str, Any]:
+        collector = BusinessKnowledgeCollectorService(self.business)
+        all_chunks = collector.collect()
+        all_chunks = all_chunks[: self.MAX_CHUNKS_PER_REINDEX]
+        if source_types:
+            invalid = set(source_types) - self.ALLOWED_SOURCE_TYPES
+            if invalid:
+                raise ValueError(f"Unsupported source_types: {sorted(invalid)}")
+            all_chunks = [chunk for chunk in all_chunks if chunk["source_type"] in source_types]
+
+        candidate_keys = {(chunk["source_type"], chunk["source_id"]) for chunk in all_chunks}
+        print(f"Candidate keys: {candidate_keys}")
+        print(f"Source types: {source_types}")
+        # print(f"Reason: {reason}")
+        print(f"Business: {self.business}")
+        existing = self.chunk_model.objects.filter(business=self.business)
+        print(f"Existing: {existing}")
+        if source_types:
+            existing = existing.filter(source_type__in=source_types)
+        print(f"Existing: {existing}")
+        existing_map = {(obj.source_type, obj.source_id): obj for obj in existing}
+        created = 0
+        updated = 0
+        skipped = 0
+
+        for chunk in all_chunks:
+            if len(chunk["content"]) > self.MAX_CHUNK_LENGTH:
+                chunk["content"] = chunk["content"][: self.MAX_CHUNK_LENGTH]
+            key = (chunk["source_type"], chunk["source_id"])
+            existing_chunk = existing_map.get(key)
+            content_hash = self._content_hash(chunk["content"])
+
+            metadata = dict(chunk.get("metadata") or {})
+            metadata["content_hash"] = content_hash
+            metadata["reindex_reason"] = reason
+
+            if existing_chunk and existing_chunk.metadata.get("content_hash") == content_hash:
+                skipped += 1
+                continue
+
+            embedding = self._embed_text(chunk["content"])
+
+            if existing_chunk:
+                existing_chunk.title = chunk["title"]
+                existing_chunk.content = chunk["content"]
+                existing_chunk.embedding = embedding
+                existing_chunk.metadata = metadata
+                existing_chunk.save(
+                    update_fields=["title", "content", "embedding", "metadata", "updated_at"]
+                )
+                updated += 1
+            else:
+                print(f"Creating chunk: {chunk}")
+                chunk = self.chunk_model.objects.create(
+                    business=self.business,
+                    source_type=chunk["source_type"],
+                    source_id=chunk["source_id"],
+                    title=chunk["title"],
+                    content=chunk["content"],
+                    embedding=embedding,
+                    metadata=metadata,
+                )
+                print(f"Created chunk: {chunk}")
+                created += 1
+
+        stale_qs = existing.exclude(
+            models.Q(
+                pk__in=[
+                    existing_map[key].pk
+                    for key in candidate_keys
+                    if key in existing_map
+                ]
+            )
+        )
+        if source_types:
+            stale_qs = stale_qs.filter(source_type__in=source_types)
+
+        deleted = stale_qs.count()
+        if deleted > len(all_chunks):
+            print(f"Deleting {deleted} stale chunks")
+            stale_qs.delete()
+            print(f"Deleted {deleted} stale chunks")
+            
+        return {
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "total_candidates": len(all_chunks),
+        }
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_types: list[str] | None = None,
+        score_threshold: float | None = None,
+    ) -> list[dict[str, Any]]:
+        print(f"Searching knowledge for query: {query}")
+        print(f"Source types: {source_types}")
+        print(f"Score threshold: {score_threshold}")
+        if source_types:
+            invalid = set(source_types) - self.ALLOWED_SOURCE_TYPES
+            if invalid:
+                raise ValueError(f"Unsupported source_types: {sorted(invalid)}")
+        top_k = max(1, min(top_k, 10))
+        query_embedding = self._embed_text(query)
+        qs = self.chunk_model.objects.filter(business=self.business)
+        if source_types:
+            qs = qs.filter(source_type__in=source_types)
+
+        qs = qs.annotate(distance=CosineDistance("embedding", query_embedding)).order_by("distance")[:top_k]
+        results: list[dict[str, Any]] = []
+        for item in qs:
+            score = 1 - float(item.distance)
+            if score_threshold is not None and score < score_threshold:
+                continue
+            results.append(
+                {
+                    "source_type": item.source_type,
+                    "source_id": item.source_id,
+                    "title": item.title,
+                    "content": item.content,
+                    "score": round(score, 6),
+                    "metadata": item.metadata,
+                }
+            )
+        return results
 
     def _appointments_by_status(self) -> dict:
         from appointment.models import Appointment, AppointmentStatusType

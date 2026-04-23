@@ -33,8 +33,32 @@ async def get_service_information(
     return json.dumps(data, default=str)
 
 
+@function_tool
+async def search_business_knowledge(
+    ctx: RunContextWrapper[CallContext],
+    query: str,
+    top_k: int = 5,
+) -> str:
+    """Search business knowledge base for general questions and policies.
+
+    Args:
+        query: Natural language question from the caller.
+        top_k: Maximum number of relevant chunks to return (1-10).
+    """
+    if top_k < 1:
+        top_k = 1
+    if top_k > 10:
+        top_k = 10
+        
+    print(f"Searching business knowledge for query: {query}")
+    data = await ctx.context.booking_service.search_knowledge(query=query, top_k=top_k)
+    print(f"Business knowledge search results: {data}")
+    return json.dumps(data, default=str)
+
+
 FAQ_TOOLS = [
     get_business_information,
-    get_service_information,
+    # get_service_information,
+    search_business_knowledge,
     look_up_appointment,
 ]

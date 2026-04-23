@@ -10,6 +10,7 @@ from .models import (
     Intent,
     AudioRecording,
     SystemLog,
+    KnowledgeChunk,
 )
 
 
@@ -90,3 +91,10 @@ class SystemLogAdmin(admin.ModelAdmin):
     def short_message(self, obj):
         return (obj.message[:75] + "...") if len(obj.message) > 75 else obj.message
     short_message.short_description = "Message"
+
+
+@admin.register(KnowledgeChunk)
+class KnowledgeChunkAdmin(admin.ModelAdmin):
+    list_display = ("business", "source_type", "source_id", "title", "updated_at")
+    search_fields = ("business__name", "source_type", "source_id", "title", "content")
+    list_filter = ("source_type", "business")

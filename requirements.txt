@@ -59,6 +59,7 @@ platformdirs==4.4.0
 pluggy==1.6.0
 propcache==0.3.2
 psycopg2-binary==2.9.9
+pgvector==0.4.2
 py-vapid==1.9.2
 pycodestyle==2.11.1
 pycparser==2.23

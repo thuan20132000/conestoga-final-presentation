@@ -40,9 +40,12 @@ from client.serializers import ClientSerializer
 from payment.serializers import PaymentMethodSerializer
 from payment.services import PaymentService
 from staff.permissions import IsBusinessManager, IsBusinessManagerOrReceptionist
-from .services import BusinessRegisterService, BusinessGoogleAuthService, BusinessFacebookAuthService, DashboardService
+from .services import BusinessRegisterService, BusinessGoogleAuthService, BusinessFacebookAuthService, DashboardService, BusinessKnowledgeService
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils.translation import gettext as _
+from django.db import transaction
+import logging
+logger = logging.getLogger(__name__)
 
 
 class BusinessTypeViewSet(BaseModelViewSet):
@@ -66,6 +69,43 @@ class BusinessViewSet(BaseModelViewSet):
         queryset = super().get_queryset()
 
         return queryset
+
+    def _trigger_reindex(self, business, reason: str, source_types=None):
+        try:
+            service = BusinessKnowledgeService(business)
+            return service.reindex(reason=reason, source_types=source_types)
+        except Exception as exc:
+            logger.warning(
+                "Business knowledge reindex failed for business=%s reason=%s error=%s",
+                business.id,
+                reason,
+                str(exc),
+            )
+            return {"error": str(exc)}
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        business = self.get_object()
+        transaction.on_commit(
+            lambda: self._trigger_reindex(
+                business,
+                reason="business_updated",
+                source_types=["business", "hours", "policy", "ai_prompt"],
+            )
+        )
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        business = self.get_object()
+        transaction.on_commit(
+            lambda: self._trigger_reindex(
+                business,
+                reason="business_partially_updated",
+                source_types=["business", "hours", "policy", "ai_prompt"],
+            )
+        )
+        return response
 
     @action(detail=True, methods=['get'], url_path='operating-hours')
     def operating_hours(self, request, pk=None):
@@ -230,6 +270,66 @@ class BusinessViewSet(BaseModelViewSet):
         except Exception as e:
             return self.response_error({'error': str(e)}, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'], url_path='reindex-knowledge')
+    def reindex_knowledge(self, request, pk=None):
+        """Rebuild business knowledge chunks used by receptionist RAG."""
+        business = self.get_object()
+        reason = request.data.get("reason", "manual")
+        source_types = request.data.get("source_types", ["business", "service", "service_category", "staff", "policy", "hours", "banner", "ai_prompt"])
+        if source_types is not None and not isinstance(source_types, list):
+            return self.response_error(
+                data={"source_types": "Must be a list of source types."},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            result = BusinessKnowledgeService(business).reindex(reason=reason, source_types=source_types)
+            logger.info("Knowledge reindex success business=%s reason=%s result=%s", business.id, reason, result)
+            return self.response_success(result, message="Knowledge reindex completed")
+        except Exception as exc:
+            logger.exception("Knowledge reindex failed for business=%s", business.id)
+            return self.response_error(
+                data={"error": str(exc)},
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=['post'], url_path='search-knowledge')
+    def search_knowledge(self, request, pk=None):
+        """Semantic search over per-business knowledge chunks."""
+        business = self.get_object()
+        query = request.data.get("query")
+        if not query:
+            return self.response_error(
+                data={"query": "This field is required."},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        top_k = int(request.data.get("top_k", 5))
+        top_k = max(1, min(top_k, 10))
+        source_types = request.data.get("source_types")
+        if source_types is not None and not isinstance(source_types, list):
+            return self.response_error(
+                data={"source_types": "Must be a list of source types."},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        score_threshold = request.data.get("score_threshold")
+        if score_threshold is not None:
+            score_threshold = float(score_threshold)
+
+        try:
+            results = BusinessKnowledgeService(business).search(
+                query=query,
+                top_k=top_k,
+                source_types=source_types,
+                score_threshold=score_threshold,
+            )
+            return self.response_success(results)
+        except Exception as exc:
+            logger.exception("Knowledge search failed for business=%s", business.id)
+            return self.response_error(
+                data={"error": str(exc)},
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
     @action(detail=True, methods=['get'], url_path='management')
     def management(self, request, pk=None):
         """Get management data for a business."""
@@ -343,8 +443,13 @@ class OperatingHoursViewSet(BaseModelViewSet):
         return queryset
 
     def perform_update(self, serializer):
-        serializer.save(business=self.get_object().business)
-        return super().perform_update(serializer)
+        instance = serializer.save(business=self.get_object().business)
+        transaction.on_commit(
+            lambda: BusinessKnowledgeService(instance.business).reindex(
+                reason="operating_hours_updated",
+                source_types=["hours"],
+            )
+        )
 
 class BusinessSettingsViewSet(BaseModelViewSet):
     """ViewSet for BusinessSettings management"""
@@ -353,8 +458,13 @@ class BusinessSettingsViewSet(BaseModelViewSet):
     permission_classes = [IsAuthenticated, IsBusinessManagerOrReceptionist]
 
     def perform_update(self, serializer):
-        serializer.save(business=self.get_object().business)
-        return super().perform_update(serializer)
+        instance = serializer.save(business=self.get_object().business)
+        transaction.on_commit(
+            lambda: BusinessKnowledgeService(instance.business).reindex(
+                reason="business_settings_updated",
+                source_types=["business", "policy"],
+            )
+        )
 
 class BusinessOnlineBookingViewSet(BaseModelViewSet):
     """ViewSet for BusinessOnlineBooking management"""
@@ -365,6 +475,15 @@ class BusinessOnlineBookingViewSet(BaseModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         return queryset.filter(business=self.request.user.business)
+
+    def perform_update(self, serializer):
+        instance = serializer.save(business=self.get_object().business)
+        transaction.on_commit(
+            lambda: BusinessKnowledgeService(instance.business).reindex(
+                reason="business_online_booking_updated",
+                source_types=["policy", "banner"],
+            )
+        )
 
 
 class BusinessRegisterView(BaseAPIView):

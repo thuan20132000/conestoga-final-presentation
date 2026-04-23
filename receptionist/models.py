@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.db import models
 from django.utils import timezone
+from pgvector.django import HnswIndex, VectorField
 from simple_history.models import HistoricalRecords
 
 from .enums import AIConfigurationStatus
@@ -261,3 +262,50 @@ class SystemLog(models.Model):
 
     def __str__(self):
         return f"[" + self.level + "] " + self.message[:50]
+
+
+class KnowledgeChunk(models.Model):
+    """Per-business retrieval chunks used by the receptionist RAG layer."""
+
+    SOURCE_TYPE_CHOICES = [
+        ("business", "Business profile"),
+        ("service", "Service"),
+        ("service_category", "Service category"),
+        ("staff", "Staff bio"),
+        ("policy", "Policy"),
+        ("hours", "Operating hours"),
+        ("banner", "Banner"),
+        ("ai_prompt", "AI configuration prompt"),
+    ]
+
+    EMBEDDING_DIMENSIONS = 1536
+
+    business = models.ForeignKey(
+        "business.Business",
+        on_delete=models.CASCADE,
+        related_name="knowledge_chunks",
+    )
+    source_type = models.CharField(max_length=32, choices=SOURCE_TYPE_CHOICES)
+    source_id = models.CharField(max_length=64, blank=True, default="")
+    title = models.CharField(max_length=255, blank=True)
+    content = models.TextField()
+    embedding = VectorField(dimensions=EMBEDDING_DIMENSIONS)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["business", "source_type"]),
+            HnswIndex(
+                name="kb_embedding_hnsw",
+                fields=["embedding"],
+                m=16,
+                ef_construction=64,
+                opclasses=["vector_cosine_ops"],
+            ),
+        ]
+        unique_together = [("business", "source_type", "source_id")]
+
+    def __str__(self):
+        return f"{self.business_id} [{self.source_type}] {self.title or self.source_id}"

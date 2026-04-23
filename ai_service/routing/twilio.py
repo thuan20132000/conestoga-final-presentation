@@ -100,15 +100,16 @@ async def handle_incoming_call(request: Request):
         
         # Get the Twilio phone number of the business that the incoming call is to.
         call_to = data.get("To")
-        
+        print(f"Call to: {call_to}")
         # Get the call sid for the incoming call.
         call_sid = data.get("CallSid")
         
         # Get the business for the incoming call
         business = await incoming_calling_service.get_business_by_twilio_number(call_to)
-
+        print(f"Business: {business}")
         # AI assistant is enabled: connect to the WebSocket for the AI assistant.
         business_ai_config = await incoming_calling_service.get_active_ai_configuration(business)
+        print(f"Business AI config: {business_ai_config}")
         logger.info(f"Business {business.name} has AI assistant enabled: {business.enable_ai_assistant}")
 
         if business is None:
@@ -154,6 +155,7 @@ async def handle_incoming_call(request: Request):
                 status="in_progress",
                 business_id=business.id,
             )
+            print(f"Business AI config: {business_ai_config}")
             response = VoiceResponse()
             response.say(
                 business_ai_config.greeting_message,

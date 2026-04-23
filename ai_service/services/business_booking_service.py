@@ -18,6 +18,7 @@ from client.serializers import ClientSerializer
 from staff.serializers import StaffSerializer
 from logging import getLogger
 import re
+from business.services import BusinessKnowledgeService
 logger = getLogger(__name__)
 
 
@@ -130,6 +131,41 @@ class BusinessBookingService:
             List of services with their details
         """
         return await self._get_services_sync()
+
+    @sync_to_async
+    def _search_knowledge_sync(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_types: list[str] | None = None,
+        score_threshold: float | None = None,
+    ) -> list[dict[str, Any]]:
+        business = Business.objects.get(id=self.business_id)
+        print(f"Business: {business}")
+        knowledge_service = BusinessKnowledgeService(business)
+        data = knowledge_service.search(
+            query=query,
+            top_k=top_k,
+            source_types=source_types,
+            score_threshold=score_threshold,
+        )
+        print(f"Knowledge search results: {data}")
+        return data
+
+    async def search_knowledge(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_types: list[str] | None = None,
+        score_threshold: float | None = None,
+    ) -> list[dict[str, Any]]:
+        """Search the business knowledge base using vector similarity."""
+        return await self._search_knowledge_sync(
+            query=query,
+            top_k=top_k,
+            source_types=source_types,
+            score_threshold=score_threshold,
+        )
 
     async def check_availability(
         self,
